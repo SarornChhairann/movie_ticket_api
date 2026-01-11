@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{backend/layout/base :: base}">
+<head>
+    <title>Dashboard - Ticket Management System</title>
+</head>
+<body>
+    <th:block th:fragment="content">
+        <div th:replace="~{backend/layout/content :: content}"></div>
+    </th:block>
+    
+    <th:block th:fragment="pageScripts">
+        <!-- AdminLTE dashboard demo (This is only for demo purposes) -->
+        <script th:src="@{dist/js/pages/dashboard.js}"></script>
+        <!-- AdminLTE for demo purposes -->
+        <script th:src="@{dist/js/demo.js}"></script>
+    </th:block>
+</body>
+</html>

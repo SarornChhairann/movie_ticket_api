@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{backend/layout/base :: base}">
+<head>
+    <title>Ticket Management - Ticket Management System</title>
+    <th:block th:fragment="pageCss">
+        <!-- DataTables CSS is included in base layout when useDataTables is true -->
+    </th:block>
+</head>
+<body>
+    <th:block th:fragment="content">
+        <!-- Content Header (Page header) -->
+        <section class="content-header">
+            <h1>
+                Ticket Management
+                <small>Manage and track all tickets</small>
+            </h1>
+            <ol class="breadcrumb">
+                <li><a th:href="@{/backend}"><i class="fa fa-dashboard"></i> Home</a></li>
+                <li class="active">Tickets</li>
+            </ol>
+        </section>
+
+        <!-- Main content -->
+        <section class="content">
+            <!-- Info boxes -->
+            <div class="row">
+                <div class="col-lg-3 col-xs-6">
+                    <div class="small-box bg-aqua">
+                        <div class="inner">
+                            <h3 th:text="${totalTickets != null ? totalTickets : '0'}">145</h3>
+                            <p>Total Tickets</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fa fa-ticket"></i>
+                        </div>
+                        <a th:href="@{/backend/tickets}" class="small-box-footer">View All <i class="fa fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-xs-6">
+                    <div class="small-box bg-red">
+                        <div class="inner">
+                            <h3 th:text="${openTickets != null ? openTickets : '0'}">42</h3>
+                            <p>Open</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fa fa-folder-open"></i>
+                        </div>
+                        <a th:href="@{/backend/tickets?status=open}" class="small-box-footer">View Open <i class="fa fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-xs-6">
+                    <div class="small-box bg-yellow">
+                        <div class="inner">
+                            <h3 th:text="${inProgressTickets != null ? inProgressTickets : '0'}">28</h3>
+                            <p>In Progress</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fa fa-clock-o"></i>
+                        </div>
+                        <a th:href="@{/backend/tickets?status=in_progress}" class="small-box-footer">View In Progress <i class="fa fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-xs-6">
+                    <div class="small-box bg-green">
+                        <div class="inner">
+                            <h3 th:text="${resolvedTickets != null ? resolvedTickets : '0'}">75</h3>
+                            <p>Resolved</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fa fa-check-circle"></i>
+                        </div>
+                        <a th:href="@{/backend/tickets?status=resolved}" class="small-box-footer">View Resolved <i class="fa fa-arrow-circle-right"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="box">
+                        <div class="box-header">
+                            <h3 class="box-title">All Tickets</h3>
+                            <div class="box-tools">
+                                <a th:href="@{/backend/tickets/create}" class="btn btn-primary btn-sm">
+                                    <i class="fa fa-plus"></i> Create New Ticket
+                                </a>
+                            </div>
+                        </div>
+                        <!-- /.box-header -->
+                        <div class="box-body">
+                            <table id="ticketsTable" class="table table-bordered table-striped">
+                                <thead>
+                                <tr>
+                                    <th>Ticket ID</th>
+                                    <th>Subject</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Assignee</th>
+                                    <th>Created</th>
+                                    <th>Updated</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="ticket : ${tickets}">
+                                    <td th:text="${'#' + ticket.id}">#TKT-001</td>
+                                    <td>
+                                        <a th:href="@{/backend/tickets/{id}(id=${ticket.id})}" th:text="${ticket.title}">Login page not loading</a>
+                                    </td>
+                                    <td>
+                                        <span class="label label-danger" th:if="${ticket.priority == 'high'}">High</span>
+                                        <span class="label label-warning" th:if="${ticket.priority == 'medium'}">Medium</span>
+                                        <span class="label label-info" th:if="${ticket.priority == 'low'}">Low</span>
+                                    </td>
+                                    <td>
+                                        <span class="label label-success" th:if="${ticket.status == 'open'}">Open</span>
+                                        <span class="label label-info" th:if="${ticket.status == 'in_progress'}">In Progress</span>
+                                        <span class="label label-warning" th:if="${ticket.status == 'resolved'}">Resolved</span>
+                                        <span class="label label-default" th:if="${ticket.status == 'closed'}">Closed</span>
+                                    </td>
+                                    <td th:text="${ticket.assignee != null ? ticket.assignee.name : 'Unassigned'}">John Smith</td>
+                                    <td th:text="${#temporals.format(ticket.createdDate, 'yyyy-MM-dd HH:mm')}">2024-01-15 10:30</td>
+                                    <td th:text="${#temporals.format(ticket.updatedDate, 'yyyy-MM-dd HH:mm')}">2024-01-15 14:20</td>
+                                    <td>
+                                        <a th:href="@{/backend/tickets/{id}(id=${ticket.id})}" class="btn btn-info btn-sm">
+                                            <i class="fa fa-eye"></i>
+                                        </a>
+                                        <a th:href="@{/backend/tickets/{id}/edit(id=${ticket.id})}" class="btn btn-warning btn-sm">
+                                            <i class="fa fa-edit"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                <tr th:if="${tickets == null || tickets.isEmpty()}">
+                                    <td colspan="8" class="text-center">No tickets found</td>
+                                </tr>
+                                </tbody>
+                                <tfoot>
+                                <tr>
+                                    <th>Ticket ID</th>
+                                    <th>Subject</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Assignee</th>
+                                    <th>Created</th>
+                                    <th>Updated</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        <!-- /.box-body -->
+                    </div>
+                    <!-- /.box -->
+                </div>
+            </div>
+        </section>
+        <!-- /.content -->
+    </th:block>
+    
+    <th:block th:fragment="pageScripts">
+        <script>
+            $(function () {
+                $("#ticketsTable").DataTable({
+                    "paging": true,
+                    "lengthChange": true,
+                    "searching": true,
+                    "ordering": true,
+                    "info": true,
+                    "autoWidth": false,
+                    "pageLength": 10,
+                    "order": [[0, "desc"]]
+                });
+            });
+        </script>
+    </th:block>
+</body>
+</html>

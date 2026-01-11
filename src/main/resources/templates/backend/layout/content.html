@@ -1,0 +1,229 @@
+<div class="content-wrapper" th:fragment="content">
+    <!-- Content Header (Page header) -->
+    <section class="content-header">
+        <h1>
+            Ticket Management Dashboard
+            <small>Overview and Statistics</small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a th:href="@{/backend}"><i class="fa fa-dashboard"></i> Home</a></li>
+            <li class="active">Dashboard</li>
+        </ol>
+    </section>
+
+    <!-- Main content -->
+    <section class="content">
+        <!-- Small boxes (Stat box) -->
+        <div class="row">
+            <div class="col-lg-3 col-xs-6">
+                <!-- small box -->
+                <div class="small-box bg-aqua">
+                    <div class="inner">
+                        <h3 th:text="${totalTickets != null ? totalTickets : '0'}">0</h3>
+                        <p>Total Tickets</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fa fa-ticket"></i>
+                    </div>
+                    <a th:href="@{/backend/tickets}" class="small-box-footer">View All <i class="fa fa-arrow-circle-right"></i></a>
+                </div>
+            </div><!-- ./col -->
+            <div class="col-lg-3 col-xs-6">
+                <!-- small box -->
+                <div class="small-box bg-yellow">
+                    <div class="inner">
+                        <h3 th:text="${openTickets != null ? openTickets : '0'}">0</h3>
+                        <p>Open Tickets</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fa fa-folder-open"></i>
+                    </div>
+                    <a th:href="@{/backend/tickets?status=open}" class="small-box-footer">View Open <i class="fa fa-arrow-circle-right"></i></a>
+                </div>
+            </div><!-- ./col -->
+            <div class="col-lg-3 col-xs-6">
+                <!-- small box -->
+                <div class="small-box bg-blue">
+                    <div class="inner">
+                        <h3 th:text="${inProgressTickets != null ? inProgressTickets : '0'}">0</h3>
+                        <p>In Progress</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fa fa-spinner"></i>
+                    </div>
+                    <a th:href="@{/backend/tickets?status=in_progress}" class="small-box-footer">View In Progress <i class="fa fa-arrow-circle-right"></i></a>
+                </div>
+            </div><!-- ./col -->
+            <div class="col-lg-3 col-xs-6">
+                <!-- small box -->
+                <div class="small-box bg-green">
+                    <div class="inner">
+                        <h3 th:text="${resolvedTickets != null ? resolvedTickets : '0'}">0</h3>
+                        <p>Resolved</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fa fa-check-circle"></i>
+                    </div>
+                    <a th:href="@{/backend/tickets?status=resolved}" class="small-box-footer">View Resolved <i class="fa fa-arrow-circle-right"></i></a>
+                </div>
+            </div><!-- ./col -->
+        </div><!-- /.row -->
+        <!-- Main row -->
+        <div class="row">
+            <!-- Left col -->
+            <section class="col-lg-7 connectedSortable">
+                <!-- Recent Tickets -->
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-ticket"></i> Recent Tickets</h3>
+                        <div class="box-tools pull-right">
+                            <a th:href="@{/backend/tickets}" class="btn btn-sm btn-primary">View All</a>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Title</th>
+                                        <th>Status</th>
+                                        <th>Priority</th>
+                                        <th>Created</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="ticket : ${recentTickets}">
+                                        <td th:text="${ticket.id}">#001</td>
+                                        <td th:text="${ticket.title}">Sample Ticket</td>
+                                        <td>
+                                            <span class="label label-success" th:if="${ticket.status == 'open'}">Open</span>
+                                            <span class="label label-info" th:if="${ticket.status == 'in_progress'}">In Progress</span>
+                                            <span class="label label-warning" th:if="${ticket.status == 'resolved'}">Resolved</span>
+                                            <span class="label label-default" th:if="${ticket.status == 'closed'}">Closed</span>
+                                        </td>
+                                        <td>
+                                            <span class="label label-danger" th:if="${ticket.priority == 'high'}">High</span>
+                                            <span class="label label-warning" th:if="${ticket.priority == 'medium'}">Medium</span>
+                                            <span class="label label-info" th:if="${ticket.priority == 'low'}">Low</span>
+                                        </td>
+                                        <td th:text="${ticket.createdDate}">2024-01-01</td>
+                                        <td>
+                                            <a th:href="@{/backend/tickets/{id}(id=${ticket.id})}" class="btn btn-xs btn-info">View</a>
+                                        </td>
+                                    </tr>
+                                    <tr th:if="${recentTickets == null || recentTickets.isEmpty()}">
+                                        <td colspan="6" class="text-center">No recent tickets</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ticket Statistics Chart -->
+                <div class="box box-success">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-bar-chart"></i> Ticket Statistics</h3>
+                        <div class="box-tools pull-right">
+                            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <div class="chart">
+                            <canvas id="ticketStatusChart" style="height: 250px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+            </section><!-- /.Left col -->
+            <!-- right col (We are only adding the ID to make the widgets sortable)-->
+            <section class="col-lg-5 connectedSortable">
+
+                <!-- Quick Actions -->
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-bolt"></i> Quick Actions</h3>
+                    </div>
+                    <div class="box-body">
+                        <a th:href="@{/backend/tickets/create}" class="btn btn-primary btn-block">
+                            <i class="fa fa-plus"></i> Create New Ticket
+                        </a>
+                        <a th:href="@{/backend/tickets}" class="btn btn-info btn-block">
+                            <i class="fa fa-list"></i> View All Tickets
+                        </a>
+                        <a th:href="@{/backend/reports}" class="btn btn-success btn-block">
+                            <i class="fa fa-bar-chart"></i> View Reports
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Priority Distribution -->
+                <div class="box box-warning">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-exclamation-triangle"></i> Priority Distribution</h3>
+                        <div class="box-tools pull-right">
+                            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <div class="progress-group">
+                            <span class="progress-text">High Priority</span>
+                            <span class="progress-number"><b th:text="${highPriorityTickets != null ? highPriorityTickets : '0'}">0</b></span>
+                            <div class="progress sm">
+                                <div class="progress-bar progress-bar-red" style="width: 30%"></div>
+                            </div>
+                        </div>
+                        <div class="progress-group">
+                            <span class="progress-text">Medium Priority</span>
+                            <span class="progress-number"><b th:text="${mediumPriorityTickets != null ? mediumPriorityTickets : '0'}">0</b></span>
+                            <div class="progress sm">
+                                <div class="progress-bar progress-bar-yellow" style="width: 50%"></div>
+                            </div>
+                        </div>
+                        <div class="progress-group">
+                            <span class="progress-text">Low Priority</span>
+                            <span class="progress-number"><b th:text="${lowPriorityTickets != null ? lowPriorityTickets : '0'}">0</b></span>
+                            <div class="progress sm">
+                                <div class="progress-bar progress-bar-blue" style="width: 20%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Feed -->
+                <div class="box box-info">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-clock-o"></i> Recent Activity</h3>
+                        <div class="box-tools pull-right">
+                            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <ul class="products-list product-list-in-box">
+                            <li class="item" th:each="activity : ${recentActivities}">
+                                <div class="product-info">
+                                    <a href="javascript:void(0)" class="product-title" th:text="${activity.description}">
+                                        Ticket #123 updated
+                                        <span class="label label-info pull-right" th:text="${activity.time}">2 mins ago</span>
+                                    </a>
+                                    <span class="product-description" th:text="${activity.user}">
+                                        by John Doe
+                                    </span>
+                                </div>
+                            </li>
+                            <li class="item" th:if="${recentActivities == null || recentActivities.isEmpty()}">
+                                <div class="product-info">
+                                    <span class="product-description">No recent activity</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+            </section><!-- right col -->
+        </div><!-- /.row (main row) -->
+
+    </section><!-- /.content -->
+</div>

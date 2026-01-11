@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{backend/layout/base :: base}">
+<head>
+    <title>Ticket Detail - Ticket Management System</title>
+</head>
+<body>
+    <th:block th:fragment="content">
+        <!-- Content Header (Page header) -->
+        <section class="content-header">
+            <h1>
+                Ticket Detail
+                <small th:text="${ticket != null ? '#' + ticket.id : ''}">#TKT-001</small>
+            </h1>
+            <ol class="breadcrumb">
+                <li><a th:href="@{/backend}"><i class="fa fa-dashboard"></i> Home</a></li>
+                <li><a th:href="@{/backend/tickets}">Tickets</a></li>
+                <li class="active">Ticket Detail</li>
+            </ol>
+        </section>
+
+        <!-- Main content -->
+        <section class="content">
+            <div class="row">
+                <div class="col-md-9">
+                    <!-- Ticket -->
+                    <div class="box box-primary">
+                        <div class="box-header with-border">
+                            <h3 class="box-title">
+                                <i class="fa fa-ticket"></i> 
+                                <span th:text="${ticket != null ? '#' + ticket.id + ' - ' + ticket.title : '#TKT-001 - Login page not loading'}">#TKT-001 - Login page not loading</span>
+                            </h3>
+                            <div class="box-tools pull-right">
+                                <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                            </div>
+                        </div>
+                        <div class="box-body">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label>Description</label>
+                                        <p class="text-muted" th:text="${ticket != null ? ticket.description : 'Users are reporting that the login page is not loading properly...'}">
+                                            Users are reporting that the login page is not loading properly. The page shows a blank screen 
+                                            after clicking the login button. This issue started occurring after the last deployment on 
+                                            January 15th, 2024. Multiple users have reported this issue across different browsers.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Comments Section -->
+                            <div class="box box-widget">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title"><i class="fa fa-comments"></i> Comments & Updates</h3>
+                                </div>
+                                <div class="box-body">
+                                    <!-- Comment 1 -->
+                                    <div class="direct-chat-msg" th:each="comment : ${ticket.comments}">
+                                        <div class="direct-chat-info clearfix">
+                                            <span class="direct-chat-name pull-left" th:text="${comment.user != null ? comment.user.name : 'User'}">John Smith</span>
+                                            <span class="direct-chat-timestamp pull-right" th:text="${#temporals.format(comment.createdDate, 'yyyy-MM-dd HH:mm')}">2024-01-15 14:20</span>
+                                        </div>
+                                        <img class="direct-chat-img" th:src="@{dist/img/user1-128x128.jpg}" alt="message user image">
+                                        <div class="direct-chat-text" th:text="${comment.content}">
+                                            I've started investigating the issue. It appears to be related to the authentication service. 
+                                            Checking the API logs now.
+                                        </div>
+                                    </div>
+                                    
+                                    <div th:if="${ticket == null || ticket.comments == null || ticket.comments.isEmpty()}">
+                                        <p class="text-muted text-center">No comments yet</p>
+                                    </div>
+                                </div>
+                                <div class="box-footer">
+                                    <form th:action="@{/backend/tickets/{id}/comments(id=${ticket.id})}" method="post">
+                                        <div class="input-group">
+                                            <input type="text" name="comment" placeholder="Type Message ..." class="form-control" required>
+                                            <span class="input-group-btn">
+                                                <button type="submit" class="btn btn-primary">Send</button>
+                                            </span>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="col-md-3">
+                    <!-- Status Card -->
+                    <div class="box box-primary">
+                        <div class="box-header with-border">
+                            <h3 class="box-title">Ticket Information</h3>
+                        </div>
+                        <div class="box-body">
+                            <strong><i class="fa fa-tag"></i> Status</strong>
+                            <p class="text-muted">
+                                <span class="label label-success" th:if="${ticket != null && ticket.status == 'open'}">Open</span>
+                                <span class="label label-info" th:if="${ticket != null && ticket.status == 'in_progress'}">In Progress</span>
+                                <span class="label label-warning" th:if="${ticket != null && ticket.status == 'resolved'}">Resolved</span>
+                                <span class="label label-default" th:if="${ticket != null && ticket.status == 'closed'}">Closed</span>
+                                <span th:if="${ticket == null}" class="label label-warning">In Progress</span>
+                            </p>
+                            <hr>
+
+                            <strong><i class="fa fa-exclamation-circle"></i> Priority</strong>
+                            <p class="text-muted">
+                                <span class="label label-danger" th:if="${ticket != null && ticket.priority == 'high'}">High</span>
+                                <span class="label label-warning" th:if="${ticket != null && ticket.priority == 'medium'}">Medium</span>
+                                <span class="label label-info" th:if="${ticket != null && ticket.priority == 'low'}">Low</span>
+                                <span th:if="${ticket == null}" class="label label-danger">High</span>
+                            </p>
+                            <hr>
+
+                            <strong><i class="fa fa-user"></i> Assignee</strong>
+                            <p class="text-muted" th:text="${ticket != null && ticket.assignee != null ? ticket.assignee.name : 'Unassigned'}">John Smith</p>
+                            <hr>
+
+                            <strong><i class="fa fa-user"></i> Reporter</strong>
+                            <p class="text-muted" th:text="${ticket != null && ticket.reporter != null ? ticket.reporter.name : 'N/A'}">Sarah Connor</p>
+                            <hr>
+
+                            <strong><i class="fa fa-calendar"></i> Created</strong>
+                            <p class="text-muted" th:text="${ticket != null ? #temporals.format(ticket.createdDate, 'yyyy-MM-dd HH:mm') : '2024-01-15 10:30'}">2024-01-15 10:30</p>
+                            <hr>
+
+                            <strong><i class="fa fa-clock-o"></i> Updated</strong>
+                            <p class="text-muted" th:text="${ticket != null ? #temporals.format(ticket.updatedDate, 'yyyy-MM-dd HH:mm') : '2024-01-15 16:45'}">2024-01-15 16:45</p>
+                            <hr>
+
+                            <strong><i class="fa fa-tags"></i> Category</strong>
+                            <p class="text-muted" th:text="${ticket != null && ticket.category != null ? ticket.category.name : 'N/A'}">Bug</p>
+                            <hr>
+
+                            <strong><i class="fa fa-link"></i> Related Tickets</strong>
+                            <p class="text-muted" th:if="${ticket != null && ticket.relatedTickets != null && !ticket.relatedTickets.isEmpty()}">
+                                <a th:each="related : ${ticket.relatedTickets}" th:href="@{/backend/tickets/{id}(id=${related.id})}" th:text="'#' + ${related.id}">#TKT-002</a><br>
+                            </p>
+                            <p class="text-muted" th:if="${ticket == null || ticket.relatedTickets == null || ticket.relatedTickets.isEmpty()}">None</p>
+                        </div>
+                        <div class="box-footer">
+                            <a th:href="@{/backend/tickets/{id}/edit(id=${ticket.id})}" class="btn btn-primary btn-block" th:if="${ticket != null}">
+                                <i class="fa fa-edit"></i> Edit Ticket
+                            </a>
+                            <button type="button" class="btn btn-success btn-block" th:if="${ticket != null}">
+                                <i class="fa fa-check"></i> Resolve Ticket
+                            </button>
+                            <button type="button" class="btn btn-danger btn-block" th:if="${ticket != null}">
+                                <i class="fa fa-times"></i> Close Ticket
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Activity Card -->
+                    <div class="box">
+                        <div class="box-header with-border">
+                            <h3 class="box-title">Activity Timeline</h3>
+                        </div>
+                        <div class="box-body">
+                            <ul class="timeline" th:if="${ticket != null && ticket.activities != null}">
+                                <li th:each="activity : ${ticket.activities}">
+                                    <i class="fa fa-check bg-green" th:if="${activity.type == 'status_change'}"></i>
+                                    <i class="fa fa-comment bg-blue" th:if="${activity.type == 'comment'}"></i>
+                                    <i class="fa fa-user bg-yellow" th:if="${activity.type == 'assignment'}"></i>
+                                    <i class="fa fa-plus bg-red" th:if="${activity.type == 'created'}"></i>
+                                    <div class="timeline-item">
+                                        <span class="time"><i class="fa fa-clock-o"></i> <span th:text="${#temporals.format(activity.createdDate, 'HH:mm')}">16:45</span></span>
+                                        <h3 class="timeline-header" th:text="${activity.description}">Status changed to In Progress</h3>
+                                    </div>
+                                </li>
+                            </ul>
+                            <p th:if="${ticket == null || ticket.activities == null || ticket.activities.isEmpty()}" class="text-muted text-center">No activity recorded</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- /.content -->
+    </th:block>
+    
+    <th:block th:fragment="pageScripts">
+        <!-- Page-specific scripts if needed -->
+    </th:block>
+</body>
+</html>
