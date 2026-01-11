@@ -11,9 +11,4 @@ public class HomeController {
     String home(){
         return "backend/index";
     }
-
-    @GetMapping("/tickets/")
-    String allTickets(){
-        return "backend/tickets/";
-    }
 }
