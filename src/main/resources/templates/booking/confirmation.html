@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout('Booking Confirmed', ~{::content})}">
+<th:block th:fragment="content">
+    <!-- Success banner -->
+    <div class="text-center mb-4">
+        <div style="width:64px;height:64px;background:#d1fae5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem">
+            <i class="bi bi-check-lg text-success" style="font-size:1.8rem"></i>
+        </div>
+        <h3 class="fw-bold">Booking Confirmed!</h3>
+        <p class="text-muted">Your tickets are ready. Save your ticket codes below.</p>
+    </div>
+
+    <!-- Summary card -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4" style="max-width:560px;margin:0 auto">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="text-muted" style="font-size:.8rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase">Booking Reference</span>
+                <span class="fw-bold" th:text="'#' + ${booking.id}"></span>
+            </div>
+            <hr class="my-2">
+            <p class="mb-1"><strong>Movie:</strong> <span th:text="${booking.showtime.movie.title}"></span></p>
+            <p class="mb-1"><strong>Date &amp; Time:</strong>
+                <span th:text="${booking.showtime.showDate}"></span> &nbsp;
+                <span th:text="${booking.showtime.showTime}"></span>
+            </p>
+            <p class="mb-1"><strong>Total Paid:</strong>
+                <span class="fw-bold text-success" th:text="'$' + ${booking.totalAmount}"></span>
+            </p>
+            <p class="mb-0"><strong>Status:</strong>
+                <span class="badge bg-success" th:text="${booking.status}"></span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Tickets -->
+    <h6 class="fw-bold mb-3 text-center" style="max-width:560px;margin:0 auto 1rem">Your Tickets</h6>
+    <div style="max-width:560px;margin:0 auto">
+        <div th:each="ticket : ${tickets}" class="card border-0 shadow-sm rounded-3 mb-2 px-4 py-3 d-flex flex-row align-items-center justify-content-between">
+            <span><i class="bi bi-ticket-perforated me-2 text-primary"></i>
+                Seat <strong th:text="${ticket.seat.seatCode}"></strong></span>
+            <a class="btn btn-outline-primary btn-sm px-3 fw-semibold"
+               th:href="@{/tickets/{code}(code=${ticket.ticketCode})}"
+               th:text="${ticket.ticketCode}"></a>
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        <a class="btn btn-primary px-5" th:href="@{/movies}">
+            <i class="bi bi-house me-1"></i>Back to Movies
+        </a>
+    </div>
+</th:block>
+</html>

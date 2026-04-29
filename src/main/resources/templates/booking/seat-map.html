@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout('Select Seats', ~{::content})}">
+<th:block th:fragment="content">
+    <h4 class="fw-bold mb-1"><i class="bi bi-grid-3x3-gap me-2"></i>Select Your Seats</h4>
+    <p class="text-muted mb-4">Click to select one or more seats, then continue to checkout.</p>
+
+    <form th:action="@{/bookings/checkout/{id}(id=${showtimeId})}" method="get">
+        <!-- Seat grid -->
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+            <div class="seat-grid mb-3" id="seatGrid">
+                <div class="seat-item" th:each="showtimeSeat : ${showtimeSeats}">
+                    <label class="seat-label"
+                           th:classappend="${showtimeSeat.status.name() == 'BOOKED'} ? ' seat-booked' : (${showtimeSeat.seat.seatType.name() == 'COUPLE'} ? ' seat-couple' : ' seat-normal')">
+                        <input type="checkbox"
+                               name="seatIds"
+                               th:value="${showtimeSeat.id}"
+                               th:disabled="${showtimeSeat.status.name() == 'BOOKED'}"
+                               th:attr="data-seat-code=${showtimeSeat.seat.seatCode},data-seat-type=${showtimeSeat.seat.seatType.name()}"
+                               class="d-none seat-checkbox">
+                        <span th:text="${showtimeSeat.seat.seatCode}"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="screen-indicator">▲ &nbsp; SCREEN &nbsp; ▲</div>
+        </div>
+
+        <!-- Legend + count -->
+        <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
+            <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.85rem">
+                <span style="width:18px;height:18px;background:#e9ecef;border-radius:4px;display:inline-block"></span> Normal
+            </span>
+            <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.85rem">
+                <span style="width:36px;height:18px;background:#ffe8cc;border-radius:4px;display:inline-block"></span> Couple
+            </span>
+            <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.85rem">
+                <span style="width:18px;height:18px;background:#adb5bd;border-radius:4px;display:inline-block"></span> Booked
+            </span>
+            <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.85rem">
+                <span style="width:18px;height:18px;background:#ffd0d8;border-radius:4px;border:2px solid #e94560;display:inline-block"></span> Selected
+            </span>
+            <span class="ms-auto fw-semibold" id="selectedCount" style="font-size:.92rem">0 seat(s) selected</span>
+        </div>
+
+        <button class="btn btn-primary px-5 fw-semibold" type="submit">
+            <i class="bi bi-arrow-right-circle me-1"></i>Continue to Checkout
+        </button>
+    </form>
+
+    <script>
+        const seatCheckboxes = Array.from(document.querySelectorAll('.seat-checkbox'));
+
+        seatCheckboxes.forEach(function (checkbox) {
+            if (checkbox.dataset.seatType !== 'COUPLE') return;
+            const seatItem = checkbox.closest('.seat-item');
+            if (seatItem) seatItem.classList.add('seat-couple-unit');
+        });
+
+        function updateCount() {
+            const n = seatCheckboxes.filter(c => c.checked).length;
+            document.getElementById('selectedCount').textContent = n + ' seat(s) selected';
+        }
+
+        seatCheckboxes.forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                checkbox.closest('label').classList.toggle('seat-selected', checkbox.checked);
+                updateCount();
+            });
+        });
+    </script>
+</th:block>
+</html>

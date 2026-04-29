@@ -1,0 +1,4 @@
+{"sessionId":"7f0c1a","runId":"run2","hypothesisId":"H1","location":"BookingService:49","message":"confirmCheckout entry","data":{"showtimeId":1,"seatCount":1,"hasUserEmail":false,"hasGuestName":true,"hasGuestPhone":true},"timestamp":1777457492348}
+{"sessionId":"7f0c1a","runId":"run2","hypothesisId":"H1","location":"BookingService:66","message":"before booking save","data":{"userIsNull":true,"total":"9.00"},"timestamp":1777457492360}
+{"sessionId":"7f0c1a","runId":"run2","hypothesisId":"H3","location":"BookingService:70","message":"after booking save","data":{"bookingId":11},"timestamp":1777457492364}
+{"sessionId":"7f0c1a","runId":"run2","hypothesisId":"H3","location":"BookingService:76","message":"checkout completed","data":{"bookingId":11},"timestamp":1777457492373}

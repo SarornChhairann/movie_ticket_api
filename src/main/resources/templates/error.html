@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout('Error', ~{::content})}">
+<th:block th:fragment="content">
+    <div class="text-center py-5">
+        <div style="font-size:4rem;margin-bottom:1rem">⚠️</div>
+        <h2 class="fw-bold mb-2">Something went wrong</h2>
+        <p class="text-muted mb-4">An unexpected error occurred. Please try again.</p>
+        <a class="btn btn-primary px-5 fw-semibold" th:href="@{/movies}">
+            <i class="bi bi-house me-1"></i>Back to Movies
+        </a>
+    </div>
+</th:block>
+</html>

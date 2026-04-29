@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/admin-base :: layout('Bookings', ~{::content})}">
+<th:block th:fragment="content">
+    <h4 class="fw-bold mb-4"><i class="bi bi-receipt me-2"></i>Bookings</h4>
+    <div class="admin-table">
+        <table class="table mb-0 align-middle">
+            <thead>
+            <tr><th>#</th><th>Customer</th><th>Movie</th><th>Total</th><th>Status</th><th>Booked At</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="booking : ${bookings}">
+                <td class="fw-semibold text-muted" th:text="${booking.id}"></td>
+                <td>
+                    <span th:if="${booking.user != null}" th:text="${booking.user.name}"></span>
+                    <span th:if="${booking.user == null}">
+                        <i class="bi bi-person-dash text-muted me-1"></i>
+                        <span th:text="${booking.guestName != null} ? ${booking.guestName} : 'Guest'"></span>
+                        <small class="text-muted ms-1" th:text="${booking.guestPhone != null} ? ('(' + booking.guestPhone + ')') : ''"></small>
+                    </span>
+                </td>
+                <td th:text="${booking.showtime.movie.title}"></td>
+                <td class="fw-semibold" th:text="'$' + ${booking.totalAmount}"></td>
+                <td>
+                    <span class="badge"
+                          th:classappend="${booking.status.name() == 'CONFIRMED'} ? 'bg-success' : (${booking.status.name() == 'PENDING'} ? 'bg-warning text-dark' : 'bg-secondary')"
+                          th:text="${booking.status}"></span>
+                </td>
+                <td th:text="${#temporals.format(booking.bookedAt, 'dd MMM yyyy HH:mm')}"></td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(bookings)}">
+                <td colspan="6" class="text-center text-muted py-4">No bookings yet.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</th:block>
+</html>

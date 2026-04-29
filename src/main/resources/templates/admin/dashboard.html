@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/admin-base :: layout('Dashboard', ~{::content})}">
+<th:block th:fragment="content">
+    <h4 class="fw-bold mb-4">Dashboard</h4>
+
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-2">
+            <div class="admin-stat-card card p-3 d-flex flex-row align-items-center gap-3">
+                <div class="admin-stat-icon" style="background:#ede9fe;color:#7c3aed"><i class="bi bi-camera-video-fill"></i></div>
+                <div><div class="fw-bold fs-4" th:text="${movieCount}">0</div><div class="text-muted" style="font-size:.8rem">Movies</div></div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-2">
+            <div class="admin-stat-card card p-3 d-flex flex-row align-items-center gap-3">
+                <div class="admin-stat-icon" style="background:#dbeafe;color:#1d4ed8"><i class="bi bi-building"></i></div>
+                <div><div class="fw-bold fs-4" th:text="${hallCount}">0</div><div class="text-muted" style="font-size:.8rem">Halls</div></div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-2">
+            <div class="admin-stat-card card p-3 d-flex flex-row align-items-center gap-3">
+                <div class="admin-stat-icon" style="background:#dcfce7;color:#15803d"><i class="bi bi-calendar3"></i></div>
+                <div><div class="fw-bold fs-4" th:text="${showtimeCount}">0</div><div class="text-muted" style="font-size:.8rem">Showtimes</div></div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-2">
+            <div class="admin-stat-card card p-3 d-flex flex-row align-items-center gap-3">
+                <div class="admin-stat-icon" style="background:#fef3c7;color:#b45309"><i class="bi bi-receipt"></i></div>
+                <div><div class="fw-bold fs-4" th:text="${bookingCount}">0</div><div class="text-muted" style="font-size:.8rem">Bookings</div></div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-2">
+            <div class="admin-stat-card card p-3 d-flex flex-row align-items-center gap-3">
+                <div class="admin-stat-icon" style="background:#fce7f3;color:#be185d"><i class="bi bi-people-fill"></i></div>
+                <div><div class="fw-bold fs-4" th:text="${userCount}">0</div><div class="text-muted" style="font-size:.8rem">Users</div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-primary px-4" th:href="@{/admin/movies}"><i class="bi bi-camera-video me-1"></i>Movies</a>
+        <a class="btn btn-primary px-4" th:href="@{/admin/halls}"><i class="bi bi-building me-1"></i>Halls</a>
+        <a class="btn btn-primary px-4" th:href="@{/admin/showtimes}"><i class="bi bi-calendar3 me-1"></i>Showtimes</a>
+        <a class="btn btn-outline-secondary px-4" th:href="@{/admin/bookings}"><i class="bi bi-receipt me-1"></i>Bookings</a>
+        <a class="btn btn-outline-secondary px-4" th:href="@{/admin/users}"><i class="bi bi-people me-1"></i>Users</a>
+    </div>
+</th:block>
+</html>
