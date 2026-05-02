@@ -50,7 +50,9 @@ public class TicketService {
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketCode));
         ticket.getBooking().getShowtime().getMovie().getTitle();
         ticket.getBooking().getShowtime().getHall().getName();
-        ticket.getBooking().getUser().getName();
+        if (ticket.getBooking().getUser() != null) {
+            ticket.getBooking().getUser().getName();
+        }
         ticket.getSeat().getSeatCode();
         ticket.getSeat().getSeatType();
         return ticket;

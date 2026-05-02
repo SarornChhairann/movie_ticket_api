@@ -11,7 +11,13 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public RoleBasedAuthenticationSuccessHandler authenticationSuccessHandler() {
+        return new RoleBasedAuthenticationSuccessHandler();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   RoleBasedAuthenticationSuccessHandler authenticationSuccessHandler) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/movies", "/movies/**",
@@ -24,7 +30,7 @@ public class SecurityConfig {
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
-                        .defaultSuccessUrl("/movies", true)
+                        .successHandler(authenticationSuccessHandler)
                         .permitAll()
                 )
                 .logout(logout -> logout

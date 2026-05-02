@@ -1,0 +1,3 @@
+{"sessionId":"6c4eef","runId":"pre-fix","hypothesisId":"H3","location":"TicketController.viewTicket","message":"entry","data":{"ticketCodeLen":36},"timestamp":1777713241190}
+{"sessionId":"6c4eef","runId":"pre-fix","hypothesisId":"H1","location":"TicketService.findByTicketCode","message":"afterRepo","data":{"userNull":true,"bookingId":13},"timestamp":1777713241200}
+{"sessionId":"6c4eef","runId":"post-fix","hypothesisId":"verify","location":"TicketService.findByTicketCode","message":"touchCompleted","data":{},"timestamp":1777713241209}
