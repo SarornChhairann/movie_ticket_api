@@ -18,7 +18,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -115,7 +121,8 @@ public class BookingService {
             throw new IllegalArgumentException("Some selected seats are invalid.");
         }
 
-        BigDecimal total = BigDecimal.ZERO;
+        int normalSeatCount = 0;
+        List<SeatCode> coupleSeatCodes = new ArrayList<>();
 
         for (ShowtimeSeat seat : selectedSeats) {
             if (!seat.getShowtime().getId().equals(showtimeId)) {
@@ -126,16 +133,72 @@ public class BookingService {
             }
 
             if (seat.getSeat().getSeatType() == SeatType.COUPLE) {
-                total = total.add(showtime.getCouplePrice());
+                coupleSeatCodes.add(parseSeatCode(seat.getSeat().getSeatCode()));
             } else {
-                total = total.add(showtime.getNormalPrice());
+                normalSeatCount++;
             }
+        }
+
+        validateCouplePairs(coupleSeatCodes);
+
+        BigDecimal total = BigDecimal.ZERO;
+        if (normalSeatCount > 0) {
+            total = total.add(showtime.getNormalPrice().multiply(BigDecimal.valueOf(normalSeatCount)));
+        }
+        if (!coupleSeatCodes.isEmpty()) {
+            total = total.add(showtime.getCouplePrice().multiply(BigDecimal.valueOf(coupleSeatCodes.size() / 2)));
         }
 
         showtime.getMovie().getTitle();
         showtime.getHall().getName();
         selectedSeats.forEach(seat -> seat.getSeat().getSeatCode());
         return new CheckoutData(user, showtime, selectedSeats, total);
+    }
+
+    private static final Pattern SEAT_CODE_PATTERN = Pattern.compile("^([A-Za-z]+)(\\d+)$");
+
+    private record SeatCode(String row, int number) {
+    }
+
+    private SeatCode parseSeatCode(String seatCode) {
+        if (seatCode == null) {
+            throw new IllegalArgumentException("Couple seats must be selected in pairs.");
+        }
+        Matcher matcher = SEAT_CODE_PATTERN.matcher(seatCode.trim());
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException("Couple seats must be selected in pairs.");
+        }
+        String row = matcher.group(1).toUpperCase();
+        int number = Integer.parseInt(matcher.group(2));
+        return new SeatCode(row, number);
+    }
+
+    private void validateCouplePairs(List<SeatCode> coupleSeats) {
+        if (coupleSeats.isEmpty()) {
+            return;
+        }
+        if (coupleSeats.size() % 2 != 0) {
+            throw new IllegalArgumentException("Couple seats must be selected in pairs.");
+        }
+
+        Map<String, List<Integer>> numbersByRow = new HashMap<>();
+        for (SeatCode seat : coupleSeats) {
+            numbersByRow.computeIfAbsent(seat.row(), ignored -> new ArrayList<>()).add(seat.number());
+        }
+
+        for (List<Integer> rowNumbers : numbersByRow.values()) {
+            rowNumbers.sort(Comparator.naturalOrder());
+            if (rowNumbers.size() % 2 != 0) {
+                throw new IllegalArgumentException("Couple seats must be selected in pairs.");
+            }
+            for (int i = 0; i < rowNumbers.size(); i += 2) {
+                int first = rowNumbers.get(i);
+                int second = rowNumbers.get(i + 1);
+                if (second != first + 1 || (first % 2 == 0)) {
+                    throw new IllegalArgumentException("Couple seats must be selected in pairs.");
+                }
+            }
+        }
     }
 
     private User findUser(String email) {

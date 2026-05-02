@@ -54,9 +54,11 @@ set_java_home() {
       JAVACCMD="$JAVA_HOME/bin/javac"
 
       if [ ! -x "$JAVACMD" ] || [ ! -x "$JAVACCMD" ]; then
-        echo "The JAVA_HOME environment variable is not defined correctly, so mvnw cannot run." >&2
+        echo "The JAVA_HOME environment variable is not defined correctly; falling back to 'java'/'javac' from PATH." >&2
         echo "JAVA_HOME is set to \"$JAVA_HOME\", but \"\$JAVA_HOME/bin/java\" or \"\$JAVA_HOME/bin/javac\" does not exist." >&2
-        return 1
+        unset JAVA_HOME || :
+        set_java_home
+        return $?
       fi
     fi
   else
@@ -147,6 +149,9 @@ MAVEN_HOME="${MAVEN_USER_HOME}/wrapper/dists/${distributionUrlNameMain-}/$(hash_
 
 exec_maven() {
   unset MVNW_VERBOSE MVNW_USERNAME MVNW_PASSWORD MVNW_REPOURL || :
+  if [ -n "${JAVA_HOME-}" ] && { [ ! -x "$JAVA_HOME/bin/java" ] || [ ! -x "$JAVA_HOME/bin/javac" ]; }; then
+    unset JAVA_HOME || :
+  fi
   exec "$MAVEN_HOME/bin/$MVN_CMD" "$@" || die "cannot exec $MAVEN_HOME/bin/$MVN_CMD"
 }
 
