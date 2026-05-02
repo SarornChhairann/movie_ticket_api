@@ -29,4 +29,8 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
 
     @Query("SELECT DISTINCT m.language FROM Movie m WHERE m.language IS NOT NULL AND m.language <> '' ORDER BY m.language")
     List<String> findDistinctLanguages();
+
+    java.util.Optional<Movie> findFirstByStatusAndImagePathIsNotNullOrderByIdDesc(MovieStatus status);
+
+    List<Movie> findTop6ByStatusOrderByIdDesc(MovieStatus status);
 }

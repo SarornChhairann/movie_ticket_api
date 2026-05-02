@@ -57,6 +57,15 @@ public class HallService {
         return hallRepository.findAll();
     }
 
+    public List<String> findDistinctCities() {
+        return hallRepository.findDistinctCities();
+    }
+
+    public List<Hall> findByCity(String city) {
+        if (city == null || city.isBlank()) return hallRepository.findAll();
+        return hallRepository.findByCityIgnoreCase(city);
+    }
+
     public Hall findById(Long id) {
         return hallRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Hall not found: " + id));

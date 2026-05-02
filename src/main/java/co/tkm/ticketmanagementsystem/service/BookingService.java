@@ -239,6 +239,13 @@ public class BookingService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public long countBookingsForUser(String email) {
+        return userRepository.findByEmail(email)
+                .map(bookingRepository::countByUser)
+                .orElse(0L);
+    }
+
     private User findUser(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + email));

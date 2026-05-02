@@ -1,115 +1,473 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org"
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layout/base :: layout('Movies', ~{::content})}">
 <th:block th:fragment="content">
-    <!-- Hero -->
-    <div class="mtms-hero no-print" style="margin:-2.5rem -12px 2rem;padding-left:12px;padding-right:12px">
-        <div class="text-center">
-            <h1 class="fw-bold mb-2" style="font-size:2.2rem">Cinema Tickets</h1>
-            <p class="mb-0" style="color:rgba(255,255,255,.65)">Pick a movie and grab your seats — no account needed.</p>
+
+<!-- ═══════════════════════════════════════════════════════
+     HERO SECTION — Featured movie backdrop
+═══════════════════════════════════════════════════════ -->
+<div class="home-hero no-print"
+     th:style="${featuredMovie != null and featuredMovie.imagePath != null}
+                ? 'background-image:linear-gradient(to right,rgba(10,10,20,.92) 40%,rgba(10,10,20,.5)),url(' + featuredMovie.imagePath + ')'
+                : 'background:linear-gradient(135deg,#0d0d0d,#1a1a2e)'"
+     style="margin:calc(-2.5rem) calc(50% - 50vw) 2rem;padding:4rem calc(50vw - 50%) 3rem;background-size:cover;background-position:center">
+    <div class="row align-items-center gy-4">
+        <!-- Hero text -->
+        <div class="col-lg-7">
+            <div th:if="${featuredMovie != null}">
+                <div class="d-flex gap-2 mb-3 flex-wrap">
+                    <span class="badge" style="background:var(--mtms-accent);font-size:.8rem"
+                          th:text="${featuredMovie.genre}"></span>
+                    <span th:if="${featuredMovie.format != null and !#strings.isEmpty(featuredMovie.format)}"
+                          class="badge bg-dark" style="font-size:.8rem" th:text="${featuredMovie.format}"></span>
+                    <span th:if="${featuredMovie.rating != null and !#strings.isEmpty(featuredMovie.rating)}"
+                          class="badge" style="background:#f5a623;color:#000;font-size:.8rem" th:text="${featuredMovie.rating}"></span>
+                </div>
+                <h1 class="fw-bold mb-2" style="color:#fff;font-size:clamp(1.8rem,4vw,3rem);line-height:1.1"
+                    th:text="${featuredMovie.title}">Movie Title</h1>
+                <p class="mb-1" style="color:rgba(255,255,255,.65);font-size:.95rem">
+                    <i class="bi bi-clock me-1"></i>
+                    <span th:text="${featuredMovie.durationMinutes} + ' min'"></span>
+                    <span th:if="${featuredMovie.language != null and !#strings.isEmpty(featuredMovie.language)}"
+                          class="ms-3"><i class="bi bi-translate me-1"></i><span th:text="${featuredMovie.language}"></span></span>
+                </p>
+                <p th:if="${featuredMovie.description != null and !#strings.isEmpty(featuredMovie.description)}"
+                   class="mb-4 mt-2" style="color:rgba(255,255,255,.7);font-size:.9rem;max-width:480px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden"
+                   th:text="${featuredMovie.description}"></p>
+                <div class="d-flex gap-3 flex-wrap">
+                    <a class="btn btn-lg fw-bold px-5 py-2" style="background:var(--mtms-accent);color:#fff;border:none"
+                       th:href="@{/movies/{id}(id=${featuredMovie.id})}">
+                        <i class="bi bi-ticket-perforated me-2"></i>Book Now
+                    </a>
+                    <a th:if="${featuredMovie.trailerUrl != null and !#strings.isEmpty(featuredMovie.trailerUrl)}"
+                       class="btn btn-lg fw-semibold px-4 py-2"
+                       style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)"
+                       th:href="${featuredMovie.trailerUrl}" target="_blank">
+                        <i class="bi bi-play-circle me-2"></i>Trailer
+                    </a>
+                </div>
+            </div>
+            <div th:if="${featuredMovie == null}">
+                <h1 class="fw-bold mb-2" style="color:#fff;font-size:2.5rem">Book Your Cinema Experience</h1>
+                <p style="color:rgba(255,255,255,.65)">Discover movies, select seats, and get your tickets in seconds.</p>
+            </div>
         </div>
-    </div>
 
-    <!-- Tabs -->
-    <ul class="nav nav-pills mb-3 gap-1">
-        <li class="nav-item">
-            <a class="nav-link fw-semibold"
-               th:classappend="${tab == 'NOW_SHOWING'} ? 'active' : ''"
-               th:href="@{/movies(tab='NOW_SHOWING')}">
-                <i class="bi bi-play-circle me-1"></i>Now Showing
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link fw-semibold"
-               th:classappend="${tab == 'COMING_SOON'} ? 'active' : ''"
-               th:href="@{/movies(tab='COMING_SOON')}">
-                <i class="bi bi-clock me-1"></i>Coming Soon
-            </a>
-        </li>
-    </ul>
-
-    <!-- Filter bar -->
-    <form method="get" th:action="@{/movies}" class="card border-0 shadow-sm rounded-3 p-3 mb-4 no-print">
-        <input type="hidden" name="tab" th:value="${tab}">
-        <div class="row g-2 align-items-end">
-            <div class="col-md-4">
-                <input class="form-control form-control-sm" type="text" name="search"
-                       placeholder="Search movies..." th:value="${search}">
-            </div>
-            <div class="col-md-2">
-                <select class="form-select form-select-sm" name="genre">
-                    <option value="">All Genres</option>
-                    <option th:each="g : ${genres}" th:value="${g}" th:text="${g}"
-                            th:selected="${g == genre}"></option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <select class="form-select form-select-sm" name="language">
-                    <option value="">All Languages</option>
-                    <option th:each="l : ${languages}" th:value="${l}" th:text="${l}"
-                            th:selected="${l == language}"></option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <select class="form-select form-select-sm" name="format">
-                    <option value="">All Formats</option>
-                    <option value="2D" th:selected="${format == '2D'}">2D</option>
-                    <option value="3D" th:selected="${format == '3D'}">3D</option>
-                    <option value="IMAX" th:selected="${format == 'IMAX'}">IMAX</option>
-                    <option value="4DX" th:selected="${format == '4DX'}">4DX</option>
-                </select>
-            </div>
-            <div class="col-md-2 d-flex gap-2">
-                <button class="btn btn-primary btn-sm px-3 w-100" type="submit">
-                    <i class="bi bi-search me-1"></i>Filter
-                </button>
-                <a class="btn btn-outline-secondary btn-sm px-2" th:href="@{/movies(tab=${tab})}">
-                    <i class="bi bi-x-lg"></i>
+        <!-- User status widget + City selector -->
+        <div class="col-lg-5">
+            <!-- Authenticated user widget -->
+            <div sec:authorize="isAuthenticated() and !hasRole('ADMIN')"
+                 class="card border-0 rounded-4 mb-3 p-3 d-flex flex-row align-items-center gap-3"
+                 style="background:rgba(255,255,255,.1);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.15)!important">
+                <div id="heroAvatar" class="d-flex align-items-center justify-content-center fw-bold fs-4"
+                     style="width:50px;height:50px;min-width:50px;border-radius:50%;background:var(--mtms-accent);color:#fff">U</div>
+                <div class="flex-grow-1">
+                    <div id="heroUserName" class="fw-semibold" style="color:#fff" sec:authentication="name">User</div>
+                    <a th:href="@{/bookings/my-bookings}" style="color:rgba(255,255,255,.7);font-size:.88rem;text-decoration:none">
+                        <i class="bi bi-ticket-perforated me-1"></i>
+                        <span th:text="${userBookingCount != null} ? ${userBookingCount} + ' booking(s)' : 'My Bookings'"></span>
+                    </a>
+                </div>
+                <a th:href="@{/profile}" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:none">
+                    <i class="bi bi-gear"></i>
                 </a>
             </div>
-        </div>
-    </form>
 
-    <div th:if="${#lists.isEmpty(movies)}" class="text-center py-5 text-muted">
-        <i class="bi bi-camera-video-off" style="font-size:3rem"></i>
-        <p class="mt-3 fs-5" th:text="${tab == 'NOW_SHOWING'} ? 'No movies currently showing.' : 'No upcoming movies.'"></p>
-    </div>
-
-    <div class="row g-4">
-        <div class="col-sm-6 col-lg-4" th:each="movie : ${movies}">
-            <div class="movie-card card h-100">
-                <img th:if="${movie.imagePath != null and !#strings.isEmpty(movie.imagePath)}"
-                     th:src="${movie.imagePath}" class="card-img-top" alt="Movie poster">
-                <div th:if="${movie.imagePath == null or #strings.isEmpty(movie.imagePath)}"
-                     class="movie-card-placeholder">
-                    <i class="bi bi-film"></i>
+            <!-- City selector -->
+            <div class="card border-0 rounded-4 p-3"
+                 style="background:rgba(255,255,255,.1);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.15)!important">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-geo-alt" style="color:var(--mtms-accent)"></i>
+                    <span class="fw-semibold" style="color:#fff;font-size:.9rem">Select City</span>
+                    <button id="btnGps" class="btn btn-sm ms-auto py-0"
+                            style="background:rgba(255,255,255,.15);color:#fff;border:none;font-size:.78rem"
+                            title="Detect location">
+                        <i class="bi bi-crosshair2 me-1"></i>Detect
+                    </button>
                 </div>
-                <div class="card-body d-flex flex-column p-4">
-                    <div class="d-flex gap-1 flex-wrap mb-2">
-                        <span class="badge" style="background:#f0f4ff;color:#4338ca;font-size:.75rem"
-                              th:text="${movie.genre}"></span>
-                        <span th:if="${movie.format != null and !#strings.isEmpty(movie.format)}"
-                              class="badge bg-dark" style="font-size:.75rem" th:text="${movie.format}"></span>
-                        <span th:if="${movie.rating != null and !#strings.isEmpty(movie.rating)}"
-                              class="badge bg-warning text-dark" style="font-size:.75rem" th:text="${movie.rating}"></span>
+                <form method="get" th:action="@{/movies}" id="cityForm">
+                    <input type="hidden" name="tab" th:value="${tab}">
+                    <select class="form-select form-select-sm" name="city" id="citySelect"
+                            style="background:rgba(255,255,255,.12);color:#fff;border:rgba(255,255,255,.25) 1px solid"
+                            onchange="document.getElementById('cityForm').submit()">
+                        <option value="" th:selected="${selectedCity == null or selectedCity == ''}">All Cities</option>
+                        <option th:each="c : ${cities}" th:value="${c}" th:text="${c}"
+                                th:selected="${c == selectedCity}"></option>
+                    </select>
+                </form>
+                <div th:if="${!#lists.isEmpty(halls)}" class="mt-2">
+                    <div th:each="hall : ${halls}" class="d-flex align-items-center gap-2 py-1" style="border-bottom:1px solid rgba(255,255,255,.08);font-size:.83rem;color:rgba(255,255,255,.75)">
+                        <i class="bi bi-building" style="color:var(--mtms-accent)"></i>
+                        <span th:text="${hall.name}"></span>
+                        <span th:if="${hall.city != null}" class="ms-auto text-muted" style="font-size:.76rem" th:text="${hall.city}"></span>
                     </div>
-                    <h5 class="card-title fw-bold mb-1" th:text="${movie.title}"></h5>
-                    <p class="text-muted mb-3" style="font-size:.85rem">
-                        <i class="bi bi-clock me-1"></i>
-                        <span th:text="${movie.durationMinutes} + ' min'"></span>
-                        <span th:if="${movie.language != null and !#strings.isEmpty(movie.language)}"
-                              class="ms-2"><i class="bi bi-translate me-1"></i><span th:text="${movie.language}"></span></span>
-                    </p>
-                    <div class="mt-auto">
-                        <a class="btn btn-primary w-100 fw-semibold" th:href="@{/movies/{id}(id=${movie.id})}">
-                            <i th:if="${tab == 'NOW_SHOWING'}" class="bi bi-ticket-perforated me-1"></i>
-                            <i th:if="${tab != 'NOW_SHOWING'}" class="bi bi-info-circle me-1"></i>
-                            <span th:text="${tab == 'NOW_SHOWING'} ? 'Buy Tickets' : 'View Details'"></span>
-                        </a>
+                </div>
+                <p th:if="${#lists.isEmpty(halls)}" class="mt-2 mb-0" style="color:rgba(255,255,255,.45);font-size:.83rem">
+                    No cinemas found for this city.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     PROMO CAROUSEL
+═══════════════════════════════════════════════════════ -->
+<div id="promoCarousel" class="carousel slide mb-4 no-print rounded-4 overflow-hidden shadow-sm"
+     data-bs-ride="carousel" data-bs-interval="4000">
+    <div class="carousel-inner">
+        <div class="carousel-item active">
+            <div class="d-flex align-items-center px-4 py-3 gap-4"
+                 style="background:linear-gradient(135deg,#e94560,#b22222);min-height:80px">
+                <i class="bi bi-percent fs-2 text-white"></i>
+                <div>
+                    <div class="fw-bold text-white">Monday Special — 50% Off</div>
+                    <div style="color:rgba(255,255,255,.8);font-size:.88rem">Book any seat every Monday and save half the price.</div>
+                </div>
+                <span class="ms-auto badge fs-6 px-3 py-2" style="background:rgba(255,255,255,.2);color:#fff;cursor:pointer"
+                      onclick="navigator.clipboard.writeText('MONDAY50');this.textContent='Copied!'">MONDAY50</span>
+            </div>
+        </div>
+        <div class="carousel-item">
+            <div class="d-flex align-items-center px-4 py-3 gap-4"
+                 style="background:linear-gradient(135deg,#1a1a2e,#16213e);min-height:80px">
+                <i class="bi bi-mortarboard fs-2 text-warning"></i>
+                <div>
+                    <div class="fw-bold text-white">Student Discount — 30% Off</div>
+                    <div style="color:rgba(255,255,255,.8);font-size:.88rem">Show your student ID at the counter and enjoy the savings.</div>
+                </div>
+                <span class="ms-auto badge fs-6 px-3 py-2" style="background:rgba(255,255,255,.2);color:#fff;cursor:pointer"
+                      onclick="navigator.clipboard.writeText('STUDENT30');this.textContent='Copied!'">STUDENT30</span>
+            </div>
+        </div>
+        <div class="carousel-item">
+            <div class="d-flex align-items-center px-4 py-3 gap-4"
+                 style="background:linear-gradient(135deg,#0d5016,#1a6b28);min-height:80px">
+                <i class="bi bi-people fs-2 text-white"></i>
+                <div>
+                    <div class="fw-bold text-white">Group Deal — Buy 4, Get 1 Free</div>
+                    <div style="color:rgba(255,255,255,.8);font-size:.88rem">Book 4 tickets in one order and get the 5th on us.</div>
+                </div>
+                <span class="ms-auto badge fs-6 px-3 py-2" style="background:rgba(255,255,255,.2);color:#fff;cursor:pointer"
+                      onclick="navigator.clipboard.writeText('GROUP4FREE1');this.textContent='Copied!'">GROUP4FREE1</span>
+            </div>
+        </div>
+    </div>
+    <button class="carousel-control-prev" type="button" data-bs-target="#promoCarousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon"></span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#promoCarousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon"></span>
+    </button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     FILTER BAR
+═══════════════════════════════════════════════════════ -->
+<form method="get" th:action="@{/movies}" class="card border-0 shadow-sm rounded-4 p-3 mb-4 no-print">
+    <input type="hidden" name="city" th:value="${selectedCity}">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-4 position-relative">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input class="form-control border-start-0 ps-0" type="text" name="search" id="movieSearch"
+                       placeholder="Search movies..." th:value="${search}" autocomplete="off">
+            </div>
+            <!-- Autocomplete dropdown (client-side) -->
+            <div id="searchSuggestions" class="list-group position-absolute w-100 shadow-sm d-none"
+                 style="top:100%;z-index:100;left:0"></div>
+        </div>
+        <div class="col-6 col-md-2">
+            <select class="form-select" name="genre">
+                <option value="">All Genres</option>
+                <option th:each="g : ${genres}" th:value="${g}" th:text="${g}"
+                        th:selected="${g == genre}"></option>
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <select class="form-select" name="language">
+                <option value="">All Languages</option>
+                <option th:each="l : ${languages}" th:value="${l}" th:text="${l}"
+                        th:selected="${l == language}"></option>
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <select class="form-select" name="format">
+                <option value="">All Formats</option>
+                <option value="2D" th:selected="${format == '2D'}">2D</option>
+                <option value="3D" th:selected="${format == '3D'}">3D</option>
+                <option value="IMAX" th:selected="${format == 'IMAX'}">IMAX</option>
+                <option value="4DX" th:selected="${format == '4DX'}">4DX</option>
+            </select>
+        </div>
+        <div class="col-6 col-md-2 d-flex gap-1">
+            <button class="btn btn-primary fw-semibold flex-grow-1" type="submit" name="tab" th:value="${tab}">
+                <i class="bi bi-funnel me-1"></i>Filter
+            </button>
+            <a class="btn btn-outline-secondary px-2" th:href="@{/movies(tab=${tab})}">
+                <i class="bi bi-x-lg"></i>
+            </a>
+        </div>
+    </div>
+</form>
+
+<!-- ═══════════════════════════════════════════════════════
+     NOW SHOWING / COMING SOON TABS
+═══════════════════════════════════════════════════════ -->
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div class="d-flex gap-2">
+        <a class="btn fw-semibold px-4"
+           th:classappend="${tab == 'NOW_SHOWING'} ? 'btn-primary' : 'btn-outline-secondary'"
+           th:href="@{/movies(tab='NOW_SHOWING',city=${selectedCity})}">
+            <i class="bi bi-play-circle me-1"></i>Now Showing
+        </a>
+        <a class="btn fw-semibold px-4"
+           th:classappend="${tab == 'COMING_SOON'} ? 'btn-primary' : 'btn-outline-secondary'"
+           th:href="@{/movies(tab='COMING_SOON',city=${selectedCity})}">
+            <i class="bi bi-calendar-event me-1"></i>Coming Soon
+        </a>
+    </div>
+    <span class="text-muted" style="font-size:.88rem">
+        <span th:text="${#lists.size(movies)}"></span> movies found
+    </span>
+</div>
+
+<!-- Movie grid -->
+<div th:if="${#lists.isEmpty(movies)}" class="text-center py-5 text-muted">
+    <i class="bi bi-camera-video-off" style="font-size:3rem"></i>
+    <p class="mt-3 fs-5" th:text="${tab == 'NOW_SHOWING'} ? 'No movies currently showing.' : 'No upcoming movies.'"></p>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-sm-6 col-lg-4 col-xl-3" th:each="movie : ${movies}">
+        <div class="movie-card card h-100 position-relative">
+            <!-- Poster -->
+            <div class="position-relative">
+                <img th:if="${movie.imagePath != null and !#strings.isEmpty(movie.imagePath)}"
+                     th:src="${movie.imagePath}" class="card-img-top" alt="Poster"
+                     style="height:300px;object-fit:cover">
+                <div th:if="${movie.imagePath == null or #strings.isEmpty(movie.imagePath)}"
+                     class="movie-card-placeholder"><i class="bi bi-film"></i></div>
+                <!-- Rating badge overlay -->
+                <span th:if="${movie.rating != null and !#strings.isEmpty(movie.rating)}"
+                      class="position-absolute top-0 end-0 m-2 badge"
+                      style="background:#f5a623;color:#000;font-size:.78rem" th:text="${movie.rating}"></span>
+                <!-- Format badge overlay -->
+                <span th:if="${movie.format != null and !#strings.isEmpty(movie.format)}"
+                      class="position-absolute top-0 start-0 m-2 badge bg-dark"
+                      style="font-size:.78rem" th:text="${movie.format}"></span>
+                <!-- Trailer play overlay (Coming Soon) -->
+                <a th:if="${tab == 'COMING_SOON' and movie.trailerUrl != null and !#strings.isEmpty(movie.trailerUrl)}"
+                   th:href="${movie.trailerUrl}" target="_blank"
+                   class="position-absolute bottom-0 start-0 end-0 d-flex align-items-center justify-content-center"
+                   style="background:linear-gradient(transparent,rgba(0,0,0,.7));padding:2rem 0 .75rem;text-decoration:none">
+                    <i class="bi bi-play-circle-fill text-white" style="font-size:2.5rem"></i>
+                </a>
+            </div>
+            <div class="card-body d-flex flex-column p-3">
+                <div class="d-flex gap-1 flex-wrap mb-2">
+                    <span class="badge" style="background:#f0f4ff;color:#4338ca;font-size:.73rem"
+                          th:text="${movie.genre}"></span>
+                    <span th:if="${movie.language != null and !#strings.isEmpty(movie.language)}"
+                          class="badge bg-light text-dark border" style="font-size:.73rem" th:text="${movie.language}"></span>
+                </div>
+                <h6 class="card-title fw-bold mb-1" th:text="${movie.title}"></h6>
+                <p class="text-muted mb-2" style="font-size:.82rem">
+                    <i class="bi bi-clock me-1"></i><span th:text="${movie.durationMinutes} + ' min'"></span>
+                </p>
+                <!-- Wishlist for Coming Soon -->
+                <div th:if="${tab == 'COMING_SOON'}" class="mb-2 d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-danger px-2 py-0 wishlist-btn"
+                            th:attr="data-title=${movie.title}" style="font-size:.8rem">
+                        <i class="bi bi-heart me-1"></i>Remind Me
+                    </button>
+                </div>
+                <div class="mt-auto">
+                    <a th:if="${tab == 'NOW_SHOWING'}"
+                       class="btn btn-primary w-100 fw-semibold btn-sm" th:href="@{/movies/{id}(id=${movie.id})}">
+                        <i class="bi bi-ticket-perforated me-1"></i>View Showtimes
+                    </a>
+                    <a th:if="${tab == 'COMING_SOON'}"
+                       class="btn btn-outline-primary w-100 fw-semibold btn-sm" th:href="@{/movies/{id}(id=${movie.id})}">
+                        <i class="bi bi-info-circle me-1"></i>View Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     COMING SOON PREVIEW (shown on Now Showing tab)
+═══════════════════════════════════════════════════════ -->
+<div th:if="${tab == 'NOW_SHOWING' and !#lists.isEmpty(comingSoon)}" class="mb-5">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="fw-bold mb-0"><i class="bi bi-calendar-event me-2 text-primary"></i>Coming Soon</h5>
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/movies(tab='COMING_SOON')}">View All</a>
+    </div>
+    <div class="row g-3">
+        <div class="col-sm-6 col-md-4 col-lg-2" th:each="movie : ${comingSoon}">
+            <a th:href="@{/movies/{id}(id=${movie.id})}" class="text-decoration-none">
+                <div class="card border-0 shadow-sm rounded-3 overflow-hidden movie-card h-100">
+                    <img th:if="${movie.imagePath != null and !#strings.isEmpty(movie.imagePath)}"
+                         th:src="${movie.imagePath}" alt="Poster"
+                         style="height:160px;object-fit:cover;width:100%">
+                    <div th:if="${movie.imagePath == null or #strings.isEmpty(movie.imagePath)}"
+                         style="height:160px;background:#e9ecef;display:flex;align-items:center;justify-content:center;color:#adb5bd;font-size:2rem">
+                        <i class="bi bi-film"></i>
+                    </div>
+                    <div class="p-2">
+                        <p class="fw-semibold mb-0 text-dark" style="font-size:.83rem;line-clamp:2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden"
+                           th:text="${movie.title}"></p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     CINEMAS SECTION
+═══════════════════════════════════════════════════════ -->
+<div class="mb-4" th:if="${!#lists.isEmpty(halls)}">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="fw-bold mb-0"><i class="bi bi-building me-2 text-primary"></i>Our Cinemas</h5>
+        <div th:if="${!#lists.isEmpty(cities)}" class="d-flex gap-1 flex-wrap">
+            <a class="btn btn-sm" th:classappend="${selectedCity == null or selectedCity == ''} ? 'btn-primary' : 'btn-outline-secondary'"
+               th:href="@{/movies(tab=${tab})}">All</a>
+            <a th:each="c : ${cities}"
+               class="btn btn-sm"
+               th:classappend="${c == selectedCity} ? 'btn-primary' : 'btn-outline-secondary'"
+               th:href="@{/movies(tab=${tab},city=${c})}"
+               th:text="${c}">City</a>
+        </div>
+    </div>
+    <div class="row g-3">
+        <div class="col-sm-6 col-md-4" th:each="hall : ${halls}">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100" style="transition:transform .2s" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
+                         style="width:48px;height:48px;background:linear-gradient(135deg,#1a1a2e,#16213e)">
+                        <i class="bi bi-building text-white fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0" th:text="${hall.name}"></h6>
+                        <p th:if="${hall.city != null and !#strings.isEmpty(hall.city)}"
+                           class="text-muted mb-0" style="font-size:.83rem">
+                            <i class="bi bi-geo-alt me-1"></i><span th:text="${hall.city}"></span>
+                        </p>
+                        <p th:if="${hall.address != null and !#strings.isEmpty(hall.address)}"
+                           class="text-muted mb-0" style="font-size:.78rem" th:text="${hall.address}"></p>
+                        <p class="text-muted mb-0 mt-1" style="font-size:.78rem">
+                            <i class="bi bi-grid me-1"></i><span th:text="${hall.totalSeats}"></span> seats
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     WISHLIST TOAST
+═══════════════════════════════════════════════════════ -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999">
+    <div id="wishlistToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body"><i class="bi bi-heart-fill me-2"></i><span id="wishlistMsg"></span></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    // ── Wishlist "Remind Me" buttons ──
+    document.querySelectorAll('.wishlist-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var title = this.dataset.title;
+            var icon = this.querySelector('i');
+            icon.classList.replace('bi-heart', 'bi-heart-fill');
+            this.classList.replace('btn-outline-danger', 'btn-danger');
+            document.getElementById('wishlistMsg').textContent = '"' + title + '" added to your watchlist!';
+            new bootstrap.Toast(document.getElementById('wishlistToast')).show();
+        });
+    });
+
+    // ── Client-side autocomplete ──
+    var movieTitles = /*[[${movies.![title]}]]*/ [];
+    var searchInput = document.getElementById('movieSearch');
+    var suggestions = document.getElementById('searchSuggestions');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            var q = this.value.trim().toLowerCase();
+            suggestions.innerHTML = '';
+            if (q.length < 2) { suggestions.classList.add('d-none'); return; }
+            var matches = movieTitles.filter(function(t) { return t.toLowerCase().includes(q); }).slice(0, 6);
+            if (matches.length === 0) { suggestions.classList.add('d-none'); return; }
+            matches.forEach(function(t) {
+                var a = document.createElement('a');
+                a.className = 'list-group-item list-group-item-action py-2';
+                a.style.fontSize = '.88rem';
+                a.textContent = t;
+                a.href = '#';
+                a.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    searchInput.value = t;
+                    suggestions.classList.add('d-none');
+                    searchInput.closest('form').submit();
+                });
+                suggestions.appendChild(a);
+            });
+            suggestions.classList.remove('d-none');
+        });
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target)) suggestions.classList.add('d-none');
+        });
+    }
+
+    // ── Hero avatar initial ──
+    var heroName = document.getElementById('heroUserName');
+    var heroAvatar = document.getElementById('heroAvatar');
+    if (heroName && heroAvatar) {
+        heroAvatar.textContent = heroName.textContent.trim().charAt(0).toUpperCase() || 'U';
+    }
+
+    // ── GPS city detection ──
+    var btnGps = document.getElementById('btnGps');
+    var citySelect = document.getElementById('citySelect');
+    var cities = /*[[${cities}]]*/ [];
+    if (btnGps && citySelect) {
+        btnGps.addEventListener('click', function() {
+            if (!navigator.geolocation) return;
+            this.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Detecting...';
+            var self = this;
+            navigator.geolocation.getCurrentPosition(function(pos) {
+                self.innerHTML = '<i class="bi bi-crosshair2 me-1"></i>Detect';
+                // Simple heuristic: Phnom Penh center ~11.56°N 104.93°E, Siem Reap ~13.36°N 103.85°E
+                var lat = pos.coords.latitude, lng = pos.coords.longitude;
+                var detectedCity = null;
+                // Rough bounding boxes
+                if (lat >= 11.4 && lat <= 11.7 && lng >= 104.7 && lng <= 105.1) detectedCity = 'Phnom Penh';
+                else if (lat >= 13.2 && lat <= 13.5 && lng >= 103.7 && lng <= 104.0) detectedCity = 'Siem Reap';
+                if (!detectedCity) {
+                    // Try to match any city in the list (fallback)
+                    detectedCity = null;
+                }
+                if (detectedCity) {
+                    var found = Array.from(citySelect.options).find(function(o) {
+                        return o.value.toLowerCase() === detectedCity.toLowerCase();
+                    });
+                    if (found) { citySelect.value = found.value; document.getElementById('cityForm').submit(); }
+                }
+            }, function() { self.innerHTML = '<i class="bi bi-crosshair2 me-1"></i>Detect'; });
+        });
+    }
+</script>
+
+<style>
+    .home-hero { background-size: cover; background-position: center top; }
+    @media (max-width: 575px) { .home-hero { padding-top: 2rem !important; padding-bottom: 2rem !important; } }
+</style>
+
 </th:block>
 </html>

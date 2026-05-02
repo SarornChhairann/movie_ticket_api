@@ -78,6 +78,16 @@ public class MovieService {
     }
 
     @Transactional(readOnly = true)
+    public java.util.Optional<Movie> findFeaturedMovie() {
+        return movieRepository.findFirstByStatusAndImagePathIsNotNullOrderByIdDesc(MovieStatus.NOW_SHOWING);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Movie> findComingSoon() {
+        return movieRepository.findTop6ByStatusOrderByIdDesc(MovieStatus.COMING_SOON);
+    }
+
+    @Transactional(readOnly = true)
     public List<Movie> filterMovies(MovieStatus status, String genre, String language, String format, String search) {
         String g = (genre == null || genre.isBlank()) ? null : genre.trim();
         String l = (language == null || language.isBlank()) ? null : language.trim();

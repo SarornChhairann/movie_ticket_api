@@ -8,7 +8,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -33,7 +32,7 @@ public class Movie {
     @Column(nullable = false, length = 200)
     private String title;
 
-    @Lob
+    @Column(columnDefinition = "text")
     private String description;
 
     @NotBlank
@@ -46,8 +45,7 @@ public class Movie {
     @Column(length = 20)
     private String format;
 
-    @Lob
-    @Column(name = "movie_cast")
+    @Column(name = "movie_cast", columnDefinition = "text")
     private String cast;
 
     @Column(length = 500)
