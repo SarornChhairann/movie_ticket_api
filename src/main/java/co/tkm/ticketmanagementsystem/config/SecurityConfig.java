@@ -24,7 +24,8 @@ public class SecurityConfig {
                                 "/bookings/seats/**", "/bookings/checkout/**", "/bookings/confirmation/**",
                                 "/tickets", "/tickets/**",
                                 "/register", "/login", "/css/**", "/js/**", "/static/**", "/uploads/**", "/error").permitAll()
-                        .requestMatchers("/bookings/my-bookings").authenticated()
+                        .requestMatchers("/bookings/my-bookings", "/bookings/cancel/**",
+                                "/profile", "/profile/**").authenticated()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

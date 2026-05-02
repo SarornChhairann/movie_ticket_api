@@ -4,18 +4,20 @@ import co.tkm.ticketmanagementsystem.dto.CheckoutData;
 import co.tkm.ticketmanagementsystem.enums.BookingStatus;
 import co.tkm.ticketmanagementsystem.enums.SeatType;
 import co.tkm.ticketmanagementsystem.enums.ShowtimeSeatStatus;
+import co.tkm.ticketmanagementsystem.enums.TicketStatus;
 import co.tkm.ticketmanagementsystem.model.Booking;
 import co.tkm.ticketmanagementsystem.model.Showtime;
 import co.tkm.ticketmanagementsystem.model.ShowtimeSeat;
+import co.tkm.ticketmanagementsystem.model.Ticket;
 import co.tkm.ticketmanagementsystem.model.User;
 import co.tkm.ticketmanagementsystem.repository.BookingRepository;
 import co.tkm.ticketmanagementsystem.repository.ShowtimeRepository;
 import co.tkm.ticketmanagementsystem.repository.ShowtimeSeatRepository;
+import co.tkm.ticketmanagementsystem.repository.TicketRepository;
 import co.tkm.ticketmanagementsystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -34,8 +36,10 @@ public class BookingService {
     private final ShowtimeRepository showtimeRepository;
     private final ShowtimeSeatRepository showtimeSeatRepository;
     private final UserRepository userRepository;
+    private final TicketRepository ticketRepository;
     private final PaymentService paymentService;
     private final TicketService ticketService;
+    private final EmailService emailService;
 
     public List<ShowtimeSeat> getSeatsForShowtime(Long showtimeId) {
         Showtime showtime = findShowtime(showtimeId);
@@ -49,7 +53,7 @@ public class BookingService {
 
     @Transactional
     public Booking confirmCheckout(Long showtimeId, List<Long> selectedSeatIds, String userEmail,
-                                   String guestName, String guestPhone) {
+                                   String guestName, String guestPhone, String guestEmail) {
         CheckoutData checkoutData = resolveCheckoutData(showtimeId, selectedSeatIds, userEmail, true);
 
         Booking booking = new Booking();
@@ -58,6 +62,9 @@ public class BookingService {
         if (checkoutData.getUser() == null) {
             booking.setGuestName(guestName);
             booking.setGuestPhone(guestPhone);
+            if (guestEmail != null && !guestEmail.isBlank()) {
+                booking.setGuestEmail(guestEmail.trim());
+            }
         }
 
         booking.setShowtime(checkoutData.getShowtime());
@@ -67,8 +74,39 @@ public class BookingService {
         Booking savedBooking = bookingRepository.save(booking);
 
         paymentService.processMockPayment(savedBooking);
-        ticketService.issueTickets(savedBooking, checkoutData.getSelectedSeats());
+        List<Ticket> tickets = ticketService.issueTickets(savedBooking, checkoutData.getSelectedSeats());
+        emailService.sendBookingConfirmation(savedBooking, tickets);
         return savedBooking;
+    }
+
+    @Transactional
+    public void cancelBooking(Long bookingId, String userEmail) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found: " + bookingId));
+
+        if (booking.getUser() == null || !booking.getUser().getEmail().equals(userEmail)) {
+            throw new IllegalArgumentException("You are not authorized to cancel this booking.");
+        }
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
+            throw new IllegalArgumentException("Booking is already cancelled.");
+        }
+
+        // Mark all tickets as cancelled and free up seats
+        List<Ticket> tickets = ticketRepository.findByBooking(booking);
+        for (Ticket ticket : tickets) {
+            ticket.setStatus(TicketStatus.CANCELLED);
+            ShowtimeSeat showtimeSeat = showtimeSeatRepository
+                    .findByShowtimeAndSeat(booking.getShowtime(), ticket.getSeat())
+                    .orElse(null);
+            if (showtimeSeat != null) {
+                showtimeSeat.setStatus(ShowtimeSeatStatus.AVAILABLE);
+                showtimeSeatRepository.save(showtimeSeat);
+            }
+        }
+        ticketRepository.saveAll(tickets);
+        booking.setStatus(BookingStatus.CANCELLED);
+        bookingRepository.save(booking);
+        emailService.sendCancellationNotice(booking);
     }
 
     @Transactional(readOnly = true)

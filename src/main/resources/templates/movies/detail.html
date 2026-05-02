@@ -15,16 +15,35 @@
             </div>
             <div th:classappend="${movie.imagePath != null and !#strings.isEmpty(movie.imagePath)} ? 'col-md-9' : 'col-12'"
                  class="p-4 d-flex flex-column justify-content-center">
-                <span class="badge mb-2" style="background:#f0f4ff;color:#4338ca;align-self:flex-start"
-                      th:text="${movie.genre}"></span>
+                <div class="d-flex flex-wrap gap-1 mb-2">
+                    <span class="badge" style="background:#f0f4ff;color:#4338ca" th:text="${movie.genre}"></span>
+                    <span th:if="${movie.format != null and !#strings.isEmpty(movie.format)}"
+                          class="badge bg-dark" th:text="${movie.format}"></span>
+                    <span th:if="${movie.rating != null and !#strings.isEmpty(movie.rating)}"
+                          class="badge bg-warning text-dark" th:text="${movie.rating}"></span>
+                </div>
                 <h2 class="fw-bold mb-2" th:text="${movie.title}"></h2>
-                <p class="text-muted mb-3">
+                <p class="text-muted mb-2" style="font-size:.9rem">
                     <i class="bi bi-clock me-1"></i>
                     <span th:text="${movie.durationMinutes} + ' min'"></span>
+                    <span th:if="${movie.language != null and !#strings.isEmpty(movie.language)}"
+                          class="ms-3"><i class="bi bi-translate me-1"></i><span th:text="${movie.language}"></span></span>
                 </p>
                 <p th:if="${movie.description != null and !#strings.isEmpty(movie.description)}"
-                   class="mb-0 text-secondary" th:text="${movie.description}"></p>
+                   class="mb-2 text-secondary" th:text="${movie.description}"></p>
+                <p th:if="${movie.cast != null and !#strings.isEmpty(movie.cast)}"
+                   class="mb-0 text-muted" style="font-size:.85rem">
+                    <i class="bi bi-people me-1"></i><span th:text="${movie.cast}"></span>
+                </p>
             </div>
+        </div>
+    </div>
+
+    <!-- Trailer -->
+    <div th:if="${movie.trailerUrl != null and !#strings.isEmpty(movie.trailerUrl)}" class="mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-play-circle me-2"></i>Trailer</h5>
+        <div class="ratio ratio-16x9 rounded-4 overflow-hidden shadow-sm" style="max-width:640px">
+            <iframe th:src="${movie.trailerUrl}" allowfullscreen title="Movie Trailer"></iframe>
         </div>
     </div>
 

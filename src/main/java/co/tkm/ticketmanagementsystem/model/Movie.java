@@ -40,6 +40,22 @@ public class Movie {
     @Column(nullable = false, length = 100)
     private String genre;
 
+    @Column(length = 60)
+    private String language;
+
+    @Column(length = 20)
+    private String format;
+
+    @Lob
+    @Column(name = "movie_cast")
+    private String cast;
+
+    @Column(length = 500)
+    private String trailerUrl;
+
+    @Column(length = 10)
+    private String rating;
+
     @NotNull
     @Min(1)
     @Column(nullable = false)

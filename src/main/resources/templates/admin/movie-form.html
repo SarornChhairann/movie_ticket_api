@@ -31,6 +31,35 @@
                     <input class="form-control" type="number" th:field="*{durationMinutes}" min="1" required>
                 </div>
             </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Language</label>
+                    <input class="form-control" th:field="*{language}" placeholder="e.g. English, Khmer">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Format</label>
+                    <select class="form-select" th:field="*{format}">
+                        <option value="">Select format</option>
+                        <option value="2D">2D</option>
+                        <option value="3D">3D</option>
+                        <option value="IMAX">IMAX</option>
+                        <option value="4DX">4DX</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Rating</label>
+                    <input class="form-control" th:field="*{rating}" placeholder="e.g. PG-13, R">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Cast</label>
+                <input class="form-control" th:field="*{cast}" placeholder="e.g. Tom Hanks, Emma Stone">
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Trailer URL</label>
+                <input class="form-control" type="url" th:field="*{trailerUrl}" placeholder="https://www.youtube.com/embed/...">
+                <div class="form-text">Use the embed URL from YouTube (youtube.com/embed/VIDEO_ID).</div>
+            </div>
             <div class="mb-3">
                 <label class="form-label fw-semibold">Status</label>
                 <select class="form-select" th:field="*{status}">

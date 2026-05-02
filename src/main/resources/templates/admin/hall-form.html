@@ -13,6 +13,14 @@
                 <label class="form-label fw-semibold">Name</label>
                 <input class="form-control" th:field="*{name}" placeholder="Hall name" required>
             </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">City</label>
+                <input class="form-control" th:field="*{city}" placeholder="e.g. Phnom Penh">
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Address</label>
+                <input class="form-control" th:field="*{address}" placeholder="Street address">
+            </div>
             <div class="mb-4">
                 <label class="form-label fw-semibold">Total Seats</label>
                 <input class="form-control" type="number" th:field="*{totalSeats}" min="1" placeholder="60">

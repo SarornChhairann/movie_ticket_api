@@ -1,18 +1,78 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout/base :: layout('Now Showing', ~{::content})}">
+      th:replace="~{layout/base :: layout('Movies', ~{::content})}">
 <th:block th:fragment="content">
     <!-- Hero -->
     <div class="mtms-hero no-print" style="margin:-2.5rem -12px 2rem;padding-left:12px;padding-right:12px">
         <div class="text-center">
-            <h1 class="fw-bold mb-2" style="font-size:2.2rem">Now Showing</h1>
+            <h1 class="fw-bold mb-2" style="font-size:2.2rem">Cinema Tickets</h1>
             <p class="mb-0" style="color:rgba(255,255,255,.65)">Pick a movie and grab your seats — no account needed.</p>
         </div>
     </div>
 
+    <!-- Tabs -->
+    <ul class="nav nav-pills mb-3 gap-1">
+        <li class="nav-item">
+            <a class="nav-link fw-semibold"
+               th:classappend="${tab == 'NOW_SHOWING'} ? 'active' : ''"
+               th:href="@{/movies(tab='NOW_SHOWING')}">
+                <i class="bi bi-play-circle me-1"></i>Now Showing
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link fw-semibold"
+               th:classappend="${tab == 'COMING_SOON'} ? 'active' : ''"
+               th:href="@{/movies(tab='COMING_SOON')}">
+                <i class="bi bi-clock me-1"></i>Coming Soon
+            </a>
+        </li>
+    </ul>
+
+    <!-- Filter bar -->
+    <form method="get" th:action="@{/movies}" class="card border-0 shadow-sm rounded-3 p-3 mb-4 no-print">
+        <input type="hidden" name="tab" th:value="${tab}">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <input class="form-control form-control-sm" type="text" name="search"
+                       placeholder="Search movies..." th:value="${search}">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" name="genre">
+                    <option value="">All Genres</option>
+                    <option th:each="g : ${genres}" th:value="${g}" th:text="${g}"
+                            th:selected="${g == genre}"></option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" name="language">
+                    <option value="">All Languages</option>
+                    <option th:each="l : ${languages}" th:value="${l}" th:text="${l}"
+                            th:selected="${l == language}"></option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" name="format">
+                    <option value="">All Formats</option>
+                    <option value="2D" th:selected="${format == '2D'}">2D</option>
+                    <option value="3D" th:selected="${format == '3D'}">3D</option>
+                    <option value="IMAX" th:selected="${format == 'IMAX'}">IMAX</option>
+                    <option value="4DX" th:selected="${format == '4DX'}">4DX</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button class="btn btn-primary btn-sm px-3 w-100" type="submit">
+                    <i class="bi bi-search me-1"></i>Filter
+                </button>
+                <a class="btn btn-outline-secondary btn-sm px-2" th:href="@{/movies(tab=${tab})}">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        </div>
+    </form>
+
     <div th:if="${#lists.isEmpty(movies)}" class="text-center py-5 text-muted">
         <i class="bi bi-camera-video-off" style="font-size:3rem"></i>
-        <p class="mt-3 fs-5">No movies currently showing.</p>
+        <p class="mt-3 fs-5" th:text="${tab == 'NOW_SHOWING'} ? 'No movies currently showing.' : 'No upcoming movies.'"></p>
     </div>
 
     <div class="row g-4">
@@ -25,16 +85,26 @@
                     <i class="bi bi-film"></i>
                 </div>
                 <div class="card-body d-flex flex-column p-4">
-                    <span class="badge mb-2" style="background:#f0f4ff;color:#4338ca;font-size:.75rem;align-self:flex-start"
-                          th:text="${movie.genre}"></span>
+                    <div class="d-flex gap-1 flex-wrap mb-2">
+                        <span class="badge" style="background:#f0f4ff;color:#4338ca;font-size:.75rem"
+                              th:text="${movie.genre}"></span>
+                        <span th:if="${movie.format != null and !#strings.isEmpty(movie.format)}"
+                              class="badge bg-dark" style="font-size:.75rem" th:text="${movie.format}"></span>
+                        <span th:if="${movie.rating != null and !#strings.isEmpty(movie.rating)}"
+                              class="badge bg-warning text-dark" style="font-size:.75rem" th:text="${movie.rating}"></span>
+                    </div>
                     <h5 class="card-title fw-bold mb-1" th:text="${movie.title}"></h5>
                     <p class="text-muted mb-3" style="font-size:.85rem">
                         <i class="bi bi-clock me-1"></i>
                         <span th:text="${movie.durationMinutes} + ' min'"></span>
+                        <span th:if="${movie.language != null and !#strings.isEmpty(movie.language)}"
+                              class="ms-2"><i class="bi bi-translate me-1"></i><span th:text="${movie.language}"></span></span>
                     </p>
                     <div class="mt-auto">
                         <a class="btn btn-primary w-100 fw-semibold" th:href="@{/movies/{id}(id=${movie.id})}">
-                            <i class="bi bi-ticket-perforated me-1"></i>Buy Tickets
+                            <i th:if="${tab == 'NOW_SHOWING'}" class="bi bi-ticket-perforated me-1"></i>
+                            <i th:if="${tab != 'NOW_SHOWING'}" class="bi bi-info-circle me-1"></i>
+                            <span th:text="${tab == 'NOW_SHOWING'} ? 'Buy Tickets' : 'View Details'"></span>
                         </a>
                     </div>
                 </div>

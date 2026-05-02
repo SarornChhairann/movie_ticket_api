@@ -1,8 +1,11 @@
 package co.tkm.ticketmanagementsystem.controller;
 
 import co.tkm.ticketmanagementsystem.model.Ticket;
+import co.tkm.ticketmanagementsystem.service.QrCodeService;
 import co.tkm.ticketmanagementsystem.service.TicketService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +20,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class TicketController {
 
     private final TicketService ticketService;
+    private final QrCodeService qrCodeService;
 
     @GetMapping("/search")
     public String searchPage() {
@@ -46,5 +50,12 @@ public class TicketController {
         Ticket ticket = ticketService.findByTicketCode(ticketCode);
         model.addAttribute("ticket", ticket);
         return "ticket/view";
+    }
+
+    @GetMapping(value = "/{ticketCode}/qr", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> qrCode(@PathVariable String ticketCode) {
+        ticketService.findByTicketCode(ticketCode); // validate exists
+        byte[] png = qrCodeService.generateQrPng(ticketCode, 250);
+        return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(png);
     }
 }

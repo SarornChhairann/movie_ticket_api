@@ -55,7 +55,7 @@ class BookingServiceTest {
 
     @BeforeEach
     void setUp() {
-        user = new User(1L, "Test User", "user@test.com", "x", Role.CUSTOMER);
+        user = new User(1L, "Test User", "user@test.com", null, "x", Role.CUSTOMER);
 
         Movie movie = new Movie();
         movie.setId(2L);

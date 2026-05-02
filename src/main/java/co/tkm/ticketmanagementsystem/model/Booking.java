@@ -43,6 +43,9 @@ public class Booking {
     @Column(length = 30)
     private String guestPhone;
 
+    @Column(length = 180)
+    private String guestEmail;
+
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "showtime_id", nullable = false)

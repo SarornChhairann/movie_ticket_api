@@ -31,4 +31,10 @@ public class Hall {
     @Min(1)
     @Column(nullable = false)
     private Integer totalSeats = 60;
+
+    @Column(length = 100)
+    private String city;
+
+    @Column(length = 300)
+    private String address;
 }

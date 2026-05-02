@@ -10,6 +10,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,9 +25,30 @@ public class MovieController {
     private final ShowtimeRepository showtimeRepository;
 
     @GetMapping({"/", "/movies"})
-    public String list(Model model) {
-        List<Movie> movies = movieService.findByStatus(MovieStatus.NOW_SHOWING);
+    public String list(
+            @RequestParam(value = "tab", required = false, defaultValue = "NOW_SHOWING") String tab,
+            @RequestParam(value = "genre", required = false) String genre,
+            @RequestParam(value = "language", required = false) String language,
+            @RequestParam(value = "format", required = false) String format,
+            @RequestParam(value = "search", required = false) String search,
+            Model model) {
+
+        MovieStatus status;
+        try {
+            status = MovieStatus.valueOf(tab);
+        } catch (IllegalArgumentException e) {
+            status = MovieStatus.NOW_SHOWING;
+        }
+
+        List<Movie> movies = movieService.filterMovies(status, genre, language, format, search);
         model.addAttribute("movies", movies);
+        model.addAttribute("tab", status.name());
+        model.addAttribute("genre", genre);
+        model.addAttribute("language", language);
+        model.addAttribute("format", format);
+        model.addAttribute("search", search);
+        model.addAttribute("genres", movieService.findDistinctGenres());
+        model.addAttribute("languages", movieService.findDistinctLanguages());
         return "movies/list";
     }
 

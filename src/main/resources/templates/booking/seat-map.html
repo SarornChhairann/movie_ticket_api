@@ -11,11 +11,11 @@
             <div class="seat-grid mb-3" id="seatGrid">
                 <div class="seat-item" th:each="showtimeSeat : ${showtimeSeats}">
                     <label class="seat-label"
-                           th:classappend="${showtimeSeat.status.name() == 'BOOKED'} ? ' seat-booked' : (${showtimeSeat.seat.seatType.name() == 'COUPLE'} ? ' seat-couple' : ' seat-normal')">
+                           th:classappend="${showtimeSeat.status.name() == 'BOOKED' or heldByOthers.contains(showtimeSeat.id)} ? ' seat-booked' : (${showtimeSeat.seat.seatType.name() == 'COUPLE'} ? ' seat-couple' : ' seat-normal')">
                         <input type="checkbox"
                                name="seatIds"
                                th:value="${showtimeSeat.id}"
-                               th:disabled="${showtimeSeat.status.name() == 'BOOKED'}"
+                               th:disabled="${showtimeSeat.status.name() == 'BOOKED' or heldByOthers.contains(showtimeSeat.id)}"
                                th:attr="data-seat-code=${showtimeSeat.seat.seatCode},data-seat-type=${showtimeSeat.seat.seatType.name()}"
                                class="d-none seat-checkbox">
                         <span th:text="${showtimeSeat.seat.seatCode}"></span>

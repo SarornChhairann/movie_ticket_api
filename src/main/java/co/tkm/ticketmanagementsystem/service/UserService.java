@@ -50,6 +50,32 @@ public class UserService {
         });
     }
 
+    @Transactional(readOnly = true)
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + email));
+    }
+
+    @Transactional
+    public void updateProfile(String email, String name, String phone) {
+        User user = findByEmail(email);
+        if (name != null && !name.isBlank()) {
+            user.setName(name.trim());
+        }
+        user.setPhone(phone != null ? phone.trim() : null);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void changePassword(String email, String currentPassword, String newPassword) {
+        User user = findByEmail(email);
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("Current password is incorrect.");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
     public List<User> findAll() {
         return userRepository.findAll();
     }

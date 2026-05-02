@@ -45,6 +45,11 @@ public class MovieService {
             target.setTitle(movie.getTitle());
             target.setDescription(movie.getDescription());
             target.setGenre(movie.getGenre());
+            target.setLanguage(movie.getLanguage());
+            target.setFormat(movie.getFormat());
+            target.setCast(movie.getCast());
+            target.setTrailerUrl(movie.getTrailerUrl());
+            target.setRating(movie.getRating());
             target.setDurationMinutes(movie.getDurationMinutes());
             target.setStatus(movie.getStatus());
             target.setImagePath(movie.getImagePath());
@@ -72,12 +77,36 @@ public class MovieService {
         return movieRepository.findByStatus(status);
     }
 
+    @Transactional(readOnly = true)
+    public List<Movie> filterMovies(MovieStatus status, String genre, String language, String format, String search) {
+        String g = (genre == null || genre.isBlank()) ? null : genre.trim();
+        String l = (language == null || language.isBlank()) ? null : language.trim();
+        String f = (format == null || format.isBlank()) ? null : format.trim();
+        String s = (search == null || search.isBlank()) ? null : search.trim();
+        return movieRepository.findFiltered(status, g, l, f, s);
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> findDistinctGenres() {
+        return movieRepository.findDistinctGenres();
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> findDistinctLanguages() {
+        return movieRepository.findDistinctLanguages();
+    }
+
     @Transactional
     public Movie update(Long id, Movie data) {
         Movie movie = findById(id);
         movie.setTitle(data.getTitle());
         movie.setDescription(data.getDescription());
         movie.setGenre(data.getGenre());
+        movie.setLanguage(data.getLanguage());
+        movie.setFormat(data.getFormat());
+        movie.setCast(data.getCast());
+        movie.setTrailerUrl(data.getTrailerUrl());
+        movie.setRating(data.getRating());
         movie.setDurationMinutes(data.getDurationMinutes());
         movie.setStatus(data.getStatus());
         return movieRepository.save(movie);
