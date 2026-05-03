@@ -35,7 +35,8 @@
             </thead>
             <tbody>
             <tr th:each="booking : ${bookings}">
-                <td class="text-muted" th:text="'#' + ${booking.id}"></td>
+                <td class="fw-semibold" style="color:var(--mtms-accent);font-size:.85rem;letter-spacing:.3px"
+                    th:text="${T(String).format('BK-%05d', booking.id)}"></td>
                 <td class="fw-semibold" th:text="${booking.showtime.movie.title}"></td>
                 <td>
                     <span th:text="${booking.showtime.showDate}"></span>
@@ -57,7 +58,7 @@
                 <td>
                     <form th:if="${booking.status.name() != 'CANCELLED'}"
                           th:action="@{/bookings/cancel/{id}(id=${booking.id})}" method="post"
-                          onsubmit="return confirm('Cancel booking #' + [[${booking.id}]] + '? This cannot be undone.');">
+                          th:attr="onsubmit='return confirm(\'Cancel ' + ${T(String).format('BK-%05d', booking.id)} + '? This cannot be undone.\');'">
                         <button class="btn btn-sm btn-outline-danger px-3" type="submit">
                             <i class="bi bi-x-circle me-1"></i>Cancel
                         </button>

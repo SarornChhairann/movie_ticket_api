@@ -22,7 +22,8 @@ public class SystemSettingService {
     public static final String CANCELLATION_HOURS    = "cancellation_hours";
     public static final String SERVICE_FEE           = "service_fee";
     public static final String TAX_RATE              = "tax_rate";
-    public static final String WEEKEND_SURCHARGE_RATE = "weekend_surcharge_rate";
+    public static final String WEEKEND_SURCHARGE_RATE  = "weekend_surcharge_rate";
+    public static final String MORNING_DISCOUNT_RATE   = "morning_discount_rate";
 
     private final SystemSettingRepository repo;
 
@@ -35,6 +36,7 @@ public class SystemSettingService {
             seed(SERVICE_FEE,            "1.50", "Flat service fee per booking (USD)");
             seed(TAX_RATE,               "0.10", "Tax rate as decimal (e.g. 0.10 = 10%)");
             seed(WEEKEND_SURCHARGE_RATE, "0.10", "Weekend surcharge rate as decimal (e.g. 0.10 = 10%)");
+            seed(MORNING_DISCOUNT_RATE,  "0.10", "Morning discount rate for showtimes before noon (e.g. 0.10 = 10%)");
         } catch (Exception ex) {
             log.error("Failed to seed system settings defaults. Application can still start, but pricing/holds may break.", ex);
         }

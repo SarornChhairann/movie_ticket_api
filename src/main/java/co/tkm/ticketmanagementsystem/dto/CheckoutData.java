@@ -16,6 +16,7 @@ public class CheckoutData {
     private final Showtime showtime;
     private final List<ShowtimeSeat> selectedSeats;
     private final BigDecimal baseAmount;
+    private final BigDecimal morningDiscount;
     private final BigDecimal weekendSurcharge;
     private final BigDecimal serviceFee;
     private final BigDecimal taxAmount;
@@ -27,7 +28,7 @@ public class CheckoutData {
     private final Map<Long, Integer> foodSelections;
 
     public CheckoutData(User user, Showtime showtime, List<ShowtimeSeat> selectedSeats,
-                        BigDecimal baseAmount, BigDecimal weekendSurcharge,
+                        BigDecimal baseAmount, BigDecimal morningDiscount, BigDecimal weekendSurcharge,
                         BigDecimal serviceFee, BigDecimal taxAmount,
                         BigDecimal discountAmount, BigDecimal totalAmount,
                         String promoCode, List<FoodItem> availableFoodItems,
@@ -36,6 +37,7 @@ public class CheckoutData {
         this.showtime = showtime;
         this.selectedSeats = selectedSeats;
         this.baseAmount = baseAmount;
+        this.morningDiscount = morningDiscount;
         this.weekendSurcharge = weekendSurcharge;
         this.serviceFee = serviceFee;
         this.taxAmount = taxAmount;

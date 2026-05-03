@@ -2,77 +2,311 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/base :: layout('Select Seats', ~{::content})}">
 <th:block th:fragment="content">
-    <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-1">
-        <h4 class="fw-bold mb-0"><i class="bi bi-grid-3x3-gap me-2" style="color:var(--mtms-accent)"></i>Select Your Seats</h4>
-        <div class="d-flex align-items-center gap-1 text-muted" style="font-size:.82rem">
-            <i class="bi bi-hourglass-split"></i>
-            <span>Seats held for <strong th:text="${holdMinutes}">10</strong> min after selection</span>
+
+<!-- ── Progress stepper ── -->
+<div class="d-flex align-items-center justify-content-center mb-4 sm-stepper no-print">
+    <div class="sm-step active">
+        <span class="sm-step-dot"><i class="bi bi-grid-3x3-gap"></i></span>
+        <span class="sm-step-label">Seats</span>
+    </div>
+    <div class="sm-step-line"></div>
+    <div class="sm-step">
+        <span class="sm-step-dot">2</span>
+        <span class="sm-step-label">Checkout</span>
+    </div>
+    <div class="sm-step-line"></div>
+    <div class="sm-step">
+        <span class="sm-step-dot">3</span>
+        <span class="sm-step-label">Confirm</span>
+    </div>
+</div>
+
+<!-- ── Showtime info bar ── -->
+<div class="card border-0 shadow-sm rounded-4 p-3 mb-4"
+     style="background:linear-gradient(135deg,rgba(214,178,94,.08),rgba(214,178,94,.04));
+            border:1px solid rgba(214,178,94,.20)!important">
+    <div class="d-flex flex-wrap align-items-center gap-3">
+        <div class="flex-grow-1">
+            <div class="fw-bold" style="font-size:1.05rem" th:text="${showtime.movie.title}"></div>
+            <div class="d-flex flex-wrap gap-3 mt-1" style="font-size:.84rem;color:var(--mtms-muted)">
+                <span><i class="bi bi-building me-1"></i><span th:text="${showtime.hall.name}"></span>
+                    <span th:if="${showtime.hall.city != null}" class="ms-1 text-muted"
+                          th:text="'(' + ${showtime.hall.city} + ')'"></span>
+                </span>
+                <span><i class="bi bi-calendar-event me-1"></i><span th:text="${showtime.showDate}"></span></span>
+                <span><i class="bi bi-clock me-1"></i><span th:text="${showtime.showTime}"></span></span>
+            </div>
+        </div>
+        <div class="d-flex gap-2 align-items-center flex-shrink-0 text-end">
+            <div>
+                <div class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.5px">Normal</div>
+                <div class="fw-bold" style="color:#86efac" th:text="'$' + ${showtime.normalPrice}"></div>
+            </div>
+            <div class="vr mx-1" style="opacity:.3"></div>
+            <div>
+                <div class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.5px">Couple</div>
+                <div class="fw-bold" style="color:var(--mtms-accent)" th:text="'$' + ${showtime.couplePrice}"></div>
+            </div>
+            <!-- Pricing badges -->
+            <div class="ms-2 d-flex flex-column gap-1">
+                <span th:if="${isMorning}"
+                      class="badge px-2 py-1"
+                      style="background:rgba(34,197,94,.18);color:#86efac;border:1px solid rgba(34,197,94,.30);font-size:.68rem">
+                    <i class="bi bi-sunrise me-1"></i>Morning -10%
+                </span>
+                <span th:if="${isWeekend}"
+                      class="badge px-2 py-1"
+                      style="background:rgba(245,166,35,.18);color:#fcd34d;border:1px solid rgba(245,166,35,.30);font-size:.68rem">
+                    <i class="bi bi-sun me-1"></i>Weekend +10%
+                </span>
+            </div>
         </div>
     </div>
-    <p class="text-muted mb-4" style="font-size:.9rem">Click to select one or more seats, then continue to checkout.</p>
+</div>
 
-    <form th:action="@{/bookings/checkout/{id}(id=${showtimeId})}" method="get">
-        <!-- Seat grid -->
-        <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
-            <div class="seat-grid mb-3" id="seatGrid">
-                <div class="seat-item" th:each="showtimeSeat : ${showtimeSeats}">
-                    <label class="seat-label"
-                           th:classappend="${showtimeSeat.status.name() == 'BOOKED' or heldByOthers.contains(showtimeSeat.id)} ? ' seat-booked' : (${showtimeSeat.seat.seatType.name() == 'COUPLE'} ? ' seat-couple' : ' seat-normal')">
-                        <input type="checkbox"
-                               name="seatIds"
-                               th:value="${showtimeSeat.id}"
-                               th:disabled="${showtimeSeat.status.name() == 'BOOKED' or heldByOthers.contains(showtimeSeat.id)}"
-                               th:attr="data-seat-code=${showtimeSeat.seat.seatCode},data-seat-type=${showtimeSeat.seat.seatType.name()}"
-                               class="d-none seat-checkbox">
-                        <span th:text="${showtimeSeat.seat.seatCode}"></span>
-                    </label>
-                </div>
+<!-- ── Hold timer header ── -->
+<div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <h4 class="fw-bold mb-0">
+            <i class="bi bi-grid-3x3-gap me-2" style="color:var(--mtms-accent)"></i>Select Your Seats
+        </h4>
+        <p class="text-muted mb-0 mt-1" style="font-size:.88rem">
+            Click seats to select. Couple seats must be picked in adjacent pairs.
+        </p>
+    </div>
+    <div id="holdTimerBadge" class="d-none">
+        <span class="badge px-3 py-2 fw-semibold"
+              style="background:rgba(245,166,35,.18);color:#fcd34d;border:1px solid rgba(245,166,35,.28);font-size:.82rem">
+            <i class="bi bi-hourglass-split me-1"></i>Hold expires in <span id="holdTimerText"></span>
+        </span>
+    </div>
+</div>
+
+<form th:action="@{/bookings/checkout/{id}(id=${showtimeId})}" method="get" id="seatForm">
+    <!-- Seat grid -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+        <div class="seat-grid mb-3" id="seatGrid">
+            <div class="seat-item" th:each="showtimeSeat : ${showtimeSeats}">
+                <label class="seat-label"
+                       th:classappend="${showtimeSeat.status.name() == 'BOOKED' or heldByOthers.contains(showtimeSeat.id)}
+                                       ? ' seat-booked'
+                                       : (${showtimeSeat.seat.seatType.name() == 'COUPLE'} ? ' seat-couple' : ' seat-normal')">
+                    <input type="checkbox"
+                           name="seatIds"
+                           th:value="${showtimeSeat.id}"
+                           th:disabled="${showtimeSeat.status.name() == 'BOOKED' or heldByOthers.contains(showtimeSeat.id)}"
+                           th:attr="data-seat-code=${showtimeSeat.seat.seatCode},
+                                    data-seat-type=${showtimeSeat.seat.seatType.name()}"
+                           class="d-none seat-checkbox">
+                    <span th:text="${showtimeSeat.seat.seatCode}"></span>
+                </label>
             </div>
-            <div class="screen-indicator">▲ &nbsp; SCREEN &nbsp; ▲</div>
         </div>
+        <div class="screen-indicator">▲ &nbsp; SCREEN &nbsp; ▲</div>
+    </div>
 
-        <!-- Legend + count -->
-        <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
-            <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.85rem">
-                <span style="width:18px;height:18px;background:rgba(42,167,255,.14);border:1px solid rgba(42,167,255,.25);border-radius:4px;display:inline-block"></span> Normal
-            </span>
-            <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.85rem">
-                <span style="width:36px;height:18px;background:rgba(214,178,94,.16);border:1px solid rgba(214,178,94,.30);border-radius:4px;display:inline-block"></span> Couple
-            </span>
-            <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.85rem">
-                <span style="width:18px;height:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.07);border-radius:4px;display:inline-block"></span> Booked
-            </span>
-            <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.85rem">
-                <span style="width:18px;height:18px;background:rgba(214,178,94,.24);border-radius:4px;outline:2px solid var(--mtms-accent);display:inline-block"></span> Selected
-            </span>
-            <span class="ms-auto fw-semibold" id="selectedCount" style="font-size:.92rem;color:var(--mtms-text)">0 seat(s) selected</span>
+    <!-- Legend -->
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
+        <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.84rem">
+            <span style="width:18px;height:18px;background:rgba(34,197,94,.16);border:1px solid rgba(34,197,94,.32);border-radius:4px;display:inline-block"></span>
+            Available
+        </span>
+        <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.84rem">
+            <span style="width:36px;height:18px;background:rgba(214,178,94,.18);border:1px solid rgba(214,178,94,.35);border-radius:4px;display:inline-block"></span>
+            Couple / Premium
+        </span>
+        <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.84rem">
+            <span style="width:18px;height:18px;background:rgba(239,68,68,.13);border:1px solid rgba(239,68,68,.24);border-radius:4px;display:inline-block"></span>
+            Taken
+        </span>
+        <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.84rem">
+            <span style="width:18px;height:18px;background:rgba(214,178,94,.28);border-radius:4px;outline:2px solid var(--mtms-accent);display:inline-block"></span>
+            Selected
+        </span>
+    </div>
+
+    <!-- Price calculator + proceed -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" id="pricePanel"
+         style="display:none!important;border:1px solid rgba(214,178,94,.20)!important;
+                background:linear-gradient(135deg,rgba(214,178,94,.07),rgba(214,178,94,.03))">
+        <div class="row g-3 align-items-center">
+            <div class="col-sm-7">
+                <div style="font-size:.78rem;color:var(--mtms-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:.4rem">Price Breakdown</div>
+                <div id="priceRows" style="font-size:.85rem"></div>
+                <div class="d-flex justify-content-between fw-bold mt-2 pt-2"
+                     style="border-top:1px solid rgba(255,255,255,.10)">
+                    <span>Estimated Total</span>
+                    <span style="color:#86efac" id="estTotal">$0.00</span>
+                </div>
+                <p class="text-muted mt-1 mb-0" style="font-size:.72rem">
+                    *Final price confirmed at checkout (incl. tax &amp; service fee)
+                </p>
+            </div>
+            <div class="col-sm-5 text-sm-end">
+                <button class="btn btn-primary w-100 fw-bold py-3" type="submit" id="proceedBtn"
+                        style="font-size:1rem;min-width:180px">
+                    <i class="bi bi-arrow-right-circle me-2"></i>
+                    Proceed &mdash; <span id="proceedSeatCount">0</span> seat(s)
+                </button>
+            </div>
         </div>
+    </div>
 
-        <button class="btn btn-primary px-5 fw-semibold" type="submit">
-            <i class="bi bi-arrow-right-circle me-1"></i>Continue to Checkout
-        </button>
-    </form>
+    <!-- Fallback proceed when no seats yet -->
+    <button class="btn btn-outline-secondary px-5 fw-semibold" type="submit" id="proceedBtnEmpty">
+        <i class="bi bi-arrow-right-circle me-1"></i>Continue to Checkout
+    </button>
+</form>
 
-    <script>
-        const seatCheckboxes = Array.from(document.querySelectorAll('.seat-checkbox'));
+<style>
+/* ── Stepper ── */
+.sm-stepper { gap: 0; }
+.sm-step { display: flex; flex-direction: column; align-items: center; gap: .3rem; }
+.sm-step-dot {
+    width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: .85rem; font-weight: 700;
+    border: 2px solid rgba(255,255,255,.15);
+    background: rgba(255,255,255,.06);
+    color: var(--mtms-muted);
+    transition: all .3s;
+}
+.sm-step.active .sm-step-dot {
+    border-color: var(--mtms-accent);
+    background: rgba(214,178,94,.18);
+    color: var(--mtms-accent);
+}
+.sm-step.done .sm-step-dot {
+    border-color: rgba(34,197,94,.5);
+    background: rgba(34,197,94,.15);
+    color: #86efac;
+}
+.sm-step-label { font-size: .72rem; color: var(--mtms-muted); letter-spacing: .4px; text-transform: uppercase; }
+.sm-step.active .sm-step-label { color: var(--mtms-accent); font-weight: 600; }
+.sm-step-line {
+    flex: 1; height: 2px; background: rgba(255,255,255,.10); margin: 0 6px;
+    align-self: center; min-width: 40px; margin-bottom: 1.1rem;
+}
+</style>
 
-        seatCheckboxes.forEach(function (checkbox) {
-            if (checkbox.dataset.seatType !== 'COUPLE') return;
-            const seatItem = checkbox.closest('.seat-item');
-            if (seatItem) seatItem.classList.add('seat-couple-unit');
-        });
+<script th:inline="javascript">
+(function() {
+    const normalPrice = parseFloat([[${showtime.normalPrice}]]) || 0;
+    const couplePrice = parseFloat([[${showtime.couplePrice}]]) || 0;
+    const isWeekend   = [[${isWeekend}]];
+    const isMorning   = [[${isMorning}]];
+    const WEEKEND_RATE  = 0.10;
+    const MORNING_RATE  = 0.10;
+    const TAX_RATE      = 0.10;
+    const SERVICE_FEE   = 1.50;
 
-        function updateCount() {
-            const n = seatCheckboxes.filter(c => c.checked).length;
-            document.getElementById('selectedCount').textContent = n + ' seat(s) selected';
+    const holdMinutes   = [[${holdMinutes}]];
+    let holdInterval    = null;
+    let holdStarted     = false;
+
+    const seatCheckboxes = Array.from(document.querySelectorAll('.seat-checkbox'));
+    const pricePanel     = document.getElementById('pricePanel');
+    const proceedBtnEmpty = document.getElementById('proceedBtnEmpty');
+    const proceedSeatCount = document.getElementById('proceedSeatCount');
+    const estTotal       = document.getElementById('estTotal');
+    const priceRows      = document.getElementById('priceRows');
+
+    // Mark couple items
+    seatCheckboxes.forEach(function(cb) {
+        if (cb.dataset.seatType !== 'COUPLE') return;
+        const item = cb.closest('.seat-item');
+        if (item) item.classList.add('seat-couple-unit');
+    });
+
+    // Hold countdown (starts on first selection)
+    function startHoldTimer() {
+        if (holdStarted) return;
+        holdStarted = true;
+        let totalSec = holdMinutes * 60;
+        const badge  = document.getElementById('holdTimerBadge');
+        const text   = document.getElementById('holdTimerText');
+        badge.classList.remove('d-none');
+        holdInterval = setInterval(function() {
+            totalSec--;
+            if (totalSec <= 0) {
+                clearInterval(holdInterval);
+                text.textContent = '0:00';
+                badge.querySelector('span').style.background = 'rgba(239,68,68,.18)';
+                badge.querySelector('span').style.color = '#fca5a5';
+                badge.querySelector('span').style.borderColor = 'rgba(239,68,68,.30)';
+                return;
+            }
+            const m = Math.floor(totalSec / 60);
+            const s = totalSec % 60;
+            text.textContent = m + ':' + String(s).padStart(2, '0');
+        }, 1000);
+        // Initialize display
+        text.textContent = holdMinutes + ':00';
+    }
+
+    function recalcPrice() {
+        const checked   = seatCheckboxes.filter(c => c.checked);
+        const n         = checked.length;
+        const normals   = checked.filter(c => c.dataset.seatType !== 'COUPLE').length;
+        const couples   = checked.filter(c => c.dataset.seatType === 'COUPLE').length;
+        const pairs     = Math.floor(couples / 2);
+
+        // Show/hide panels
+        if (n > 0) {
+            pricePanel.style.setProperty('display', 'block', 'important');
+            proceedBtnEmpty.classList.add('d-none');
+            if (!holdStarted) startHoldTimer();
+        } else {
+            pricePanel.style.setProperty('display', 'none', 'important');
+            proceedBtnEmpty.classList.remove('d-none');
+        }
+        proceedSeatCount.textContent = n;
+
+        // Price calculation
+        let base = (normals * normalPrice) + (pairs * couplePrice);
+        let rows = '';
+
+        if (normals > 0) {
+            rows += `<div class="d-flex justify-content-between text-muted mb-1"><span>${normals} normal seat(s)</span><span>$${(normals * normalPrice).toFixed(2)}</span></div>`;
+        }
+        if (pairs > 0) {
+            rows += `<div class="d-flex justify-content-between text-muted mb-1"><span>${pairs} couple pair(s)</span><span>$${(pairs * couplePrice).toFixed(2)}</span></div>`;
         }
 
-        seatCheckboxes.forEach(function (checkbox) {
-            checkbox.addEventListener('change', function () {
-                checkbox.closest('label').classList.toggle('seat-selected', checkbox.checked);
-                updateCount();
-            });
+        let morningDisc = 0;
+        if (isMorning && base > 0) {
+            morningDisc = base * MORNING_RATE;
+            rows += `<div class="d-flex justify-content-between mb-1" style="color:#86efac"><span><i class="bi bi-sunrise me-1"></i>Morning -10%</span><span>-$${morningDisc.toFixed(2)}</span></div>`;
+        }
+        const effectiveBase = base - morningDisc;
+
+        let weekendAdd = 0;
+        if (isWeekend && effectiveBase > 0) {
+            weekendAdd = effectiveBase * WEEKEND_RATE;
+            rows += `<div class="d-flex justify-content-between mb-1 text-warning"><span><i class="bi bi-sun me-1"></i>Weekend +10%</span><span>+$${weekendAdd.toFixed(2)}</span></div>`;
+        }
+
+        const subtotal   = effectiveBase + weekendAdd;
+        const tax        = subtotal * TAX_RATE;
+        const serviceFee = SERVICE_FEE;
+        const total      = subtotal + tax + serviceFee;
+
+        rows += `<div class="d-flex justify-content-between text-muted mb-1"><span>Tax (10%)</span><span>+$${tax.toFixed(2)}</span></div>`;
+        rows += `<div class="d-flex justify-content-between text-muted mb-1"><span>Service fee</span><span>+$${serviceFee.toFixed(2)}</span></div>`;
+
+        priceRows.innerHTML = rows;
+        estTotal.textContent = '$' + total.toFixed(2);
+    }
+
+    seatCheckboxes.forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            cb.closest('label').classList.toggle('seat-selected', cb.checked);
+            recalcPrice();
         });
-    </script>
+    });
+
+    recalcPrice();
+})();
+</script>
+
 </th:block>
 </html>

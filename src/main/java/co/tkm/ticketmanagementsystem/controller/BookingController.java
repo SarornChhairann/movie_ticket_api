@@ -1,5 +1,7 @@
 package co.tkm.ticketmanagementsystem.controller;
 
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,10 +45,18 @@ public class BookingController {
     public String seatMap(@PathVariable Long showtimeId, HttpSession session, Model model) {
         List<ShowtimeSeat> showtimeSeats = bookingService.getSeatsForShowtime(showtimeId);
         Set<Long> heldByOthers = seatHoldService.getHeldSeatIdsByOtherSessions(session.getId());
+        co.tkm.ticketmanagementsystem.model.Showtime showtime = bookingService.getShowtime(showtimeId);
+        DayOfWeek dow = showtime.getShowDate().getDayOfWeek();
+        boolean isWeekend = dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY;
+        boolean isMorning = showtime.getShowTime() != null
+                && showtime.getShowTime().isBefore(LocalTime.NOON);
         model.addAttribute("showtimeId", showtimeId);
+        model.addAttribute("showtime", showtime);
         model.addAttribute("showtimeSeats", showtimeSeats);
         model.addAttribute("heldByOthers", heldByOthers);
         model.addAttribute("holdMinutes", seatHoldService.getHoldMinutes());
+        model.addAttribute("isWeekend", isWeekend);
+        model.addAttribute("isMorning", isMorning);
         return "booking/seat-map";
     }
 

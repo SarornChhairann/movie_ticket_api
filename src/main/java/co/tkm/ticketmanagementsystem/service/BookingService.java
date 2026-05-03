@@ -44,6 +44,7 @@ public class BookingService {
     private static final BigDecimal DEFAULT_SERVICE_FEE = new BigDecimal("1.50");
     private static final BigDecimal DEFAULT_TAX_RATE = new BigDecimal("0.10");
     private static final BigDecimal DEFAULT_WEEKEND_SURCHARGE_RATE = new BigDecimal("0.10");
+    private static final BigDecimal DEFAULT_MORNING_DISCOUNT_RATE = new BigDecimal("0.10");
     private static final int DEFAULT_CANCELLATION_WINDOW_HOURS = 2;
 
     private final BookingRepository bookingRepository;
@@ -286,19 +287,29 @@ public class BookingService {
         // Load configurable rates
         BigDecimal weekendSurchargeRate = systemSettingService.getDecimal(
                 SystemSettingService.WEEKEND_SURCHARGE_RATE, DEFAULT_WEEKEND_SURCHARGE_RATE);
+        BigDecimal morningDiscountRate = systemSettingService.getDecimal(
+                SystemSettingService.MORNING_DISCOUNT_RATE, DEFAULT_MORNING_DISCOUNT_RATE);
         BigDecimal taxRate = systemSettingService.getDecimal(
                 SystemSettingService.TAX_RATE, DEFAULT_TAX_RATE);
         BigDecimal serviceFeeAmt = systemSettingService.getDecimal(
                 SystemSettingService.SERVICE_FEE, DEFAULT_SERVICE_FEE);
 
-        // Weekend surcharge
+        // Morning discount (showtimes before noon = cheaper)
+        boolean isMorning = showtime.getShowTime() != null
+                && showtime.getShowTime().isBefore(LocalTime.NOON);
+        BigDecimal morningDiscount = isMorning
+                ? base.multiply(morningDiscountRate).setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        BigDecimal effectiveBase = base.subtract(morningDiscount);
+
+        // Weekend surcharge (applied to effective base after morning discount)
         DayOfWeek dow = showtime.getShowDate().getDayOfWeek();
         boolean isWeekend = dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY;
         BigDecimal weekendSurcharge = isWeekend
-                ? base.multiply(weekendSurchargeRate).setScale(2, RoundingMode.HALF_UP)
+                ? effectiveBase.multiply(weekendSurchargeRate).setScale(2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
-        BigDecimal subtotal = base.add(weekendSurcharge);
+        BigDecimal subtotal = effectiveBase.add(weekendSurcharge);
 
         // Tax
         BigDecimal taxAmount = subtotal.multiply(taxRate).setScale(2, RoundingMode.HALF_UP);
@@ -336,7 +347,7 @@ public class BookingService {
         selectedSeats.forEach(seat -> seat.getSeat().getSeatCode());
 
         return new CheckoutData(user, showtime, selectedSeats,
-                base, weekendSurcharge, serviceFee, taxAmount,
+                base, morningDiscount, weekendSurcharge, serviceFee, taxAmount,
                 discountAmount, total, appliedPromo, availableFoodItems, foodSelections);
     }
 
@@ -402,6 +413,15 @@ public class BookingService {
         List<Booking> bookings = bookingRepository.findByUserOrderByBookedAtDesc(user);
         bookings.forEach(b -> b.getShowtime().getMovie().getTitle());
         return bookings;
+    }
+
+    @Transactional(readOnly = true)
+    public Showtime getShowtime(Long id) {
+        Showtime st = findShowtime(id);
+        st.getMovie().getTitle();
+        st.getHall().getName();
+        st.getHall().getCity();
+        return st;
     }
 
     private User findUser(String email) {
