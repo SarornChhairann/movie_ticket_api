@@ -289,7 +289,8 @@
             <div th:each="m,stat : ${nowShowing}" th:if="${stat.index < 5}"
                  class="lc-slide"
                  th:classappend="${stat.index == 0} ? ' active' : ''"
-                 th:attr="data-bg=${(m.bannerPath != null and !#strings.isEmpty(m.bannerPath)) ? m.bannerPath : m.imagePath},
+                 th:with="bg=${(m.bannerPath != null and !#strings.isEmpty(m.bannerPath)) ? m.bannerPath : m.imagePath}"
+                 th:attr="data-bg=${bg},
                           data-movie-id=${m.id},
                           data-title=${m.title},
                           data-desc=${m.description},
@@ -300,7 +301,7 @@
                           data-format=${m.format},
                           data-duration=${m.durationMinutes},
                           data-release=${m.releaseDate}"
-                 th:style="${stat.index == 0 and ((m.bannerPath != null and !#strings.isEmpty(m.bannerPath)) or (m.imagePath != null and !#strings.isEmpty(m.imagePath)))} ? 'background-image:url(' + ((m.bannerPath != null and !#strings.isEmpty(m.bannerPath)) ? m.bannerPath : m.imagePath) + ');' : ''">
+                 th:style="${stat.index == 0 and bg != null and !#strings.isEmpty(bg)} ? 'background-image:url(' + bg + ');' : ''">
             </div>
         </div>
         <div class="container lc-hero-content">

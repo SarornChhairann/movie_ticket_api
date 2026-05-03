@@ -15,7 +15,7 @@
         <div class="col-md-5">
             <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body p-4">
-                    <h6 class="fw-bold mb-3 text-muted" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.8px">Order Summary</h6>
+                    <h6 class="fw-bold mb-3" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.8px;color:var(--mtms-muted)">Order Summary</h6>
                     <p class="mb-2 fw-semibold" th:text="${checkoutData.showtime.movie.title}"></p>
                     <p class="mb-1 text-muted" style="font-size:.9rem">
                         <i class="bi bi-building me-1"></i>
@@ -29,7 +29,7 @@
                     <div class="mb-2" style="font-size:.9rem">
                         <strong>Seats:</strong>
                         <span th:each="seat, stat : ${checkoutData.selectedSeats}">
-                            <span class="badge bg-light text-dark border ms-1" th:text="${seat.seat.seatCode}"></span>
+                            <span class="badge bg-dark ms-1" th:text="${seat.seat.seatCode}"></span>
                         </span>
                     </div>
                     <hr>
@@ -53,7 +53,7 @@
                             <span th:text="'+$' + ${checkoutData.serviceFee}"></span>
                         </div>
                         <div th:if="${checkoutData.discountAmount != null and checkoutData.discountAmount.compareTo(T(java.math.BigDecimal).ZERO) > 0}"
-                             class="d-flex justify-content-between mb-1 text-success">
+                             class="d-flex justify-content-between mb-1" style="color:#86efac">
                             <span><i class="bi bi-tag me-1"></i>Promo discount</span>
                             <span th:text="'-$' + ${checkoutData.discountAmount}"></span>
                         </div>
@@ -63,9 +63,9 @@
                             <span id="foodTotalDisplay">$0.00</span>
                         </div>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-2" style="border-top:1px solid rgba(255,255,255,.10)">
                         <span class="fw-bold">Total</span>
-                        <span class="fw-bold fs-5 text-success" id="grandTotal"
+                        <span class="fw-bold fs-5" style="color:#86efac" id="grandTotal"
                               th:text="'$' + ${checkoutData.totalAmount}"></span>
                     </div>
                 </div>
@@ -121,13 +121,13 @@
                         <div class="row g-2">
                             <div class="col-12" th:each="item : ${checkoutData.availableFoodItems}">
                                 <div class="d-flex align-items-center justify-content-between p-2 rounded-3"
-                                     style="background:#f8fafc;border:1px solid #e2e8f0">
+                                     style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10)">
                                     <div>
                                         <div class="fw-semibold" style="font-size:.9rem" th:text="${item.name}"></div>
                                         <div class="text-muted" style="font-size:.78rem" th:text="${item.description}"></div>
                                     </div>
                                     <div class="d-flex align-items-center gap-2">
-                                        <span class="text-success fw-semibold" style="font-size:.9rem"
+                                        <span class="fw-semibold" style="font-size:.9rem;color:#86efac"
                                               th:text="'$' + ${item.price}" th:attr="data-price=${item.price}"></span>
                                         <input type="number" min="0" max="10" value="0"
                                                class="form-control form-control-sm food-qty"
@@ -188,16 +188,16 @@
                         <div id="cardDetails" class="mt-3">
                             <div class="mb-3">
                                 <label class="form-label fw-semibold" style="font-size:.88rem">Card Number</label>
-                                <input class="form-control" value="4111 1111 1111 1111" readonly style="background:#f8fafc;color:#64748b">
+                                <input class="form-control" value="4111 1111 1111 1111" readonly>
                             </div>
                             <div class="row g-3">
                                 <div class="col-6">
                                     <label class="form-label fw-semibold" style="font-size:.88rem">Expiry</label>
-                                    <input class="form-control" value="12/30" readonly style="background:#f8fafc;color:#64748b">
+                                    <input class="form-control" value="12/30" readonly>
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label fw-semibold" style="font-size:.88rem">CVV</label>
-                                    <input class="form-control" value="123" readonly style="background:#f8fafc;color:#64748b">
+                                    <input class="form-control" value="123" readonly>
                                 </div>
                             </div>
                         </div>
@@ -206,8 +206,8 @@
                         <div id="khqrDetails" class="mt-3 text-center d-none">
                             <p class="text-muted mb-2" style="font-size:.85rem">Scan this QR code with your banking app</p>
                             <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=KHQR-MOCK-PAYMENT"
-                                 alt="KHQR Mock" width="160" class="border rounded-3 p-2">
-                            <p class="text-success mt-2 fw-semibold" style="font-size:.82rem">
+                                 alt="KHQR Mock" width="160" class="rounded-3 p-2" style="border:1px solid rgba(255,255,255,.12);background:#fff">
+                            <p class="mt-2 fw-semibold" style="font-size:.82rem;color:#86efac">
                                 <i class="bi bi-info-circle me-1"></i>Mock QR — no real payment
                             </p>
                         </div>
@@ -215,27 +215,41 @@
                         <!-- ABA/Wing generic -->
                         <div id="walletDetails" class="mt-3 text-center d-none">
                             <p class="text-muted" style="font-size:.85rem">You will be redirected to your wallet app to complete payment.</p>
-                            <p class="text-warning fw-semibold" style="font-size:.82rem">
+                            <p class="fw-semibold" style="font-size:.82rem;color:#fcd34d">
                                 <i class="bi bi-exclamation-triangle me-1"></i>Mock — no real redirect
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <button class="btn btn-success w-100 fw-bold py-3 rounded-3" type="submit" style="font-size:1rem">
+                <button class="btn btn-success w-100 fw-bold py-3 rounded-3" type="submit" id="confirmBtn" style="font-size:1rem">
                     <i class="bi bi-lock-fill me-2"></i>Confirm &amp; Pay
                     $<span id="confirmTotal" th:text="${checkoutData.totalAmount}"></span>
                 </button>
                 <p class="text-center text-muted mt-2" style="font-size:.78rem">
                     <i class="bi bi-shield-check me-1"></i>Secure mock payment — no real charges
                 </p>
+                <style>
+                    @keyframes spin { to { transform: rotate(360deg); } }
+                    .btn-spinner { display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:.5rem; }
+                </style>
+                <script>
+                    document.getElementById('confirmBtn').addEventListener('click', function(){
+                        var btn = this;
+                        setTimeout(function(){
+                            btn.disabled = true;
+                            btn.innerHTML = '<span class="btn-spinner"></span>Processing…';
+                        }, 50);
+                    });
+                </script>
             </form>
         </div>
     </div>
 
     <style>
-        .active-payment { border-color: #0d6efd !important; background: #eff6ff; color: #0d6efd; }
-        .payment-option-card { transition: all .2s; }
+        .active-payment { border-color: rgba(214,178,94,.55) !important; background: rgba(214,178,94,.12) !important; color: var(--mtms-accent) !important; }
+        .payment-option-card { transition: border-color .2s, background .2s, color .2s; cursor: pointer; }
+        .payment-option-card:not(.active-payment):hover { border-color: rgba(255,255,255,.22) !important; background: rgba(255,255,255,.06) !important; }
     </style>
 
     <script th:inline="javascript">

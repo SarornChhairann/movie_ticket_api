@@ -3,7 +3,7 @@
       th:replace="~{layout/base :: layout('Select Seats', ~{::content})}">
 <th:block th:fragment="content">
     <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-1">
-        <h4 class="fw-bold mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>Select Your Seats</h4>
+        <h4 class="fw-bold mb-0"><i class="bi bi-grid-3x3-gap me-2" style="color:var(--mtms-accent)"></i>Select Your Seats</h4>
         <div class="d-flex align-items-center gap-1 text-muted" style="font-size:.82rem">
             <i class="bi bi-hourglass-split"></i>
             <span>Seats held for <strong th:text="${holdMinutes}">10</strong> min after selection</span>
@@ -34,18 +34,18 @@
         <!-- Legend + count -->
         <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
             <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.85rem">
-                <span style="width:18px;height:18px;background:#e9ecef;border-radius:4px;display:inline-block"></span> Normal
+                <span style="width:18px;height:18px;background:rgba(42,167,255,.14);border:1px solid rgba(42,167,255,.25);border-radius:4px;display:inline-block"></span> Normal
             </span>
             <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.85rem">
-                <span style="width:36px;height:18px;background:#ffe8cc;border-radius:4px;display:inline-block"></span> Couple
+                <span style="width:36px;height:18px;background:rgba(214,178,94,.16);border:1px solid rgba(214,178,94,.30);border-radius:4px;display:inline-block"></span> Couple
             </span>
             <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.85rem">
-                <span style="width:18px;height:18px;background:#adb5bd;border-radius:4px;display:inline-block"></span> Booked
+                <span style="width:18px;height:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.07);border-radius:4px;display:inline-block"></span> Booked
             </span>
             <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.85rem">
-                <span style="width:18px;height:18px;background:#ffd0d8;border-radius:4px;border:2px solid #e94560;display:inline-block"></span> Selected
+                <span style="width:18px;height:18px;background:rgba(214,178,94,.24);border-radius:4px;outline:2px solid var(--mtms-accent);display:inline-block"></span> Selected
             </span>
-            <span class="ms-auto fw-semibold" id="selectedCount" style="font-size:.92rem">0 seat(s) selected</span>
+            <span class="ms-auto fw-semibold" id="selectedCount" style="font-size:.92rem;color:var(--mtms-text)">0 seat(s) selected</span>
         </div>
 
         <button class="btn btn-primary px-5 fw-semibold" type="submit">

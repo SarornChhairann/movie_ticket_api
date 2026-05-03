@@ -21,15 +21,15 @@
 
     <div th:if="${!#lists.isEmpty(bookings)}" class="card border-0 shadow-sm rounded-4 overflow-hidden">
         <table class="table mb-0 align-middle">
-            <thead style="background:#f8fafc">
+            <thead>
             <tr>
-                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b">#</th>
-                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b">Movie</th>
-                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b">Showtime</th>
-                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b">Total</th>
-                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b">Status</th>
-                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b">Ticket</th>
-                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b"></th>
+                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px">#</th>
+                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Movie</th>
+                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Showtime</th>
+                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Total</th>
+                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Status</th>
+                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Ticket</th>
+                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px"></th>
             </tr>
             </thead>
             <tbody>
@@ -43,7 +43,7 @@
                 <td class="fw-semibold" th:text="'$' + ${booking.totalAmount}"></td>
                 <td>
                     <span class="badge"
-                          th:classappend="${booking.status.name() == 'CONFIRMED'} ? 'bg-success' : (${booking.status.name() == 'PENDING'} ? 'bg-warning text-dark' : 'bg-secondary')"
+                          th:classappend="${booking.status.name() == 'CONFIRMED'} ? 'bg-success' : (${booking.status.name() == 'PENDING'} ? 'bg-warning' : 'bg-secondary')"
                           th:text="${booking.status}"></span>
                 </td>
                 <td>

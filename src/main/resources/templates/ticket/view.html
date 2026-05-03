@@ -5,7 +5,7 @@
     <div style="max-width:520px;margin:0 auto">
         <div class="ticket-stub p-0 overflow-hidden">
             <!-- Header strip -->
-            <div style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:1.5rem 1.75rem">
+            <div style="background:linear-gradient(135deg,var(--mtms-surface),var(--mtms-card));color:#fff;padding:1.5rem 1.75rem;border-bottom:1px solid rgba(255,255,255,.10)">
                 <div class="d-flex justify-content-between align-items-center">
                     <span style="font-size:.75rem;letter-spacing:1.5px;text-transform:uppercase;opacity:.7">E-Ticket</span>
                     <i class="bi bi-film" style="font-size:1.4rem;opacity:.6"></i>
@@ -33,7 +33,7 @@
                         <div class="fw-semibold">
                             <span th:text="${ticket.seat.seatCode}"></span>
                             <span class="badge ms-1"
-                                  style="background:#ffe8cc;color:#7c4f00;font-size:.7rem"
+                                  style="background:rgba(214,178,94,.18);color:var(--mtms-accent);border:1px solid rgba(214,178,94,.28);font-size:.7rem"
                                   th:if="${ticket.seat.seatType.name() == 'COUPLE'}">Couple</span>
                         </div>
                     </div>
@@ -58,7 +58,7 @@
                     <div class="text-muted mb-2" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.8px">Scan at Cinema Door</div>
                     <img th:src="@{/tickets/{code}/qr(code=${ticket.ticketCode})}"
                          alt="QR Code" width="160" height="160"
-                         style="border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff">
+                         style="border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px;background:#fff">
                 </div>
 
                 <!-- Scanned badge -->
