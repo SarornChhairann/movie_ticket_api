@@ -18,10 +18,10 @@ import lombok.Setter;
 public class SystemSetting {
 
     @Id
-    @Column(nullable = false, length = 80)
+    @Column(name = "setting_key", nullable = false, length = 80)
     private String key;
 
-    @Column(nullable = false, length = 255)
+    @Column(name = "setting_value", nullable = false, length = 255)
     private String value;
 
     @Column(length = 300)

@@ -30,6 +30,13 @@ public class ShowtimeService {
 
     @Transactional
     public Showtime save(Showtime showtime) {
+        validateNoOverlap(
+                showtime.getHall().getId(),
+                showtime.getShowDate(),
+                showtime.getShowTime(),
+                showtime.getMovie().getDurationMinutes(),
+                showtime.getId()
+        );
         Showtime saved = showtimeRepository.save(showtime);
         if (showtimeSeatRepository.findByShowtime(saved).isEmpty()) {
             List<Seat> seats = seatRepository.findByHall(saved.getHall());

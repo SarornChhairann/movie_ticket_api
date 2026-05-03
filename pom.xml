@@ -91,7 +91,8 @@
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>test</scope>
+            <scope>runtime</scope>
+            <optional>true</optional>
         </dependency>
         <!-- QR Code generation -->
         <dependency>
@@ -118,7 +119,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-clean-plugin</artifactId>
                 <configuration>
-                    <fast>true</fast>
+                    <failOnError>false</failOnError>
                 </configuration>
             </plugin>
             <plugin>

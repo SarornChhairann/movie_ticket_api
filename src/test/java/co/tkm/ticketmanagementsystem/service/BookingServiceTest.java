@@ -31,6 +31,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,6 +48,7 @@ class BookingServiceTest {
     @Mock private PromoCodeService promoCodeService;
     @Mock private FoodItemService foodItemService;
     @Mock private BookingFoodItemRepository bookingFoodItemRepository;
+    @Mock private SystemSettingService systemSettingService;
 
     @InjectMocks
     private BookingService bookingService;
@@ -86,6 +89,7 @@ class BookingServiceTest {
         when(showtimeSeatRepository.findAllById(List.of(100L, 101L, 102L)))
                 .thenReturn(List.of(normalSeat, coupleSeatA, coupleSeatB));
         when(foodItemService.findAvailable()).thenReturn(Collections.emptyList());
+        when(systemSettingService.getDecimal(anyString(), any())).thenAnswer(inv -> inv.getArgument(1));
 
         CheckoutData checkout = bookingService.buildCheckout(10L, List.of(100L, 101L, 102L), "user@test.com", null);
 

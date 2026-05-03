@@ -4,6 +4,8 @@ import co.tkm.ticketmanagementsystem.model.SystemSetting;
 import co.tkm.ticketmanagementsystem.repository.SystemSettingRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +15,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class SystemSettingService {
+
+    private static final Logger log = LoggerFactory.getLogger(SystemSettingService.class);
 
     public static final String HOLD_MINUTES          = "hold_minutes";
     public static final String CANCELLATION_HOURS    = "cancellation_hours";
@@ -25,15 +29,22 @@ public class SystemSettingService {
     @PostConstruct
     @Transactional
     public void seedDefaults() {
-        seed(HOLD_MINUTES,           "10",   "Minutes a seat is held after selection");
-        seed(CANCELLATION_HOURS,     "2",    "Hours before showtime within which cancellation is blocked");
-        seed(SERVICE_FEE,            "1.50", "Flat service fee per booking (USD)");
-        seed(TAX_RATE,               "0.10", "Tax rate as decimal (e.g. 0.10 = 10%)");
-        seed(WEEKEND_SURCHARGE_RATE, "0.10", "Weekend surcharge rate as decimal (e.g. 0.10 = 10%)");
+        try {
+            seed(HOLD_MINUTES,           "10",   "Minutes a seat is held after selection");
+            seed(CANCELLATION_HOURS,     "2",    "Hours before showtime within which cancellation is blocked");
+            seed(SERVICE_FEE,            "1.50", "Flat service fee per booking (USD)");
+            seed(TAX_RATE,               "0.10", "Tax rate as decimal (e.g. 0.10 = 10%)");
+            seed(WEEKEND_SURCHARGE_RATE, "0.10", "Weekend surcharge rate as decimal (e.g. 0.10 = 10%)");
+        } catch (Exception ex) {
+            log.error("Failed to seed system settings defaults. Application can still start, but pricing/holds may break.", ex);
+        }
     }
 
     private void seed(String key, String defaultValue, String description) {
-        repo.findById(key).orElseGet(() -> repo.save(new SystemSetting(key, defaultValue, description)));
+        repo.findById(key).orElseGet(() -> {
+            log.info("Seeding system setting: {}", key);
+            return repo.save(new SystemSetting(key, defaultValue, description));
+        });
     }
 
     @Transactional(readOnly = true)

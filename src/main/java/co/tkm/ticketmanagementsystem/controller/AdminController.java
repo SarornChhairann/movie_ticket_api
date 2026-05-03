@@ -1,6 +1,7 @@
 package co.tkm.ticketmanagementsystem.controller;
 
 import co.tkm.ticketmanagementsystem.enums.UserStatus;
+import co.tkm.ticketmanagementsystem.enums.MovieStatus;
 import co.tkm.ticketmanagementsystem.model.FoodItem;
 import co.tkm.ticketmanagementsystem.model.Hall;
 import co.tkm.ticketmanagementsystem.model.Movie;
@@ -99,16 +100,19 @@ public class AdminController {
 
     @GetMapping("/movies/new")
     public String newMovie(Model model) {
-        model.addAttribute("movie", new Movie());
+        Movie movie = new Movie();
+        movie.setStatus(MovieStatus.COMING_SOON);
+        model.addAttribute("movie", movie);
         return "admin/movie-form";
     }
 
     @PostMapping("/movies/save")
     public String saveMovie(@ModelAttribute Movie movie,
                             @RequestParam(value = "imageFile", required = false) MultipartFile imageFile,
+                            @RequestParam(value = "bannerFile", required = false) MultipartFile bannerFile,
                             Model model) {
         try {
-            movieService.saveWithImage(movie, imageFile);
+            movieService.saveWithImages(movie, imageFile, bannerFile);
             return "redirect:/admin/movies";
         } catch (IllegalArgumentException ex) {
             model.addAttribute("movie", movie);
@@ -182,11 +186,37 @@ public class AdminController {
     }
 
     @PostMapping("/showtimes/save")
-    public String saveShowtime(@ModelAttribute Showtime showtime) {
-        showtime.setMovie(movieService.findById(showtime.getMovie().getId()));
-        showtime.setHall(hallService.findById(showtime.getHall().getId()));
-        showtimeService.save(showtime);
-        return "redirect:/admin/showtimes";
+    public String saveShowtime(@ModelAttribute Showtime showtime,
+                               @RequestParam(value = "publishNow", defaultValue = "true") boolean publishNow,
+                               @RequestParam(value = "sendNotification", defaultValue = "false") boolean sendNotification,
+                               Model model,
+                               RedirectAttributes ra) {
+        try {
+            showtime.setMovie(movieService.findById(showtime.getMovie().getId()));
+            showtime.setHall(hallService.findById(showtime.getHall().getId()));
+            showtime.setBlocked(!publishNow);
+            Showtime saved = showtimeService.save(showtime);
+
+            if (publishNow && sendNotification) {
+                notificationService.sendBroadcast(
+                        "New movie available!",
+                        saved.getMovie().getTitle() + " is now available. " +
+                        "Showtime: " + saved.getShowDate() + " " + saved.getShowTime() +
+                        " at " + saved.getHall().getName() + "."
+                );
+            }
+
+            ra.addFlashAttribute("success", publishNow ? "Showtime published." : "Showtime saved as draft (blocked).");
+            return "redirect:/admin/showtimes";
+        } catch (IllegalArgumentException ex) {
+            model.addAttribute("error", ex.getMessage());
+            model.addAttribute("showtime", showtime);
+            model.addAttribute("movies", movieService.findAll());
+            model.addAttribute("halls", hallService.findAll());
+            model.addAttribute("publishNow", publishNow);
+            model.addAttribute("sendNotification", sendNotification);
+            return "admin/showtime-form";
+        }
     }
 
     @GetMapping("/showtimes/delete/{id}")
