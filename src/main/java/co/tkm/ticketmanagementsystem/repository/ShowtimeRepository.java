@@ -27,4 +27,17 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, Long> {
         """)
     List<Showtime> findByHallIdAndShowDateWithMovie(@Param("hallId") Long hallId,
                                                     @Param("showDate") LocalDate showDate);
+
+    @Query("""
+        SELECT s FROM Showtime s
+        JOIN FETCH s.movie m
+        JOIN FETCH s.hall h
+        WHERE m.id = :movieId
+          AND s.showDate = :showDate
+          AND (:city = '' OR LOWER(h.city) = LOWER(:city))
+        ORDER BY s.showTime ASC
+        """)
+    List<Showtime> findForMovieDateCity(@Param("movieId") Long movieId,
+                                        @Param("showDate") LocalDate showDate,
+                                        @Param("city") String city);
 }

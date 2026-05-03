@@ -332,14 +332,25 @@ public class AdminController {
     }
 
     @PostMapping("/food-items/save")
-    public String saveFoodItem(@ModelAttribute FoodItem foodItem) {
-        foodItemService.save(foodItem);
-        return "redirect:/admin/food-items";
+    public String saveFoodItem(@ModelAttribute FoodItem foodItem,
+                               @RequestParam(value = "imageFile", required = false) MultipartFile imageFile,
+                               Model model,
+                               RedirectAttributes ra) {
+        try {
+            foodItemService.saveWithImage(foodItem, imageFile);
+            ra.addFlashAttribute("success", "Food item saved.");
+            return "redirect:/admin/food-items";
+        } catch (RuntimeException ex) {
+            model.addAttribute("error", ex.getMessage());
+            model.addAttribute("foodItem", foodItem);
+            return "admin/food-item-form";
+        }
     }
 
     @GetMapping("/food-items/delete/{id}")
-    public String deleteFoodItem(@PathVariable Long id) {
+    public String deleteFoodItem(@PathVariable Long id, RedirectAttributes ra) {
         foodItemService.delete(id);
+        ra.addFlashAttribute("success", "Food item deleted.");
         return "redirect:/admin/food-items";
     }
 

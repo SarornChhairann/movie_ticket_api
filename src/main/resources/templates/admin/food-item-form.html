@@ -9,8 +9,10 @@
 
     <div class="card border-0 shadow-sm rounded-4" style="max-width:560px">
         <div class="card-body p-4">
-            <form th:action="@{/admin/food-items/save}" method="post" th:object="${foodItem}">
+            <form th:action="@{/admin/food-items/save}" method="post" enctype="multipart/form-data" th:object="${foodItem}">
                 <input type="hidden" th:field="*{id}">
+                <input type="hidden" th:field="*{imageUrl}" id="imageUrlField">
+                <div id="csrfMeta" class="d-none" th:attr="data-header=${_csrf.headerName},data-token=${_csrf.token}"></div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Name</label>
                     <input class="form-control" type="text" th:field="*{name}" required>
@@ -24,16 +26,193 @@
                     <input class="form-control" type="number" step="0.01" min="0" th:field="*{price}" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Image URL</label>
-                    <input class="form-control" type="url" th:field="*{imageUrl}" placeholder="https://...">
+                    <label class="form-label fw-semibold">Image</label>
+                    <div class="d-flex gap-3 align-items-start" data-max-bytes="5242880">
+                        <div class="rounded-4 overflow-hidden d-flex align-items-center justify-content-center"
+                             style="width:120px;height:120px;background:#f8fafc;border:1px dashed #cbd5e1">
+                            <img id="imagePreview"
+                                 th:src="${foodItem.imageUrl}"
+                                 th:classappend="${foodItem.imageUrl} ? '' : 'd-none'"
+                                 alt="Preview"
+                                 style="width:100%;height:100%;object-fit:cover">
+                            <div id="imagePlaceholder" th:classappend="${foodItem.imageUrl} ? 'd-none' : ''" class="text-muted">
+                                <i class="bi bi-image" style="font-size:1.6rem"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <input class="form-control" type="file" id="imageFile" name="imageFile"
+                                   accept="image/png,image/jpeg,image/webp,image/gif">
+                            <div class="form-text">JPG/PNG/WEBP/GIF, up to 5MB.</div>
+                            <div id="uploadError" class="small text-danger mt-2 d-none"></div>
+                            <div id="uploadProgressWrap" class="progress mt-2 d-none" style="height:8px">
+                                <div id="uploadProgress" class="progress-bar" role="progressbar" style="width:0%"></div>
+                            </div>
+                            <div class="mt-2 d-flex gap-2">
+                                <button id="removeImageBtn" type="button" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-x-lg me-1"></i>Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="mb-4 form-check">
                     <input class="form-check-input" type="checkbox" th:field="*{available}" id="availableCheck">
                     <label class="form-check-label fw-semibold" for="availableCheck">Available for purchase</label>
                 </div>
-                <button class="btn btn-primary px-5 fw-semibold" type="submit">Save</button>
+                <button id="saveBtn" class="btn btn-primary px-5 fw-semibold" type="submit">Save</button>
             </form>
         </div>
     </div>
+
+    <script>
+        (function () {
+            var imageInput = document.getElementById('imageFile');
+            var imageUrlField = document.getElementById('imageUrlField');
+            var preview = document.getElementById('imagePreview');
+            var placeholder = document.getElementById('imagePlaceholder');
+            var errorEl = document.getElementById('uploadError');
+            var progressWrap = document.getElementById('uploadProgressWrap');
+            var progressBar = document.getElementById('uploadProgress');
+            var removeBtn = document.getElementById('removeImageBtn');
+            var saveBtn = document.getElementById('saveBtn');
+            var csrfMeta = document.getElementById('csrfMeta');
+            var csrfHeader = csrfMeta ? csrfMeta.getAttribute('data-header') : null;
+            var csrfToken = csrfMeta ? csrfMeta.getAttribute('data-token') : null;
+
+            var setError = function (msg) {
+                if (!msg) {
+                    errorEl.classList.add('d-none');
+                    errorEl.textContent = '';
+                    return;
+                }
+                errorEl.textContent = msg;
+                errorEl.classList.remove('d-none');
+            };
+
+            var setUploading = function (uploading) {
+                if (uploading) {
+                    progressWrap.classList.remove('d-none');
+                    progressBar.style.width = '0%';
+                    saveBtn.disabled = true;
+                    imageInput.disabled = true;
+                    removeBtn.disabled = true;
+                } else {
+                    progressWrap.classList.add('d-none');
+                    saveBtn.disabled = false;
+                    imageInput.disabled = false;
+                    removeBtn.disabled = false;
+                }
+            };
+
+            var showPreviewUrl = function (url) {
+                if (!url) {
+                    preview.classList.add('d-none');
+                    placeholder.classList.remove('d-none');
+                    preview.removeAttribute('src');
+                    return;
+                }
+                preview.src = url;
+                preview.classList.remove('d-none');
+                placeholder.classList.add('d-none');
+            };
+
+            var maxBytesHost = document.querySelector('[data-max-bytes]');
+            var maxBytesAttr = maxBytesHost ? maxBytesHost.getAttribute('data-max-bytes') : null;
+            var maxBytes = maxBytesAttr ? parseInt(maxBytesAttr, 10) : 5242880;
+            var allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+
+            var uploadFile = function (file) {
+                return new Promise(function (resolve, reject) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/admin/api/food-items/images', true);
+                    xhr.responseType = 'json';
+                    if (csrfHeader && csrfToken) {
+                        xhr.setRequestHeader(csrfHeader, csrfToken);
+                    }
+
+                    xhr.upload.onprogress = function (evt) {
+                        if (!evt.lengthComputable) return;
+                        var pct = Math.max(0, Math.min(100, Math.round((evt.loaded / evt.total) * 100)));
+                        progressBar.style.width = pct + '%';
+                    };
+
+                    xhr.onload = function () {
+                        var status = xhr.status || 0;
+                        if (status >= 200 && status < 300) {
+                            var body = xhr.response;
+                            if (body && body.imageUrl) {
+                                resolve(body.imageUrl);
+                                return;
+                            }
+                            reject('Upload succeeded but no imageUrl was returned.');
+                            return;
+                        }
+                        var err = xhr.response && xhr.response.error ? xhr.response.error : ('Upload failed (HTTP ' + status + ').');
+                        reject(err);
+                    };
+
+                    xhr.onerror = function () {
+                        reject('Upload failed due to a network error.');
+                    };
+
+                    var data = new FormData();
+                    data.append('file', file);
+                    xhr.send(data);
+                });
+            };
+
+            var deleteImage = function (imageUrl) {
+                if (!imageUrl) return Promise.resolve();
+                var url = '/admin/api/food-items/images?imageUrl=' + encodeURIComponent(imageUrl);
+                var headers = {};
+                if (csrfHeader && csrfToken) {
+                    headers[csrfHeader] = csrfToken;
+                }
+                return fetch(url, {method: 'DELETE', headers: headers}).then(function () {});
+            };
+
+            imageInput.addEventListener('change', function () {
+                setError(null);
+                var file = imageInput.files && imageInput.files[0] ? imageInput.files[0] : null;
+                if (!file) return;
+
+                if (!allowedTypes.has(file.type)) {
+                    setError('Unsupported image format. Allowed: JPG, PNG, WEBP, GIF.');
+                    imageInput.value = '';
+                    return;
+                }
+                if (file.size > maxBytes) {
+                    setError('Image is too large. Max allowed is 5MB.');
+                    imageInput.value = '';
+                    return;
+                }
+
+                var objectUrl = URL.createObjectURL(file);
+                showPreviewUrl(objectUrl);
+                setUploading(true);
+
+                uploadFile(file).then(function (imageUrl) {
+                    URL.revokeObjectURL(objectUrl);
+                    imageUrlField.value = imageUrl;
+                    imageInput.value = '';
+                    showPreviewUrl(imageUrl);
+                    setUploading(false);
+                }).catch(function (err) {
+                    URL.revokeObjectURL(objectUrl);
+                    setError(err);
+                    setUploading(false);
+                });
+            });
+
+            removeBtn.addEventListener('click', function () {
+                setError(null);
+                var current = imageUrlField.value;
+                imageUrlField.value = '';
+                imageInput.value = '';
+                showPreviewUrl(null);
+                deleteImage(current).catch(function () {});
+            });
+        })();
+    </script>
 </th:block>
 </html>

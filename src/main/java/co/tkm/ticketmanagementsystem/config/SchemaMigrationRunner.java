@@ -157,6 +157,34 @@ public class SchemaMigrationRunner implements BeanPostProcessor, PriorityOrdered
             fixByteaToVarchar(jdbcTemplate, "movies", "image_path", 500);
             fixByteaToVarchar(jdbcTemplate, "movies", "banner_path", 500);
         });
+
+        applyIfNotApplied(jdbcTemplate, "2026_05_03_009_food_items_image_url_column", () -> {
+            if (!tableExists(jdbcTemplate, "food_items")) {
+                return;
+            }
+
+            boolean hasImageUrlSnake = columnExists(jdbcTemplate, "food_items", "image_url");
+            boolean hasImageUrlCamel = columnExists(jdbcTemplate, "food_items", "imageurl");
+            if (hasImageUrlCamel && !hasImageUrlSnake) {
+                jdbcTemplate.execute("ALTER TABLE food_items RENAME COLUMN imageurl TO image_url");
+                hasImageUrlSnake = true;
+            }
+
+            if (!hasImageUrlSnake) {
+                jdbcTemplate.execute("ALTER TABLE food_items ADD COLUMN image_url VARCHAR(500)");
+            }
+
+            fixByteaToVarchar(jdbcTemplate, "food_items", "image_url", 500);
+        });
+
+        applyIfNotApplied(jdbcTemplate, "2026_05_03_010_movies_release_date_column", () -> {
+            if (!tableExists(jdbcTemplate, "movies")) {
+                return;
+            }
+            if (!columnExists(jdbcTemplate, "movies", "release_date")) {
+                jdbcTemplate.execute("ALTER TABLE movies ADD COLUMN release_date DATE");
+            }
+        });
     }
 
     private void applyIfNotApplied(JdbcTemplate jdbcTemplate, String id, Runnable migration) {

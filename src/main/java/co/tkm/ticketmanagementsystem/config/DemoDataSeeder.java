@@ -183,6 +183,11 @@ public class DemoDataSeeder implements CommandLineRunner {
             m.setCast("Actor " + (char) ('A' + rnd.nextInt(20)) + ", Actor " + (char) ('A' + rnd.nextInt(20)));
             m.setTrailerUrl("https://www.youtube.com/embed/dQw4w9WgXcQ");
             m.setRating(pick(ratings, rnd));
+            if (status == MovieStatus.COMING_SOON) {
+                m.setReleaseDate(LocalDate.now().plusDays(7L + rnd.nextInt(45)));
+            } else {
+                m.setReleaseDate(LocalDate.now().minusDays(rnd.nextInt(45)));
+            }
             m.setDurationMinutes(95 + rnd.nextInt(46));
             m.setStatus(status);
             movies.add(m);
@@ -345,4 +350,3 @@ public class DemoDataSeeder implements CommandLineRunner {
         return list.get(rnd.nextInt(list.size()));
     }
 }
-

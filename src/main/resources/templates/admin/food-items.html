@@ -12,6 +12,7 @@
         <table class="table mb-0 align-middle">
             <thead>
             <tr>
+                <th style="width:60px">Image</th>
                 <th>Name</th>
                 <th>Description</th>
                 <th>Price</th>
@@ -21,6 +22,13 @@
             </thead>
             <tbody>
             <tr th:each="item : ${foodItems}">
+                <td>
+                    <div class="rounded-3 overflow-hidden d-flex align-items-center justify-content-center"
+                         style="width:44px;height:44px;background:#f8fafc;border:1px solid #e2e8f0">
+                        <img th:if="${item.imageUrl}" th:src="${item.imageUrl}" alt="" style="width:100%;height:100%;object-fit:cover">
+                        <i th:unless="${item.imageUrl}" class="bi bi-image text-muted"></i>
+                    </div>
+                </td>
                 <td class="fw-semibold" th:text="${item.name}"></td>
                 <td class="text-muted" th:text="${item.description}"></td>
                 <td th:text="'$' + ${item.price}"></td>
@@ -41,7 +49,7 @@
                 </td>
             </tr>
             <tr th:if="${#lists.isEmpty(foodItems)}">
-                <td colspan="5" class="text-center text-muted py-4">No food items yet.</td>
+                <td colspan="6" class="text-center text-muted py-4">No food items yet.</td>
             </tr>
             </tbody>
         </table>

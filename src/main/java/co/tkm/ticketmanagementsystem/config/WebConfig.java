@@ -18,6 +18,9 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${app.uploads.movies-dir:uploads/movies}")
     private String uploadsMoviesDir;
 
+    @Value("${app.uploads.food-items-dir:uploads/food-items}")
+    private String uploadsFoodItemsDir;
+
     @Value("${spring.mail.host:}")
     private String mailHost;
 
@@ -35,6 +38,10 @@ public class WebConfig implements WebMvcConfigurer {
         Path uploadPath = Paths.get(uploadsMoviesDir).toAbsolutePath().normalize();
         registry.addResourceHandler("/uploads/movies/**")
                 .addResourceLocations("file:" + uploadPath.toString() + "/");
+
+        Path foodUploadPath = Paths.get(uploadsFoodItemsDir).toAbsolutePath().normalize();
+        registry.addResourceHandler("/uploads/food-items/**")
+                .addResourceLocations("file:" + foodUploadPath.toString() + "/");
     }
 
     @Bean

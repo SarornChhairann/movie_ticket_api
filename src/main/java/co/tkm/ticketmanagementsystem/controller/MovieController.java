@@ -30,12 +30,13 @@ public class MovieController {
     private final HallService hallService;
     private final BookingService bookingService;
 
-    @GetMapping({"/", "/movies"})
+    @GetMapping("/movies")
     public String list(
             @RequestParam(value = "tab", required = false, defaultValue = "NOW_SHOWING") String tab,
             @RequestParam(value = "genre", required = false) String genre,
             @RequestParam(value = "language", required = false) String language,
             @RequestParam(value = "format", required = false) String format,
+            @RequestParam(value = "rating", required = false) String rating,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "city", required = false) String city,
             Authentication authentication,
@@ -48,7 +49,7 @@ public class MovieController {
             status = MovieStatus.NOW_SHOWING;
         }
 
-        List<Movie> movies = movieService.filterMovies(status, genre, language, format, search);
+        List<Movie> movies = movieService.filterMovies(status, genre, language, format, rating, search);
         List<Movie> comingSoon = movieService.findComingSoon();
         List<Hall> halls = hallService.findByCity(city);
         List<String> cities = hallService.findDistinctCities();
@@ -63,6 +64,7 @@ public class MovieController {
         model.addAttribute("genre", genre);
         model.addAttribute("language", language);
         model.addAttribute("format", format);
+        model.addAttribute("rating", rating);
         model.addAttribute("search", search);
         model.addAttribute("genres", movieService.findDistinctGenres());
         model.addAttribute("languages", movieService.findDistinctLanguages());

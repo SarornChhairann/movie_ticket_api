@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout('Home', ~{::content})}">
+<th:block th:fragment="content">
+    <style>
+        :root{
+            --lc-bg:#05060a;
+            --lc-surface:#071428;
+            --lc-card:#0b1f3a;
+            --lc-blue:#2aa7ff;
+            --lc-gold:#d6b25e;
+            --lc-text:#eaf1ff;
+            --lc-muted:rgba(234,241,255,.68);
+            --mtms-dark:var(--lc-bg);
+            --mtms-surface:var(--lc-surface);
+            --mtms-card:var(--lc-card);
+            --mtms-accent:var(--lc-gold);
+            --mtms-amber:var(--lc-blue);
+        }
+        body{background:var(--lc-bg);color:var(--lc-text)}
+        main.mtms-main{padding:0}
+        .mtms-footer{background:linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.65));color:var(--lc-muted)}
+        .mtms-nav{background:rgba(5,6,10,.72);backdrop-filter:saturate(160%) blur(10px);border-bottom:1px solid rgba(214,178,94,.14);box-shadow:none}
+        .mtms-nav .navbar-brand{color:var(--lc-gold)!important}
+        .mtms-nav .nav-link{color:rgba(234,241,255,.80)!important}
+        .mtms-nav .nav-link:hover{color:#fff!important}
+
+        .lc-topbar{
+            position:sticky;top:0;z-index:1040;
+            background:rgba(5,6,10,.55);
+            backdrop-filter:saturate(160%) blur(10px);
+            border-bottom:1px solid rgba(42,167,255,.10);
+        }
+        .lc-topbar-inner{padding:.55rem 0}
+        .lc-chip{
+            background:rgba(255,255,255,.06);
+            border:1px solid rgba(214,178,94,.22);
+            color:rgba(234,241,255,.90);
+            border-radius:999px;
+            padding:.34rem .7rem;
+            font-size:.82rem;
+        }
+        .lc-select{
+            background:rgba(255,255,255,.06);
+            border:1px solid rgba(42,167,255,.18);
+            color:rgba(234,241,255,.92);
+            border-radius:999px;
+            padding:.34rem 2.2rem .34rem .75rem;
+            font-size:.82rem;
+        }
+        .lc-select:focus{box-shadow:0 0 0 .2rem rgba(42,167,255,.18);border-color:rgba(42,167,255,.35)}
+        .lc-lang button{
+            background:rgba(255,255,255,.06);
+            border:1px solid rgba(214,178,94,.22);
+            color:rgba(234,241,255,.92);
+            border-radius:999px;
+            padding:.34rem .75rem;
+            font-size:.82rem;
+            transition:transform .15s, background .15s, border-color .15s;
+        }
+        .lc-lang button.active{background:rgba(214,178,94,.18);border-color:rgba(214,178,94,.42)}
+        .lc-lang button:active{transform:scale(.98)}
+
+        .lc-hero{
+            position:relative;
+            min-height:78vh;
+            overflow:hidden;
+            border-radius:0 0 28px 28px;
+            background:radial-gradient(800px 400px at 15% 20%, rgba(42,167,255,.18), transparent 60%),
+                       radial-gradient(900px 500px at 85% 25%, rgba(214,178,94,.14), transparent 55%),
+                       linear-gradient(180deg, rgba(7,20,40,.92), rgba(5,6,10,1));
+            border-bottom:1px solid rgba(214,178,94,.14);
+        }
+        .lc-hero-slides{position:absolute;inset:0}
+        .lc-slide{
+            position:absolute;inset:0;
+            background-size:cover;
+            background-position:center;
+            opacity:0;
+            transform:scale(1.02);
+            transition:opacity .7s ease, transform 1.8s ease;
+            will-change:opacity,transform,background-position;
+        }
+        .lc-slide.active{opacity:1;transform:scale(1.0)}
+        .lc-slide::after{
+            content:"";
+            position:absolute;inset:0;
+            background:linear-gradient(90deg, rgba(5,6,10,.92) 0%, rgba(5,6,10,.58) 45%, rgba(5,6,10,.86) 100%),
+                       radial-gradient(550px 420px at 20% 35%, rgba(42,167,255,.15), transparent 60%),
+                       radial-gradient(650px 520px at 75% 40%, rgba(214,178,94,.12), transparent 65%);
+        }
+        .lc-hero-content{position:relative;z-index:2;padding:5.2rem 0 3.2rem}
+        .lc-hero-kicker{
+            display:inline-flex;align-items:center;gap:.5rem;
+            padding:.35rem .75rem;border-radius:999px;
+            background:rgba(214,178,94,.10);
+            border:1px solid rgba(214,178,94,.28);
+            color:rgba(234,241,255,.92);
+            font-weight:700;font-size:.8rem;letter-spacing:.35px;
+        }
+        .lc-hero-title{font-weight:900;letter-spacing:-.5px;line-height:1.05}
+        .lc-hero-sub{color:var(--lc-muted);max-width:56ch}
+        .lc-btn-primary{
+            background:linear-gradient(135deg, rgba(214,178,94,1), rgba(255,214,135,1));
+            color:#1b1408;border:none;
+            border-radius:14px;
+            padding:.75rem 1.15rem;
+            font-weight:800;
+            box-shadow:0 12px 30px rgba(214,178,94,.18);
+        }
+        .lc-btn-primary:hover{filter:brightness(1.02)}
+        .lc-btn-ghost{
+            background:rgba(255,255,255,.06);
+            border:1px solid rgba(42,167,255,.28);
+            color:rgba(234,241,255,.92);
+            border-radius:14px;
+            padding:.75rem 1.1rem;
+            font-weight:800;
+        }
+        .lc-btn-ghost:hover{border-color:rgba(42,167,255,.45);color:#fff}
+
+        .lc-hero-dots{position:absolute;left:0;right:0;bottom:22px;z-index:3}
+        .lc-dots{display:flex;gap:8px;justify-content:center}
+        .lc-dot{
+            width:36px;height:6px;border-radius:999px;
+            background:rgba(255,255,255,.14);
+            border:1px solid rgba(255,255,255,.10);
+            cursor:pointer;transition:transform .15s, background .15s, border-color .15s;
+        }
+        .lc-dot.active{background:rgba(214,178,94,.55);border-color:rgba(214,178,94,.55)}
+        .lc-dot:active{transform:scale(.98)}
+
+        .lc-section{padding:3.4rem 0}
+        .lc-section-title{font-weight:900;letter-spacing:-.3px}
+        .lc-section-sub{color:var(--lc-muted);max-width:70ch}
+
+        .lc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+        @media (min-width:768px){.lc-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}}
+        @media (min-width:1200px){.lc-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+
+        .lc-card{
+            position:relative;
+            border-radius:18px;
+            background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+            border:1px solid rgba(255,255,255,.10);
+            overflow:hidden;
+            transition:transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+        }
+        .lc-card:hover{
+            transform:translateY(-6px);
+            border-color:rgba(214,178,94,.30);
+            box-shadow:0 18px 55px rgba(0,0,0,.45);
+        }
+        .lc-poster{
+            width:100%;
+            aspect-ratio:2/3;
+            background:rgba(255,255,255,.06);
+            display:block;
+            object-fit:cover;
+        }
+        .lc-card-body{padding:.75rem .8rem .9rem}
+        .lc-card-title{font-weight:850;font-size:.95rem;line-height:1.15;margin:0}
+        .lc-meta{color:rgba(234,241,255,.72);font-size:.78rem}
+        .lc-pill{
+            display:inline-flex;align-items:center;gap:.35rem;
+            padding:.22rem .55rem;border-radius:999px;
+            background:rgba(42,167,255,.10);
+            border:1px solid rgba(42,167,255,.20);
+            color:rgba(234,241,255,.88);
+            font-weight:700;font-size:.72rem;
+        }
+        .lc-actions{
+            position:absolute;left:10px;right:10px;bottom:10px;
+            display:flex;gap:8px;opacity:0;transform:translateY(8px);
+            transition:opacity .18s ease, transform .18s ease;
+        }
+        .lc-card:hover .lc-actions{opacity:1;transform:none}
+        .lc-action{
+            flex:1;
+            border-radius:14px;
+            padding:.55rem .7rem;
+            border:1px solid rgba(255,255,255,.16);
+            background:rgba(0,0,0,.35);
+            color:#fff;
+            font-weight:800;
+            font-size:.78rem;
+        }
+        .lc-action.primary{border-color:rgba(214,178,94,.30);background:rgba(214,178,94,.18);color:rgba(234,241,255,.95)}
+
+        .lc-soft-panel{
+            border-radius:22px;
+            background:radial-gradient(800px 400px at 15% 25%, rgba(42,167,255,.12), transparent 60%),
+                       radial-gradient(900px 500px at 85% 30%, rgba(214,178,94,.10), transparent 55%),
+                       linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+            border:1px solid rgba(255,255,255,.10);
+            box-shadow:0 18px 65px rgba(0,0,0,.42);
+        }
+
+        .lc-quickbook-grid{display:grid;gap:14px;grid-template-columns:1fr}
+        @media (min-width:992px){.lc-quickbook-grid{grid-template-columns:1.1fr .9fr;gap:18px}}
+        .lc-field{
+            background:rgba(255,255,255,.06);
+            border:1px solid rgba(255,255,255,.12);
+            color:rgba(234,241,255,.92);
+            border-radius:14px;
+            padding:.7rem .9rem;
+        }
+        .lc-field:focus{box-shadow:0 0 0 .2rem rgba(214,178,94,.18);border-color:rgba(214,178,94,.35)}
+        .lc-times{display:flex;flex-wrap:wrap;gap:10px}
+        .lc-time{
+            border-radius:999px;
+            padding:.5rem .75rem;
+            background:rgba(0,0,0,.30);
+            border:1px solid rgba(255,255,255,.14);
+            color:#fff;
+            font-weight:800;
+            text-decoration:none;
+        }
+        .lc-time:hover{border-color:rgba(42,167,255,.45)}
+        .lc-skeleton{
+            background:linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.10), rgba(255,255,255,.05));
+            background-size:200% 100%;
+            animation:lcShimmer 1.1s ease-in-out infinite;
+            border-radius:999px;
+            height:36px;
+            width:96px;
+        }
+        @keyframes lcShimmer{0%{background-position:0 0}100%{background-position:-200% 0}}
+
+        .lc-benefits{display:grid;grid-template-columns:1fr;gap:14px}
+        @media (min-width:768px){.lc-benefits{grid-template-columns:repeat(3,1fr);gap:18px}}
+        .lc-benefit{
+            border-radius:20px;
+            padding:1.15rem 1.15rem;
+            background:rgba(255,255,255,.05);
+            border:1px solid rgba(255,255,255,.10);
+        }
+        .lc-benefit i{font-size:1.35rem;color:var(--lc-gold)}
+        .lc-benefit-title{font-weight:900;margin:0}
+        .lc-benefit-sub{color:var(--lc-muted);margin:0}
+
+        .lc-float{
+            position:fixed;right:16px;bottom:16px;z-index:1030;
+            display:flex;flex-direction:column;gap:10px;
+        }
+        .lc-float a{
+            display:inline-flex;align-items:center;gap:.55rem;
+            background:rgba(255,255,255,.06);
+            border:1px solid rgba(214,178,94,.24);
+            color:rgba(234,241,255,.92);
+            border-radius:999px;
+            padding:.55rem .85rem;
+            text-decoration:none;
+            font-weight:800;
+            backdrop-filter:saturate(160%) blur(10px);
+        }
+        .lc-float a:hover{border-color:rgba(214,178,94,.42);color:#fff}
+
+        @media (prefers-reduced-motion: reduce){
+            .lc-card,.lc-slide,.lc-skeleton{transition:none!important;animation:none!important}
+        }
+    </style>
+
+    <div class="lc-topbar no-print">
+        <div class="container">
+            <div class="lc-topbar-inner d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="lc-chip"><i class="bi bi-geo-alt me-1"></i><span data-i18n="top_location">Location</span></span>
+                    <select id="citySelect" class="lc-select">
+                        <option value="" data-i18n="city_all">All Cinemas</option>
+                        <option th:each="c : ${cities}" th:value="${c}" th:text="${c}"></option>
+                    </select>
+                    <a class="lc-chip text-decoration-none" th:href="@{/tickets/search}">
+                        <i class="bi bi-ticket-perforated me-1"></i><span data-i18n="top_find_ticket">Find Ticket</span>
+                    </a>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="lc-lang d-flex align-items-center gap-2">
+                        <button type="button" id="langEn" class="active">EN</button>
+                        <button type="button" id="langKm">KH</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="lc-hero" id="homeHero">
+        <div class="lc-hero-slides" id="heroSlides">
+            <div th:each="m,stat : ${nowShowing}" th:if="${stat.index < 5}"
+                 class="lc-slide"
+                 th:classappend="${stat.index == 0} ? ' active' : ''"
+                 th:attr="data-bg=${(m.bannerPath != null and !#strings.isEmpty(m.bannerPath)) ? m.bannerPath : m.imagePath},
+                          data-movie-id=${m.id},
+                          data-title=${m.title},
+                          data-desc=${m.description},
+                          data-trailer=${m.trailerUrl},
+                          data-poster=${m.imagePath},
+                          data-rating=${m.rating},
+                          data-lang=${m.language},
+                          data-format=${m.format},
+                          data-duration=${m.durationMinutes},
+                          data-release=${m.releaseDate}"
+                 th:style="${stat.index == 0 and ((m.bannerPath != null and !#strings.isEmpty(m.bannerPath)) or (m.imagePath != null and !#strings.isEmpty(m.imagePath)))} ? 'background-image:url(' + ((m.bannerPath != null and !#strings.isEmpty(m.bannerPath)) ? m.bannerPath : m.imagePath) + ');' : ''">
+            </div>
+        </div>
+        <div class="container lc-hero-content">
+            <div class="row align-items-end">
+                <div class="col-lg-7">
+                    <div class="lc-hero-kicker mb-3">
+                        <i class="bi bi-stars"></i>
+                        <span data-i18n="hero_kicker">Premium Cinema Experience</span>
+                    </div>
+                    <h1 id="heroTitle" class="display-5 lc-hero-title mb-3" data-i18n="hero_title_fallback">Discover. Choose. Book in seconds.</h1>
+                    <p id="heroSub" class="lc-hero-sub mb-4" data-i18n="hero_sub">Explore the latest blockbusters, compare showtimes, preview seats, and checkout fast.</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" id="heroBookBtn" class="lc-btn-primary">
+                            <i class="bi bi-lightning-charge-fill me-1"></i><span data-i18n="cta_book_now">Book Now</span>
+                        </button>
+                        <button type="button" id="heroTrailerBtn" class="lc-btn-ghost">
+                            <i class="bi bi-play-circle me-1"></i><span data-i18n="cta_watch_trailer">Watch Trailer</span>
+                        </button>
+                        <a class="lc-btn-ghost text-decoration-none" href="#nowShowing">
+                            <i class="bi bi-grid me-1"></i><span data-i18n="cta_browse">Browse Now Showing</span>
+                        </a>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mt-4">
+                        <span id="heroMeta1" class="lc-pill"><i class="bi bi-badge-hd me-1"></i><span data-i18n="meta_formats">IMAX · 3D · 4DX</span></span>
+                        <span id="heroMeta2" class="lc-pill"><i class="bi bi-shield-check me-1"></i><span data-i18n="meta_secure">Secure Checkout</span></span>
+                        <span id="heroMeta3" class="lc-pill"><i class="bi bi-gift me-1"></i><span data-i18n="meta_rewards">Earn Rewards</span></span>
+                    </div>
+                </div>
+                <div class="col-lg-5 d-none d-lg-block">
+                    <div class="lc-soft-panel p-3 p-xl-4">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="fw-bold" data-i18n="quickbook_title">Quick Book</div>
+                            <span class="lc-pill"><i class="bi bi-clock me-1"></i><span data-i18n="quickbook_hint">Pick showtime, preview seats</span></span>
+                        </div>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-7">
+                                <label class="form-label small mb-1" style="color:rgba(234,241,255,.72)" data-i18n="field_movie">Movie</label>
+                                <select id="qbMovie" class="form-select lc-field">
+                                    <option value="" data-i18n="select_movie">Select a movie</option>
+                                    <option th:each="m : ${nowShowing}" th:value="${m.id}" th:text="${m.title}"></option>
+                                </select>
+                            </div>
+                            <div class="col-5">
+                                <label class="form-label small mb-1" style="color:rgba(234,241,255,.72)" data-i18n="field_date">Date</label>
+                                <input id="qbDate" class="form-control lc-field" type="date" th:value="${today}">
+                            </div>
+                            <div class="col-12 mt-2">
+                                <div id="qbTimes" class="lc-times">
+                                    <span class="lc-skeleton"></span>
+                                    <span class="lc-skeleton"></span>
+                                    <span class="lc-skeleton"></span>
+                                </div>
+                                <div class="small mt-2" style="color:rgba(234,241,255,.68)" data-i18n="quickbook_note">
+                                    Showtimes are filtered by your selected location.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="lc-hero-dots">
+            <div class="lc-dots" id="heroDots"></div>
+        </div>
+    </section>
+
+    <section class="lc-section" id="nowShowing">
+        <div class="container">
+            <div class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
+                <div>
+                    <h2 class="lc-section-title mb-1" data-i18n="now_title">Now Showing</h2>
+                    <div class="lc-section-sub" data-i18n="now_sub">Discover today’s biggest films. Tap a poster for trailer, showtimes, and a fast booking path.</div>
+                </div>
+                <a class="lc-btn-ghost text-decoration-none" th:href="@{/movies}">
+                    <i class="bi bi-camera-video me-1"></i><span data-i18n="cta_view_all">View All</span>
+                </a>
+            </div>
+
+            <div class="lc-grid">
+                <div th:each="m : ${nowShowing}">
+                    <div class="lc-card"
+                         role="button"
+                         tabindex="0"
+                         th:attr="data-movie-id=${m.id},
+                                  data-title=${m.title},
+                                  data-desc=${m.description},
+                                  data-trailer=${m.trailerUrl},
+                                  data-poster=${m.imagePath},
+                                  data-rating=${m.rating},
+                                  data-lang=${m.language},
+                                  data-format=${m.format},
+                                  data-duration=${m.durationMinutes},
+                                  data-release=${m.releaseDate}">
+                        <img class="lc-poster"
+                             th:if="${m.imagePath != null and !#strings.isEmpty(m.imagePath)}"
+                             data-lazy="img"
+                             th:attr="data-src=${m.imagePath}"
+                             alt=""
+                             loading="lazy"
+                             decoding="async">
+                        <div class="lc-poster" th:unless="${m.imagePath != null and !#strings.isEmpty(m.imagePath)}"></div>
+                        <div class="lc-card-body">
+                            <div class="d-flex align-items-start justify-content-between gap-2">
+                                <h3 class="lc-card-title" th:text="${m.title}"></h3>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                <span class="lc-pill" th:if="${m.rating}"><i class="bi bi-shield me-1"></i><span th:text="${m.rating}"></span></span>
+                                <span class="lc-pill" th:if="${m.language}"><i class="bi bi-translate me-1"></i><span th:text="${m.language}"></span></span>
+                                <span class="lc-pill" th:if="${m.format}"><i class="bi bi-badge-hd me-1"></i><span th:text="${m.format}"></span></span>
+                            </div>
+                            <div class="lc-meta mt-2" th:text="${m.durationMinutes} + ' min'"></div>
+                        </div>
+                        <div class="lc-actions">
+                            <button type="button" class="lc-action primary" data-action="quickview">
+                                <i class="bi bi-lightning-charge-fill me-1"></i><span data-i18n="cta_quick_view">Quick View</span>
+                            </button>
+                            <button type="button" class="lc-action" data-action="trailer">
+                                <i class="bi bi-play-fill me-1"></i><span data-i18n="cta_trailer">Trailer</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="lc-section" id="comingSoon">
+        <div class="container">
+            <div class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
+                <div>
+                    <h2 class="lc-section-title mb-1" data-i18n="soon_title">Coming Soon</h2>
+                    <div class="lc-section-sub" data-i18n="soon_sub">Countdown to the next big releases and save them to your watchlist.</div>
+                </div>
+                <a class="lc-btn-ghost text-decoration-none" th:href="@{/movies(tab='COMING_SOON')}">
+                    <i class="bi bi-hourglass-split me-1"></i><span data-i18n="cta_view_soon">View Coming Soon</span>
+                </a>
+            </div>
+
+            <div class="lc-grid">
+                <div th:each="m : ${comingSoon}">
+                    <div class="lc-card"
+                         th:attr="data-movie-id=${m.id},
+                                  data-title=${m.title},
+                                  data-desc=${m.description},
+                                  data-trailer=${m.trailerUrl},
+                                  data-poster=${m.imagePath},
+                                  data-rating=${m.rating},
+                                  data-lang=${m.language},
+                                  data-format=${m.format},
+                                  data-duration=${m.durationMinutes},
+                                  data-release=${m.releaseDate}">
+                        <img class="lc-poster"
+                             th:if="${m.imagePath != null and !#strings.isEmpty(m.imagePath)}"
+                             data-lazy="img"
+                             th:attr="data-src=${m.imagePath}"
+                             alt=""
+                             loading="lazy"
+                             decoding="async">
+                        <div class="lc-poster" th:unless="${m.imagePath != null and !#strings.isEmpty(m.imagePath)}"></div>
+                        <div class="lc-card-body">
+                            <h3 class="lc-card-title" th:text="${m.title}"></h3>
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                <span class="lc-pill" th:if="${m.releaseDate}" data-countdown th:attr="data-release=${m.releaseDate}">
+                                    <i class="bi bi-hourglass-split me-1"></i><span data-i18n="countdown_loading">Loading…</span>
+                                </span>
+                                <span class="lc-pill" th:unless="${m.releaseDate}">
+                                    <i class="bi bi-calendar-event me-1"></i><span data-i18n="countdown_tba">TBA</span>
+                                </span>
+                            </div>
+                            <div class="d-flex gap-2 mt-3">
+                                <button type="button" class="lc-action primary w-100" data-action="remind">
+                                    <i class="bi bi-bell me-1"></i><span data-i18n="cta_remind">Remind Me</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="lc-section" id="membership">
+        <div class="container">
+            <div class="lc-soft-panel p-4 p-lg-5">
+                <div class="row align-items-center g-4">
+                    <div class="col-lg-6">
+                        <h2 class="lc-section-title mb-2" data-i18n="mem_title">Membership That Pays Back</h2>
+                        <div class="lc-section-sub mb-4" data-i18n="mem_sub">Unlock member pricing, earn points on every ticket, and checkout faster with saved details.</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="lc-btn-primary text-decoration-none" th:href="@{/register}">
+                                <i class="bi bi-stars me-1"></i><span data-i18n="cta_join">Join Now</span>
+                            </a>
+                            <a class="lc-btn-ghost text-decoration-none" th:href="@{/login}">
+                                <i class="bi bi-person-check me-1"></i><span data-i18n="cta_sign_in">Sign In</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="lc-benefits">
+                            <div class="lc-benefit">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <i class="bi bi-cash-coin"></i>
+                                    <div class="lc-benefit-title" data-i18n="mem_b1_title">Member Price</div>
+                                </div>
+                                <p class="lc-benefit-sub" data-i18n="mem_b1_sub">Pay less and get special access to seasonal deals.</p>
+                            </div>
+                            <div class="lc-benefit">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <i class="bi bi-award"></i>
+                                    <div class="lc-benefit-title" data-i18n="mem_b2_title">Earn Points</div>
+                                </div>
+                                <p class="lc-benefit-sub" data-i18n="mem_b2_sub">Collect rewards and redeem free tickets faster.</p>
+                            </div>
+                            <div class="lc-benefit">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <i class="bi bi-lightning-charge"></i>
+                                    <div class="lc-benefit-title" data-i18n="mem_b3_title">Fast Checkout</div>
+                                </div>
+                                <p class="lc-benefit-sub" data-i18n="mem_b3_sub">Saved details and streamlined flow to reduce drop-off.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="lc-section" id="quickBook">
+        <div class="container">
+            <div class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
+                <div>
+                    <h2 class="lc-section-title mb-1" data-i18n="flow_title">Movie Discovery → Ticket Purchase</h2>
+                    <div class="lc-section-sub" data-i18n="flow_sub">Select movie, pick showtime, preview seats, then continue into the full seat map and checkout.</div>
+                </div>
+                <a class="lc-btn-ghost text-decoration-none" th:href="@{/movies}">
+                    <i class="bi bi-search me-1"></i><span data-i18n="cta_discover">Discover Movies</span>
+                </a>
+            </div>
+
+            <div class="lc-soft-panel p-4 p-lg-5">
+                <div class="lc-quickbook-grid">
+                    <div>
+                        <div class="fw-bold mb-2" data-i18n="qb2_title">Choose Showtime</div>
+                        <div class="row g-2">
+                            <div class="col-md-7">
+                                <label class="form-label small mb-1" style="color:rgba(234,241,255,.72)" data-i18n="field_movie">Movie</label>
+                                <select id="flowMovie" class="form-select lc-field">
+                                    <option value="" data-i18n="select_movie">Select a movie</option>
+                                    <option th:each="m : ${nowShowing}" th:value="${m.id}" th:text="${m.title}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label small mb-1" style="color:rgba(234,241,255,.72)" data-i18n="field_date">Date</label>
+                                <input id="flowDate" class="form-control lc-field" type="date" th:value="${today}">
+                            </div>
+                            <div class="col-12 mt-2">
+                                <div id="flowTimes" class="lc-times"></div>
+                                <div id="flowEmpty" class="small mt-2 d-none" style="color:rgba(234,241,255,.68)" data-i18n="no_showtimes">
+                                    No showtimes found. Try another date or location.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="fw-bold mb-2" data-i18n="seat_preview_title">Seat Selection Preview</div>
+                        <div class="lc-section-sub mb-3" data-i18n="seat_preview_sub">Preview only. Final seat selection happens after choosing a showtime.</div>
+                        <button class="lc-btn-ghost w-100" type="button" id="seatPreviewOpen">
+                            <i class="bi bi-grid-3x3-gap me-1"></i><span data-i18n="cta_seat_preview">Preview Seats</span>
+                        </button>
+                        <div class="small mt-3" style="color:rgba(234,241,255,.68)" data-i18n="promo_note">
+                            Add snack combos during checkout to boost savings.
+                        </div>
+                        <a class="lc-btn-primary text-decoration-none w-100 mt-2 d-inline-flex align-items-center justify-content-center"
+                           th:href="@{/movies}">
+                            <i class="bi bi-cup-straw me-1"></i><span data-i18n="cta_add_combos">Explore Combos</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="lc-section" id="support">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="lc-soft-panel p-4 p-lg-5">
+                        <h2 class="lc-section-title mb-2" data-i18n="support_title">Support & Confidence</h2>
+                        <div class="lc-section-sub mb-3" data-i18n="support_sub">Clear policies, quick ticket lookup, and help when you need it.</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="lc-btn-ghost text-decoration-none" th:href="@{/tickets/search}">
+                                <i class="bi bi-qr-code-scan me-1"></i><span data-i18n="cta_find_booking">Find My Booking</span>
+                            </a>
+                            <a class="lc-btn-ghost text-decoration-none" th:href="@{/movies}">
+                                <i class="bi bi-info-circle me-1"></i><span data-i18n="cta_view_policies">Refund Policy</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="lc-soft-panel p-4 p-lg-5 h-100">
+                        <h3 class="lc-section-title h5 mb-2" data-i18n="ecard_title">Gift Cards</h3>
+                        <div class="lc-section-sub mb-3" data-i18n="ecard_sub">Perfect for friends, family, and corporate perks.</div>
+                        <a class="lc-btn-primary text-decoration-none w-100 d-inline-flex align-items-center justify-content-center"
+                           th:href="@{/movies}">
+                            <i class="bi bi-gift me-1"></i><span data-i18n="cta_learn_more">Learn More</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="lc-float no-print">
+        <a th:href="@{/bookings/my-bookings}">
+            <i class="bi bi-ticket-perforated"></i><span data-i18n="float_my_bookings">My Bookings</span>
+        </a>
+        <a href="#support" id="helpBtn">
+            <i class="bi bi-chat-dots"></i><span data-i18n="float_help">Help</span>
+        </a>
+    </div>
+
+    <div class="modal fade" id="trailerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="background:rgba(8,18,34,.98);border:1px solid rgba(255,255,255,.12);border-radius:18px;overflow:hidden">
+                <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,.10)">
+                    <h6 class="modal-title" id="trailerTitle" style="color:#fff">Trailer</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div style="position:relative;padding-top:56.25%">
+                        <iframe id="trailerFrame"
+                                title="Trailer"
+                                style="position:absolute;inset:0;width:100%;height:100%"
+                                src=""
+                                loading="lazy"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowfullscreen></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="quickModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="background:rgba(8,18,34,.98);border:1px solid rgba(255,255,255,.12);border-radius:18px;overflow:hidden">
+                <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,.10)">
+                    <div>
+                        <div class="fw-bold" id="qmTitle" style="color:#fff"></div>
+                        <div class="small" style="color:rgba(234,241,255,.70)" id="qmMeta"></div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <img id="qmPoster" alt="" style="width:100%;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.06)">
+                        </div>
+                        <div class="col-md-8">
+                            <div class="small mb-3" id="qmDesc" style="color:rgba(234,241,255,.78)"></div>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <button type="button" class="lc-btn-ghost" id="qmTrailerBtn">
+                                    <i class="bi bi-play-circle me-1"></i><span data-i18n="cta_trailer">Trailer</span>
+                                </button>
+                                <a class="lc-btn-primary text-decoration-none" id="qmDetailsLink" href="#">
+                                    <i class="bi bi-info-circle me-1"></i><span data-i18n="cta_details">Details</span>
+                                </a>
+                            </div>
+                            <div class="lc-soft-panel p-3">
+                                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                    <div class="fw-bold" data-i18n="pick_showtime">Pick a showtime</div>
+                                    <input id="qmDate" class="form-control lc-field" type="date" style="max-width:190px">
+                                </div>
+                                <div id="qmTimes" class="lc-times"></div>
+                                <div id="qmEmpty" class="small mt-2 d-none" style="color:rgba(234,241,255,.68)" data-i18n="no_showtimes">
+                                    No showtimes found. Try another date or location.
+                                </div>
+                            </div>
+                            <div class="small mt-3" style="color:rgba(234,241,255,.68)" data-i18n="seat_preview_sub">
+                                Preview only. Final seat selection happens after choosing a showtime.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="seatPreviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background:rgba(8,18,34,.98);border:1px solid rgba(255,255,255,.12);border-radius:18px;overflow:hidden">
+                <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,.10)">
+                    <h6 class="modal-title" style="color:#fff" data-i18n="seat_preview_title">Seat Selection Preview</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="lc-pill"><i class="bi bi-square-fill me-1" style="color:#64d86b"></i><span data-i18n="seat_available">Available</span></span>
+                        <span class="lc-pill"><i class="bi bi-square-fill me-1" style="color:#8b96a9"></i><span data-i18n="seat_booked">Booked</span></span>
+                    </div>
+                    <div id="seatPreviewGrid" class="d-grid" style="grid-template-columns:repeat(10,1fr);gap:8px"></div>
+                    <div class="small mt-3" style="color:rgba(234,241,255,.68)" data-i18n="seat_preview_sub">
+                        Preview only. Final seat selection happens after choosing a showtime.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function(){
+            var qs = function(sel, root){ return (root || document).querySelector(sel); };
+            var qsa = function(sel, root){ return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+
+            var storage = {
+                get: function(k, d){ try{ var v = localStorage.getItem(k); return v == null ? d : v; }catch(e){ return d; } },
+                set: function(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+            };
+
+            var langKey = 'mtms_lang';
+            var cityKey = 'mtms_city';
+
+            var i18n = {
+                en: {
+                    top_location: 'Location',
+                    top_find_ticket: 'Find Ticket',
+                    city_all: 'All Cinemas',
+                    hero_kicker: 'Premium Cinema Experience',
+                    hero_title_fallback: 'Discover. Choose. Book in seconds.',
+                    hero_sub: 'Explore the latest blockbusters, compare showtimes, preview seats, and checkout fast.',
+                    cta_book_now: 'Book Now',
+                    cta_watch_trailer: 'Watch Trailer',
+                    cta_browse: 'Browse Now Showing',
+                    meta_formats: 'IMAX · 3D · 4DX',
+                    meta_secure: 'Secure Checkout',
+                    meta_rewards: 'Earn Rewards',
+                    quickbook_title: 'Quick Book',
+                    quickbook_hint: 'Pick showtime, preview seats',
+                    field_movie: 'Movie',
+                    field_date: 'Date',
+                    select_movie: 'Select a movie',
+                    quickbook_note: 'Showtimes are filtered by your selected location.',
+                    now_title: 'Now Showing',
+                    now_sub: 'Discover today’s biggest films. Tap a poster for trailer, showtimes, and a fast booking path.',
+                    cta_view_all: 'View All',
+                    cta_quick_view: 'Quick View',
+                    cta_trailer: 'Trailer',
+                    soon_title: 'Coming Soon',
+                    soon_sub: 'Countdown to the next big releases and save them to your watchlist.',
+                    cta_view_soon: 'View Coming Soon',
+                    countdown_loading: 'Loading…',
+                    countdown_tba: 'TBA',
+                    cta_remind: 'Remind Me',
+                    mem_title: 'Membership That Pays Back',
+                    mem_sub: 'Unlock member pricing, earn points on every ticket, and checkout faster with saved details.',
+                    cta_join: 'Join Now',
+                    cta_sign_in: 'Sign In',
+                    mem_b1_title: 'Member Price',
+                    mem_b1_sub: 'Pay less and get special access to seasonal deals.',
+                    mem_b2_title: 'Earn Points',
+                    mem_b2_sub: 'Collect rewards and redeem free tickets faster.',
+                    mem_b3_title: 'Fast Checkout',
+                    mem_b3_sub: 'Saved details and streamlined flow to reduce drop-off.',
+                    flow_title: 'Movie Discovery → Ticket Purchase',
+                    flow_sub: 'Select movie, pick showtime, preview seats, then continue into the full seat map and checkout.',
+                    cta_discover: 'Discover Movies',
+                    qb2_title: 'Choose Showtime',
+                    no_showtimes: 'No showtimes found. Try another date or location.',
+                    seat_preview_title: 'Seat Selection Preview',
+                    seat_preview_sub: 'Preview only. Final seat selection happens after choosing a showtime.',
+                    cta_seat_preview: 'Preview Seats',
+                    promo_note: 'Add snack combos during checkout to boost savings.',
+                    cta_add_combos: 'Explore Combos',
+                    support_title: 'Support & Confidence',
+                    support_sub: 'Clear policies, quick ticket lookup, and help when you need it.',
+                    cta_find_booking: 'Find My Booking',
+                    cta_view_policies: 'Refund Policy',
+                    ecard_title: 'Gift Cards',
+                    ecard_sub: 'Perfect for friends, family, and corporate perks.',
+                    cta_learn_more: 'Learn More',
+                    float_my_bookings: 'My Bookings',
+                    float_help: 'Help',
+                    cta_details: 'Details',
+                    pick_showtime: 'Pick a showtime',
+                    seat_available: 'Available',
+                    seat_booked: 'Booked'
+                },
+                km: {
+                    top_location: 'ទីតាំង',
+                    top_find_ticket: 'ស្វែងរកសំបុត្រ',
+                    city_all: 'រោងកុនទាំងអស់',
+                    hero_kicker: 'បទពិសោធន៍រោងកុនពិសេស',
+                    hero_title_fallback: 'ស្វែងរក · ជ្រើសរើស · កក់បានរហ័ស',
+                    hero_sub: 'មើលភាពយន្តថ្មីៗ ប្រៀបធៀបម៉ោងបញ្ចាំង មើលកៅអី និងបង់ប្រាក់បានលឿន។',
+                    cta_book_now: 'កក់ឥឡូវនេះ',
+                    cta_watch_trailer: 'មើល Trailer',
+                    cta_browse: 'មើលកំពុងបញ្ចាំង',
+                    meta_formats: 'IMAX · 3D · 4DX',
+                    meta_secure: 'បង់ប្រាក់សុវត្ថិភាព',
+                    meta_rewards: 'សន្សំពិន្ទុរង្វាន់',
+                    quickbook_title: 'កក់លឿន',
+                    quickbook_hint: 'ជ្រើសម៉ោង និងមើលកៅអី',
+                    field_movie: 'ភាពយន្ត',
+                    field_date: 'កាលបរិច្ឆេទ',
+                    select_movie: 'ជ្រើសរើសភាពយន្ត',
+                    quickbook_note: 'ម៉ោងបញ្ចាំងតាមទីតាំងដែលបានជ្រើស។',
+                    now_title: 'កំពុងបញ្ចាំង',
+                    now_sub: 'ស្វែងរកភាពយន្តពេញនិយម។ ចុចលើផ្ទាំងដើម្បីមើល Trailer និងម៉ោងបញ្ចាំង។',
+                    cta_view_all: 'មើលទាំងអស់',
+                    cta_quick_view: 'មើលរហ័ស',
+                    cta_trailer: 'Trailer',
+                    soon_title: 'ឆាប់មកដល់',
+                    soon_sub: 'រាប់ថយក្រោយទៅកាន់ការចេញផ្សាយថ្មីៗ និងរក្សាទុកចំណាប់អារម្មណ៍។',
+                    cta_view_soon: 'មើលឆាប់មកដល់',
+                    countdown_loading: 'កំពុងផ្ទុក…',
+                    countdown_tba: 'មិនទាន់ដាក់',
+                    cta_remind: 'រំលឹកខ្ញុំ',
+                    mem_title: 'សមាជិកភាពមានអត្ថប្រយោជន៍',
+                    mem_sub: 'បានតម្លៃសមាជិក សន្សំពិន្ទុ និងចេញចូលបានលឿនជាងមុន។',
+                    cta_join: 'ចូលជាសមាជិក',
+                    cta_sign_in: 'ចូលប្រើ',
+                    mem_b1_title: 'តម្លៃសមាជិក',
+                    mem_b1_sub: 'បង់តិច និងទទួលការផ្តល់ជូនពិសេស។',
+                    mem_b2_title: 'សន្សំពិន្ទុ',
+                    mem_b2_sub: 'ប្រមូលរង្វាន់ និងប្តូរសំបុត្រឥតគិតថ្លៃបានឆាប់។',
+                    mem_b3_title: 'បង់លឿន',
+                    mem_b3_sub: 'បំពេញព័ត៌មានរហ័ស កាត់បន្ថយការបោះបង់។',
+                    flow_title: 'ស្វែងរក → កក់សំបុត្រ',
+                    flow_sub: 'ជ្រើសភាពយន្ត ជ្រើសម៉ោង មើលកៅអី ហើយបន្តទៅផែនទីកៅអី និងបង់ប្រាក់។',
+                    cta_discover: 'ស្វែងរកភាពយន្ត',
+                    qb2_title: 'ជ្រើសម៉ោងបញ្ចាំង',
+                    no_showtimes: 'មិនមានម៉ោងបញ្ចាំង។ សាកល្បងថ្ងៃ ឬទីតាំងផ្សេង។',
+                    seat_preview_title: 'មើលកៅអីជាមុន',
+                    seat_preview_sub: 'សម្រាប់មើលប៉ុណ្ណោះ។ ជ្រើសកៅអីពិតប្រាកដនៅជំហានបន្ទាប់។',
+                    cta_seat_preview: 'មើលកៅអី',
+                    promo_note: 'បន្ថែម Combo អាហារនៅ Checkout ដើម្បីសន្សំ។',
+                    cta_add_combos: 'មើល Combo',
+                    support_title: 'ការគាំទ្រ និងទំនុកចិត្ត',
+                    support_sub: 'គោលការណ៍ច្បាស់លាស់ ស្វែងរកសំបុត្រលឿន និងជួយពេលចាំបាច់។',
+                    cta_find_booking: 'ស្វែងរកការកក់',
+                    cta_view_policies: 'គោលការណ៍សងប្រាក់',
+                    ecard_title: 'កាតអំណោយ',
+                    ecard_sub: 'ល្អសម្រាប់មិត្តភក្ដិ គ្រួសារ និងក្រុមហ៊ុន។',
+                    cta_learn_more: 'ស្វែងយល់បន្ថែម',
+                    float_my_bookings: 'ការកក់របស់ខ្ញុំ',
+                    float_help: 'ជំនួយ',
+                    cta_details: 'ព័ត៌មានលម្អិត',
+                    pick_showtime: 'ជ្រើសម៉ោងបញ្ចាំង',
+                    seat_available: 'ទំនេរ',
+                    seat_booked: 'បានកក់'
+                }
+            };
+
+            var applyI18n = function(lang){
+                var dict = i18n[lang] || i18n.en;
+                qsa('[data-i18n]').forEach(function(el){
+                    var key = el.getAttribute('data-i18n');
+                    if (dict[key]) el.textContent = dict[key];
+                });
+            };
+
+            var setLangButtons = function(lang){
+                var enBtn = qs('#langEn');
+                var kmBtn = qs('#langKm');
+                if (!enBtn || !kmBtn) return;
+                enBtn.classList.toggle('active', lang === 'en');
+                kmBtn.classList.toggle('active', lang === 'km');
+            };
+
+            var getCity = function(){
+                var v = storage.get(cityKey, '');
+                return v == null ? '' : v;
+            };
+
+            var setCity = function(city){
+                storage.set(cityKey, city || '');
+            };
+
+            var citySelect = qs('#citySelect');
+            if (citySelect) {
+                citySelect.value = getCity();
+                citySelect.addEventListener('change', function(){
+                    setCity(citySelect.value);
+                    refreshShowtimes();
+                });
+            }
+
+            var currentLang = storage.get(langKey, 'en');
+            setLangButtons(currentLang);
+            applyI18n(currentLang);
+
+            var langEnBtn = qs('#langEn');
+            if (langEnBtn) langEnBtn.addEventListener('click', function(){
+                storage.set(langKey, 'en');
+                setLangButtons('en');
+                applyI18n('en');
+            });
+            var langKmBtn = qs('#langKm');
+            if (langKmBtn) langKmBtn.addEventListener('click', function(){
+                storage.set(langKey, 'km');
+                setLangButtons('km');
+                applyI18n('km');
+            });
+
+            var lazyImgs = qsa('img[data-lazy="img"]');
+            var io = null;
+            if ('IntersectionObserver' in window) {
+                io = new IntersectionObserver(function(entries){
+                    entries.forEach(function(entry){
+                        if (!entry.isIntersecting) return;
+                        var img = entry.target;
+                        var src = img.getAttribute('data-src');
+                        if (src) img.src = src;
+                        img.removeAttribute('data-src');
+                        io.unobserve(img);
+                    });
+                }, {rootMargin:'200px 0px'});
+                lazyImgs.forEach(function(img){ io.observe(img); });
+            } else {
+                lazyImgs.forEach(function(img){
+                    var src = img.getAttribute('data-src');
+                    if (src) img.src = src;
+                    img.removeAttribute('data-src');
+                });
+            }
+
+            var slides = qsa('.lc-slide', qs('#heroSlides'));
+            var dotsWrap = qs('#heroDots');
+            var activeIndex = 0;
+            var heroTimer = null;
+            var heroBookBtn = qs('#heroBookBtn');
+            var heroTrailerBtn = qs('#heroTrailerBtn');
+
+            var heroTitleEl = qs('#heroTitle');
+            var heroSubEl = qs('#heroSub');
+
+            var ensureSlideBg = function(idx){
+                var s = slides[idx];
+                if (!s) return;
+                if (s.style.backgroundImage && s.style.backgroundImage !== 'none') return;
+                var bg = s.getAttribute('data-bg');
+                if (bg) s.style.backgroundImage = 'url(' + bg + ')';
+            };
+
+            var setActiveSlide = function(idx){
+                if (!slides.length) return;
+                activeIndex = (idx + slides.length) % slides.length;
+                slides.forEach(function(s, i){
+                    s.classList.toggle('active', i === activeIndex);
+                });
+                qsa('.lc-dot', dotsWrap).forEach(function(d, i){
+                    d.classList.toggle('active', i === activeIndex);
+                });
+                ensureSlideBg(activeIndex);
+
+                var s = slides[activeIndex];
+                var title = s.getAttribute('data-title') || '';
+                var desc = s.getAttribute('data-desc') || '';
+                if (heroTitleEl && title) heroTitleEl.textContent = title;
+                if (heroSubEl && desc) heroSubEl.textContent = desc;
+            };
+
+            var buildDots = function(){
+                if (!dotsWrap) return;
+                dotsWrap.innerHTML = '';
+                slides.forEach(function(_, i){
+                    var b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'lc-dot' + (i === 0 ? ' active' : '');
+                    b.addEventListener('click', function(){ stopHeroAuto(); setActiveSlide(i); startHeroAuto(); });
+                    dotsWrap.appendChild(b);
+                });
+            };
+
+            var startHeroAuto = function(){
+                if (heroTimer) return;
+                heroTimer = window.setInterval(function(){
+                    setActiveSlide(activeIndex + 1);
+                }, 5500);
+            };
+            var stopHeroAuto = function(){
+                if (!heroTimer) return;
+                window.clearInterval(heroTimer);
+                heroTimer = null;
+            };
+
+            buildDots();
+            ensureSlideBg(0);
+            setActiveSlide(0);
+            startHeroAuto();
+
+            var trailerModalEl = qs('#trailerModal');
+            var trailerFrame = qs('#trailerFrame');
+            var trailerTitle = qs('#trailerTitle');
+            var trailerModal = trailerModalEl ? new bootstrap.Modal(trailerModalEl) : null;
+
+            var toEmbedUrl = function(raw){
+                if (!raw) return null;
+                var u;
+                try { u = new URL(raw, window.location.origin); } catch(e) { return null; }
+                var host = (u.hostname || '').toLowerCase();
+                var path = u.pathname || '';
+                var allow = false;
+
+                if (host.endsWith('youtube.com') || host === 'youtu.be') allow = true;
+                if (host.endsWith('vimeo.com')) allow = true;
+                if (!allow) return null;
+
+                var final = u.toString();
+                if (final.indexOf('autoplay=') === -1) {
+                    final += (final.indexOf('?') >= 0 ? '&' : '?') + 'autoplay=1';
+                }
+                return final;
+            };
+
+            var openTrailer = function(rawUrl, title){
+                if (!trailerModal || !trailerFrame) return;
+                var embed = toEmbedUrl(rawUrl);
+                if (!embed) {
+                    if (rawUrl) window.open(rawUrl, '_blank', 'noopener,noreferrer');
+                    return;
+                }
+                trailerFrame.src = embed;
+                if (trailerTitle) trailerTitle.textContent = title || 'Trailer';
+                trailerModal.show();
+            };
+
+            if (trailerModalEl) {
+                trailerModalEl.addEventListener('hidden.bs.modal', function(){
+                    if (trailerFrame) trailerFrame.src = '';
+                });
+            }
+
+            var quickModalEl = qs('#quickModal');
+            var quickModal = quickModalEl ? new bootstrap.Modal(quickModalEl) : null;
+            var qmTitle = qs('#qmTitle');
+            var qmMeta = qs('#qmMeta');
+            var qmDesc = qs('#qmDesc');
+            var qmPoster = qs('#qmPoster');
+            var qmTrailerBtn = qs('#qmTrailerBtn');
+            var qmDetailsLink = qs('#qmDetailsLink');
+            var qmDate = qs('#qmDate');
+            var qmTimes = qs('#qmTimes');
+            var qmEmpty = qs('#qmEmpty');
+            var currentMovie = null;
+            var inFlight = null;
+
+            var renderTimes = function(container, emptyEl, showtimes){
+                container.innerHTML = '';
+                if (!showtimes || !showtimes.length) {
+                    emptyEl.classList.remove('d-none');
+                    return;
+                }
+                emptyEl.classList.add('d-none');
+                showtimes.forEach(function(s){
+                    var a = document.createElement('a');
+                    a.className = 'lc-time';
+                    a.href = '/bookings/seats/' + encodeURIComponent(s.id);
+                    a.textContent = s.showTime.slice(0,5) + ' · ' + (s.hallName || '');
+                    container.appendChild(a);
+                });
+            };
+
+            var fetchShowtimes = function(movieId, date, city){
+                if (!movieId || !date) return Promise.resolve([]);
+                if (inFlight && inFlight.abort) inFlight.abort();
+                var ac = ('AbortController' in window) ? new AbortController() : null;
+                inFlight = ac;
+                var url = '/api/showtimes/search?movieId=' + encodeURIComponent(movieId)
+                        + '&date=' + encodeURIComponent(date)
+                        + '&city=' + encodeURIComponent(city || '');
+                return fetch(url, {signal: ac ? ac.signal : undefined})
+                        .then(function(r){ return r.ok ? r.json() : Promise.reject('HTTP ' + r.status); })
+                        .catch(function(){ return []; });
+            };
+
+            var refreshShowtimes = function(){
+                var city = getCity();
+                var qbMovie = qs('#qbMovie');
+                var qbDate = qs('#qbDate');
+                var qbTimes = qs('#qbTimes');
+                var flowMovie = qs('#flowMovie');
+                var flowDate = qs('#flowDate');
+                var flowTimes = qs('#flowTimes');
+                var flowEmpty = qs('#flowEmpty');
+
+                var paintSkeleton = function(el){
+                    if (!el) return;
+                    el.innerHTML = '<span class="lc-skeleton"></span><span class="lc-skeleton"></span><span class="lc-skeleton"></span>';
+                };
+
+                if (qbTimes) paintSkeleton(qbTimes);
+                if (flowTimes) flowTimes.innerHTML = '';
+                if (flowEmpty) flowEmpty.classList.add('d-none');
+
+                if (qbMovie && qbDate && qbTimes) {
+                    var m1 = qbMovie.value;
+                    var d1 = qbDate.value;
+                    if (!m1) {
+                        qbTimes.innerHTML = '';
+                    } else {
+                        fetchShowtimes(m1, d1, city).then(function(list){
+                            qbTimes.innerHTML = '';
+                            if (!list.length) {
+                                qbTimes.innerHTML = '<span class="small" style="color:rgba(234,241,255,.68)">' + (i18n[storage.get(langKey,'en')].no_showtimes || 'No showtimes found.') + '</span>';
+                                return;
+                            }
+                            list.slice(0,6).forEach(function(s){
+                                var a = document.createElement('a');
+                                a.className = 'lc-time';
+                                a.href = '/bookings/seats/' + encodeURIComponent(s.id);
+                                a.textContent = s.showTime.slice(0,5);
+                                qbTimes.appendChild(a);
+                            });
+                        });
+                    }
+                }
+
+                if (flowMovie && flowDate && flowTimes && flowEmpty) {
+                    var m2 = flowMovie.value;
+                    var d2 = flowDate.value;
+                    if (!m2) {
+                        flowTimes.innerHTML = '';
+                        flowEmpty.classList.add('d-none');
+                    } else {
+                        fetchShowtimes(m2, d2, city).then(function(list){
+                            renderTimes(flowTimes, flowEmpty, list);
+                        });
+                    }
+                }
+
+                if (currentMovie && qmDate && qmTimes && qmEmpty) {
+                    var d3 = qmDate.value;
+                    fetchShowtimes(currentMovie.movieId, d3, city).then(function(list){
+                        renderTimes(qmTimes, qmEmpty, list);
+                    });
+                }
+            };
+
+            var openQuickView = function(cardEl){
+                if (!quickModal) return;
+                var movieId = cardEl.getAttribute('data-movie-id');
+                var title = cardEl.getAttribute('data-title') || '';
+                var desc = cardEl.getAttribute('data-desc') || '';
+                var poster = cardEl.getAttribute('data-poster') || '';
+                var trailer = cardEl.getAttribute('data-trailer') || '';
+                var rating = cardEl.getAttribute('data-rating') || '';
+                var lang = cardEl.getAttribute('data-lang') || '';
+                var format = cardEl.getAttribute('data-format') || '';
+                var duration = cardEl.getAttribute('data-duration') || '';
+
+                currentMovie = {movieId: movieId, trailer: trailer, title: title};
+                if (qmTitle) qmTitle.textContent = title;
+                if (qmDesc) qmDesc.textContent = desc || '';
+                if (qmPoster) qmPoster.src = poster || '';
+                if (qmMeta) {
+                    var bits = [];
+                    if (rating) bits.push(rating);
+                    if (lang) bits.push(lang);
+                    if (format) bits.push(format);
+                    if (duration) bits.push(duration + ' min');
+                    qmMeta.textContent = bits.join(' · ');
+                }
+                if (qmDetailsLink) {
+                    qmDetailsLink.href = '/movies/' + encodeURIComponent(movieId) + (getCity() ? ('?city=' + encodeURIComponent(getCity())) : '');
+                }
+
+                if (qmDate) {
+                    var flowDate = qs('#flowDate');
+                    qmDate.value = flowDate && flowDate.value ? flowDate.value : (new Date()).toISOString().slice(0,10);
+                }
+                if (qmTrailerBtn) {
+                    qmTrailerBtn.onclick = function(){ openTrailer(trailer, title); };
+                }
+                if (qmTimes && qmEmpty && qmDate) {
+                    qmTimes.innerHTML = '<span class="lc-skeleton"></span><span class="lc-skeleton"></span><span class="lc-skeleton"></span>';
+                    qmEmpty.classList.add('d-none');
+                    fetchShowtimes(movieId, qmDate.value, getCity()).then(function(list){
+                        renderTimes(qmTimes, qmEmpty, list);
+                    });
+                    qmDate.onchange = function(){
+                        fetchShowtimes(movieId, qmDate.value, getCity()).then(function(list){
+                            renderTimes(qmTimes, qmEmpty, list);
+                        });
+                    };
+                }
+                quickModal.show();
+            };
+
+            qsa('.lc-card').forEach(function(card){
+                card.addEventListener('click', function(e){
+                    var actionEl = e.target && e.target.closest ? e.target.closest('[data-action]') : null;
+                    var action = actionEl ? actionEl.getAttribute('data-action') : null;
+                    if (action === 'trailer') {
+                        e.preventDefault();
+                        openTrailer(card.getAttribute('data-trailer'), card.getAttribute('data-title'));
+                        return;
+                    }
+                    if (action === 'remind') {
+                        e.preventDefault();
+                        var list = [];
+                        try { list = JSON.parse(storage.get('mtms_watchlist','[]')) || []; } catch(ex) { list = []; }
+                        var id = card.getAttribute('data-movie-id');
+                        if (id && list.indexOf(id) === -1) list.push(id);
+                        storage.set('mtms_watchlist', JSON.stringify(list));
+                        return;
+                    }
+                    if (action === 'quickview') {
+                        e.preventDefault();
+                        openQuickView(card);
+                        return;
+                    }
+                    openQuickView(card);
+                });
+                card.addEventListener('keydown', function(e){
+                    if (e.key === 'Enter') openQuickView(card);
+                });
+            });
+
+            if (heroBookBtn) {
+                heroBookBtn.addEventListener('click', function(){
+                    var s = slides[activeIndex];
+                    if (!s) return;
+                    openQuickView(s);
+                });
+            }
+            if (heroTrailerBtn) {
+                heroTrailerBtn.addEventListener('click', function(){
+                    var s = slides[activeIndex];
+                    if (!s) return;
+                    openTrailer(s.getAttribute('data-trailer'), s.getAttribute('data-title'));
+                });
+            }
+
+            var qbMovieEl = qs('#qbMovie');
+            var qbDateEl = qs('#qbDate');
+            var flowMovieEl = qs('#flowMovie');
+            var flowDateEl = qs('#flowDate');
+            if (qbMovieEl) qbMovieEl.addEventListener('change', refreshShowtimes);
+            if (qbDateEl) qbDateEl.addEventListener('change', refreshShowtimes);
+            if (flowMovieEl) flowMovieEl.addEventListener('change', refreshShowtimes);
+            if (flowDateEl) flowDateEl.addEventListener('change', refreshShowtimes);
+
+            var countdownEls = qsa('[data-countdown]');
+            var tickCountdown = function(){
+                var now = new Date().getTime();
+                countdownEls.forEach(function(el){
+                    var r = el.getAttribute('data-release');
+                    if (!r) return;
+                    var target = new Date(r + 'T00:00:00').getTime();
+                    var diff = target - now;
+                    if (diff <= 0) {
+                        el.textContent = (storage.get(langKey,'en') === 'km') ? 'ឥឡូវនេះ' : 'Now';
+                        return;
+                    }
+                    var d = Math.floor(diff / 86400000);
+                    var h = Math.floor((diff % 86400000) / 3600000);
+                    var m = Math.floor((diff % 3600000) / 60000);
+                    el.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>' + d + 'd ' + h + 'h ' + m + 'm';
+                });
+            };
+            if (countdownEls.length) {
+                tickCountdown();
+                window.setInterval(tickCountdown, 60000);
+            }
+
+            var seatPreviewEl = qs('#seatPreviewModal');
+            var seatPreviewModal = seatPreviewEl ? new bootstrap.Modal(seatPreviewEl) : null;
+            var seatPreviewGrid = qs('#seatPreviewGrid');
+            var openSeatPreview = function(){
+                if (!seatPreviewModal || !seatPreviewGrid) return;
+                seatPreviewGrid.innerHTML = '';
+                for (var i=0;i<70;i++){
+                    var btn = document.createElement('div');
+                    var booked = Math.random() < 0.32;
+                    btn.style.height = '26px';
+                    btn.style.borderRadius = '8px';
+                    btn.style.border = '1px solid rgba(255,255,255,.12)';
+                    btn.style.background = booked ? 'rgba(139,150,169,.38)' : 'rgba(100,216,107,.22)';
+                    seatPreviewGrid.appendChild(btn);
+                }
+                seatPreviewModal.show();
+            };
+            var seatPreviewOpenBtn = qs('#seatPreviewOpen');
+            if (seatPreviewOpenBtn) seatPreviewOpenBtn.addEventListener('click', openSeatPreview);
+
+            var hero = qs('#homeHero');
+            var parallaxTicking = false;
+            var parallax = function(){
+                if (!hero) return;
+                var s = slides[activeIndex];
+                if (!s) return;
+                var y = window.scrollY || 0;
+                var shift = Math.max(-32, Math.min(32, Math.round(y * -0.04)));
+                s.style.backgroundPosition = 'center calc(50% + ' + shift + 'px)';
+                parallaxTicking = false;
+            };
+            window.addEventListener('scroll', function(){
+                if (parallaxTicking) return;
+                parallaxTicking = true;
+                window.requestAnimationFrame(parallax);
+            }, {passive:true});
+
+            refreshShowtimes();
+        })();
+    </script>
+</th:block>
+</html>

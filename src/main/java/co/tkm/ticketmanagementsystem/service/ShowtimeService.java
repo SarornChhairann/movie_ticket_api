@@ -113,6 +113,12 @@ public class ShowtimeService {
                 .orElseThrow(() -> new IllegalArgumentException("Showtime not found: " + id));
     }
 
+    @Transactional(readOnly = true)
+    public List<Showtime> findForMovieDateCity(Long movieId, LocalDate showDate, String city) {
+        String c = (city == null) ? "" : city.trim();
+        return showtimeRepository.findForMovieDateCity(movieId, showDate, c);
+    }
+
     /**
      * Throws IllegalArgumentException if the given hall/date/time overlaps with any
      * existing showtime in the same hall (accounting for each movie's duration).

@@ -59,6 +59,7 @@ public class MovieService {
             target.setCast(movie.getCast());
             target.setTrailerUrl(movie.getTrailerUrl());
             target.setRating(movie.getRating());
+            target.setReleaseDate(movie.getReleaseDate());
             target.setDurationMinutes(movie.getDurationMinutes());
             target.setStatus(movie.getStatus());
             target.setImagePath(movie.getImagePath());
@@ -102,12 +103,13 @@ public class MovieService {
     }
 
     @Transactional(readOnly = true)
-    public List<Movie> filterMovies(MovieStatus status, String genre, String language, String format, String search) {
+    public List<Movie> filterMovies(MovieStatus status, String genre, String language, String format, String rating, String search) {
         String g = (genre == null) ? "" : genre.trim();
         String l = (language == null) ? "" : language.trim();
         String f = (format == null || format.isBlank()) ? null : format.trim();
+        String r = (rating == null) ? "" : rating.trim();
         String s = (search == null) ? "" : search.trim();
-        return movieRepository.findFiltered(status, g, l, f, s);
+        return movieRepository.findFiltered(status, g, l, f, r, s);
     }
 
     @Transactional(readOnly = true)
@@ -131,6 +133,7 @@ public class MovieService {
         movie.setCast(data.getCast());
         movie.setTrailerUrl(data.getTrailerUrl());
         movie.setRating(data.getRating());
+        movie.setReleaseDate(data.getReleaseDate());
         movie.setDurationMinutes(data.getDurationMinutes());
         movie.setStatus(data.getStatus());
         return movieRepository.save(movie);

@@ -17,6 +17,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
+
 @Entity
 @Table(name = "movies")
 @Getter
@@ -56,6 +58,9 @@ public class Movie {
 
     @Column(length = 10)
     private String rating;
+
+    @Column
+    private LocalDate releaseDate;
 
     @NotNull
     @Min(1)

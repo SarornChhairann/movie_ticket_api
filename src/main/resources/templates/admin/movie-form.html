@@ -52,6 +52,16 @@
                     <input class="form-control" th:field="*{rating}" placeholder="e.g. PG-13, R">
                 </div>
             </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Release Date</label>
+                    <input class="form-control" type="date" th:field="*{releaseDate}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Director</label>
+                    <input class="form-control" th:field="*{director}" placeholder="Director name">
+                </div>
+            </div>
             <div class="mb-3">
                 <label class="form-label fw-semibold">Cast</label>
                 <input class="form-control" th:field="*{cast}" placeholder="e.g. Tom Hanks, Emma Stone">
