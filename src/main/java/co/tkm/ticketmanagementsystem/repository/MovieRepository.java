@@ -13,10 +13,10 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
 
     @Query("SELECT m FROM Movie m WHERE " +
            "(:status IS NULL OR m.status = :status) AND " +
-           "(:genre IS NULL OR LOWER(m.genre) LIKE LOWER(CONCAT('%', :genre, '%'))) AND " +
-           "(:language IS NULL OR LOWER(m.language) LIKE LOWER(CONCAT('%', :language, '%'))) AND " +
+           "(:genre = '' OR LOWER(m.genre) LIKE LOWER(CONCAT('%', :genre, '%'))) AND " +
+           "(:language = '' OR LOWER(m.language) LIKE LOWER(CONCAT('%', :language, '%'))) AND " +
            "(:format IS NULL OR m.format = :format) AND " +
-           "(:search IS NULL OR LOWER(m.title) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "(:search = '' OR LOWER(m.title) LIKE LOWER(CONCAT('%', :search, '%'))) " +
            "ORDER BY m.title")
     List<Movie> findFiltered(@Param("status") MovieStatus status,
                              @Param("genre") String genre,

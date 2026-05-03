@@ -103,10 +103,10 @@ public class MovieService {
 
     @Transactional(readOnly = true)
     public List<Movie> filterMovies(MovieStatus status, String genre, String language, String format, String search) {
-        String g = (genre == null || genre.isBlank()) ? null : genre.trim();
-        String l = (language == null || language.isBlank()) ? null : language.trim();
+        String g = (genre == null) ? "" : genre.trim();
+        String l = (language == null) ? "" : language.trim();
         String f = (format == null || format.isBlank()) ? null : format.trim();
-        String s = (search == null || search.isBlank()) ? null : search.trim();
+        String s = (search == null) ? "" : search.trim();
         return movieRepository.findFiltered(status, g, l, f, s);
     }
 

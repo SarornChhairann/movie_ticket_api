@@ -139,6 +139,24 @@ public class SchemaMigrationRunner implements BeanPostProcessor, PriorityOrdered
                 jdbcTemplate.execute("ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'");
             }
         });
+
+        applyIfNotApplied(jdbcTemplate, "2026_05_03_008_movies_string_columns_type_fix", () -> {
+            if (!tableExists(jdbcTemplate, "movies")) {
+                return;
+            }
+
+            fixByteaToVarchar(jdbcTemplate, "movies", "title", 200);
+            fixByteaToText(jdbcTemplate, "movies", "description");
+            fixByteaToVarchar(jdbcTemplate, "movies", "genre", 100);
+            fixByteaToVarchar(jdbcTemplate, "movies", "director", 120);
+            fixByteaToVarchar(jdbcTemplate, "movies", "language", 60);
+            fixByteaToVarchar(jdbcTemplate, "movies", "format", 20);
+            fixByteaToText(jdbcTemplate, "movies", "movie_cast");
+            fixByteaToVarchar(jdbcTemplate, "movies", "trailer_url", 500);
+            fixByteaToVarchar(jdbcTemplate, "movies", "rating", 10);
+            fixByteaToVarchar(jdbcTemplate, "movies", "image_path", 500);
+            fixByteaToVarchar(jdbcTemplate, "movies", "banner_path", 500);
+        });
     }
 
     private void applyIfNotApplied(JdbcTemplate jdbcTemplate, String id, Runnable migration) {
@@ -189,5 +207,40 @@ public class SchemaMigrationRunner implements BeanPostProcessor, PriorityOrdered
                 columnName
         );
         return isNullable != null && isNullable.equalsIgnoreCase("NO");
+    }
+
+    private String columnUdtName(JdbcTemplate jdbcTemplate, String tableName, String columnName) {
+        return jdbcTemplate.queryForObject(
+                "SELECT udt_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = ? AND column_name = ?",
+                String.class,
+                tableName,
+                columnName
+        );
+    }
+
+    private void fixByteaToVarchar(JdbcTemplate jdbcTemplate, String tableName, String columnName, int length) {
+        if (!columnExists(jdbcTemplate, tableName, columnName)) {
+            return;
+        }
+        String udt = columnUdtName(jdbcTemplate, tableName, columnName);
+        if (udt != null && udt.equalsIgnoreCase("bytea")) {
+            jdbcTemplate.execute(
+                    "ALTER TABLE " + tableName + " ALTER COLUMN " + columnName
+                    + " TYPE VARCHAR(" + length + ") USING convert_from(" + columnName + ", 'UTF8')"
+            );
+        }
+    }
+
+    private void fixByteaToText(JdbcTemplate jdbcTemplate, String tableName, String columnName) {
+        if (!columnExists(jdbcTemplate, tableName, columnName)) {
+            return;
+        }
+        String udt = columnUdtName(jdbcTemplate, tableName, columnName);
+        if (udt != null && udt.equalsIgnoreCase("bytea")) {
+            jdbcTemplate.execute(
+                    "ALTER TABLE " + tableName + " ALTER COLUMN " + columnName
+                    + " TYPE TEXT USING convert_from(" + columnName + ", 'UTF8')"
+            );
+        }
     }
 }
