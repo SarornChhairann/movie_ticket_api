@@ -2,8 +2,14 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/base :: layout('Select Seats', ~{::content})}">
 <th:block th:fragment="content">
-    <h4 class="fw-bold mb-1"><i class="bi bi-grid-3x3-gap me-2"></i>Select Your Seats</h4>
-    <p class="text-muted mb-4">Click to select one or more seats, then continue to checkout.</p>
+    <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-1">
+        <h4 class="fw-bold mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>Select Your Seats</h4>
+        <div class="d-flex align-items-center gap-1 text-muted" style="font-size:.82rem">
+            <i class="bi bi-hourglass-split"></i>
+            <span>Seats held for <strong th:text="${holdMinutes}">10</strong> min after selection</span>
+        </div>
+    </div>
+    <p class="text-muted mb-4" style="font-size:.9rem">Click to select one or more seats, then continue to checkout.</p>
 
     <form th:action="@{/bookings/checkout/{id}(id=${showtimeId})}" method="get">
         <!-- Seat grid -->

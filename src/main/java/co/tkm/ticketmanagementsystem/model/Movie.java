@@ -39,6 +39,9 @@ public class Movie {
     @Column(nullable = false, length = 100)
     private String genre;
 
+    @Column(length = 120)
+    private String director;
+
     @Column(length = 60)
     private String language;
 
@@ -66,4 +69,7 @@ public class Movie {
 
     @Column(length = 500)
     private String imagePath;
+
+    @Column(length = 500)
+    private String bannerPath;
 }

@@ -35,16 +35,25 @@ public class MovieService {
 
     @Transactional
     public Movie saveWithImage(Movie movie, MultipartFile imageFile) throws IOException {
+        return saveWithImages(movie, imageFile, null);
+    }
+
+    @Transactional
+    public Movie saveWithImages(Movie movie, MultipartFile imageFile, MultipartFile bannerFile) throws IOException {
         Movie target = movie;
         if (movie.getId() != null) {
             Movie existing = findById(movie.getId());
             if (movie.getImagePath() == null || movie.getImagePath().isBlank()) {
                 movie.setImagePath(existing.getImagePath());
             }
+            if (movie.getBannerPath() == null || movie.getBannerPath().isBlank()) {
+                movie.setBannerPath(existing.getBannerPath());
+            }
             target = existing;
             target.setTitle(movie.getTitle());
             target.setDescription(movie.getDescription());
             target.setGenre(movie.getGenre());
+            target.setDirector(movie.getDirector());
             target.setLanguage(movie.getLanguage());
             target.setFormat(movie.getFormat());
             target.setCast(movie.getCast());
@@ -53,11 +62,16 @@ public class MovieService {
             target.setDurationMinutes(movie.getDurationMinutes());
             target.setStatus(movie.getStatus());
             target.setImagePath(movie.getImagePath());
+            target.setBannerPath(movie.getBannerPath());
         }
 
         if (hasImageFile(imageFile)) {
             validateImageContentType(imageFile);
             target.setImagePath(storeImage(imageFile));
+        }
+        if (hasImageFile(bannerFile)) {
+            validateImageContentType(bannerFile);
+            target.setBannerPath(storeImage(bannerFile));
         }
 
         return movieRepository.save(target);

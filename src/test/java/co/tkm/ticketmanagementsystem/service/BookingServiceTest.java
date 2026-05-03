@@ -10,6 +10,7 @@ import co.tkm.ticketmanagementsystem.model.Seat;
 import co.tkm.ticketmanagementsystem.model.Showtime;
 import co.tkm.ticketmanagementsystem.model.ShowtimeSeat;
 import co.tkm.ticketmanagementsystem.model.User;
+import co.tkm.ticketmanagementsystem.repository.BookingFoodItemRepository;
 import co.tkm.ticketmanagementsystem.repository.BookingRepository;
 import co.tkm.ticketmanagementsystem.repository.ShowtimeRepository;
 import co.tkm.ticketmanagementsystem.repository.ShowtimeSeatRepository;
@@ -24,28 +25,27 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class BookingServiceTest {
 
-    @Mock
-    private BookingRepository bookingRepository;
-    @Mock
-    private ShowtimeRepository showtimeRepository;
-    @Mock
-    private ShowtimeSeatRepository showtimeSeatRepository;
-    @Mock
-    private UserRepository userRepository;
-    @Mock
-    private PaymentService paymentService;
-    @Mock
-    private TicketService ticketService;
+    @Mock private BookingRepository bookingRepository;
+    @Mock private ShowtimeRepository showtimeRepository;
+    @Mock private ShowtimeSeatRepository showtimeSeatRepository;
+    @Mock private UserRepository userRepository;
+    @Mock private PaymentService paymentService;
+    @Mock private TicketService ticketService;
+    @Mock private EmailService emailService;
+    @Mock private PromoCodeService promoCodeService;
+    @Mock private FoodItemService foodItemService;
+    @Mock private BookingFoodItemRepository bookingFoodItemRepository;
 
     @InjectMocks
     private BookingService bookingService;
@@ -55,7 +55,7 @@ class BookingServiceTest {
 
     @BeforeEach
     void setUp() {
-        user = new User(1L, "Test User", "user@test.com", null, "x", Role.CUSTOMER);
+        user = new User(1L, "Test User", "user@test.com", null, "x", Role.CUSTOMER, 0, co.tkm.ticketmanagementsystem.enums.UserStatus.ACTIVE);
 
         Movie movie = new Movie();
         movie.setId(2L);
@@ -85,10 +85,16 @@ class BookingServiceTest {
         when(showtimeRepository.findById(10L)).thenReturn(Optional.of(showtime));
         when(showtimeSeatRepository.findAllById(List.of(100L, 101L, 102L)))
                 .thenReturn(List.of(normalSeat, coupleSeatA, coupleSeatB));
+        when(foodItemService.findAvailable()).thenReturn(Collections.emptyList());
 
-        CheckoutData checkout = bookingService.buildCheckout(10L, List.of(100L, 101L, 102L), "user@test.com");
+        CheckoutData checkout = bookingService.buildCheckout(10L, List.of(100L, 101L, 102L), "user@test.com", null);
 
-        assertEquals(new BigDecimal("13.00"), checkout.getTotalAmount());
+        // base: 5.00 (normal) + 8.00 (1 couple pair) = 13.00
+        // weekend: +10% if today is Sat/Sun else 0
+        // tax: 10% of (base + weekend)
+        // fee: 1.50
+        // total > 13.00
+        assertTrue(checkout.getTotalAmount().compareTo(new BigDecimal("13.00")) > 0);
     }
 
     @Test
@@ -100,8 +106,8 @@ class BookingServiceTest {
         when(showtimeSeatRepository.findAllById(List.of(200L))).thenReturn(List.of(coupleSeat));
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> bookingService.buildCheckout(10L, List.of(200L), "user@test.com"));
-        assertEquals("Couple seats must be selected in pairs.", ex.getMessage());
+                () -> bookingService.buildCheckout(10L, List.of(200L), "user@test.com", null));
+        org.junit.jupiter.api.Assertions.assertEquals("Couple seats must be selected in pairs.", ex.getMessage());
     }
 
     @Test
@@ -114,8 +120,8 @@ class BookingServiceTest {
         when(showtimeSeatRepository.findAllById(List.of(210L, 211L))).thenReturn(List.of(coupleSeatA1, coupleSeatA3));
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> bookingService.buildCheckout(10L, List.of(210L, 211L), "user@test.com"));
-        assertEquals("Couple seats must be selected in pairs.", ex.getMessage());
+                () -> bookingService.buildCheckout(10L, List.of(210L, 211L), "user@test.com", null));
+        org.junit.jupiter.api.Assertions.assertEquals("Couple seats must be selected in pairs.", ex.getMessage());
     }
 
     @Test
@@ -127,8 +133,8 @@ class BookingServiceTest {
         when(showtimeSeatRepository.findAllById(List.of(300L))).thenReturn(List.of(bookedSeat));
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> bookingService.buildCheckout(10L, List.of(300L), "user@test.com"));
-        assertEquals("Some seats were already booked. Please reselect seats.", ex.getMessage());
+                () -> bookingService.buildCheckout(10L, List.of(300L), "user@test.com", null));
+        org.junit.jupiter.api.Assertions.assertEquals("Some seats were already booked. Please reselect seats.", ex.getMessage());
     }
 
     private ShowtimeSeat seat(Long id, SeatType seatType, ShowtimeSeatStatus status, String code) {

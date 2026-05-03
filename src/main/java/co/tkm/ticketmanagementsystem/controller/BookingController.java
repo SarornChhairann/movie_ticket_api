@@ -1,11 +1,13 @@
 package co.tkm.ticketmanagementsystem.controller;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import jakarta.servlet.http.HttpSession;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import co.tkm.ticketmanagementsystem.dto.CheckoutData;
@@ -21,6 +24,7 @@ import co.tkm.ticketmanagementsystem.model.Booking;
 import co.tkm.ticketmanagementsystem.model.ShowtimeSeat;
 import co.tkm.ticketmanagementsystem.model.Ticket;
 import co.tkm.ticketmanagementsystem.service.BookingService;
+import co.tkm.ticketmanagementsystem.service.PromoCodeService;
 import co.tkm.ticketmanagementsystem.service.SeatHoldService;
 import co.tkm.ticketmanagementsystem.service.TicketService;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +37,7 @@ public class BookingController {
     private final BookingService bookingService;
     private final TicketService ticketService;
     private final SeatHoldService seatHoldService;
+    private final PromoCodeService promoCodeService;
 
     @GetMapping("/seats/{showtimeId}")
     public String seatMap(@PathVariable Long showtimeId, HttpSession session, Model model) {
@@ -41,19 +46,21 @@ public class BookingController {
         model.addAttribute("showtimeId", showtimeId);
         model.addAttribute("showtimeSeats", showtimeSeats);
         model.addAttribute("heldByOthers", heldByOthers);
+        model.addAttribute("holdMinutes", seatHoldService.getHoldMinutes());
         return "booking/seat-map";
     }
 
     @GetMapping("/checkout/{showtimeId}")
     public String checkoutPreview(@PathVariable Long showtimeId,
                                   @RequestParam("seatIds") List<Long> seatIds,
+                                  @RequestParam(value = "promoCode", required = false) String promoCode,
                                   Authentication authentication,
                                   HttpSession session,
                                   Model model,
                                   RedirectAttributes redirectAttributes) {
         String userEmail = resolveEmail(authentication);
         try {
-            CheckoutData checkoutData = bookingService.buildCheckout(showtimeId, seatIds, userEmail);
+            CheckoutData checkoutData = bookingService.buildCheckout(showtimeId, seatIds, userEmail, promoCode);
             seatHoldService.holdSeats(seatIds, session.getId());
             model.addAttribute("checkoutData", checkoutData);
             model.addAttribute("seatIds", seatIds);
@@ -67,22 +74,57 @@ public class BookingController {
         }
     }
 
+    @PostMapping("/promo/validate")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> validatePromo(@RequestParam("code") String code) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            int pct = promoCodeService.validate(code);
+            result.put("valid", true);
+            result.put("discountPercent", pct);
+            result.put("message", pct + "% discount applied!");
+        } catch (IllegalArgumentException ex) {
+            result.put("valid", false);
+            result.put("message", ex.getMessage());
+        }
+        return ResponseEntity.ok(result);
+    }
+
     @PostMapping("/checkout/{showtimeId}")
     public String checkout(@PathVariable Long showtimeId,
                            @RequestParam("seatIds") List<Long> seatIds,
                            @RequestParam(value = "guestName", required = false) String guestName,
                            @RequestParam(value = "guestPhone", required = false) String guestPhone,
                            @RequestParam(value = "guestEmail", required = false) String guestEmail,
+                           @RequestParam(value = "promoCode", required = false) String promoCode,
+                           @RequestParam(value = "paymentMethod", required = false, defaultValue = "CARD") String paymentMethod,
+                           @RequestParam Map<String, String> allParams,
                            Authentication authentication,
                            HttpSession session,
                            RedirectAttributes redirectAttributes) {
         String userEmail = resolveEmail(authentication);
+
+        // Parse food selections: food_{id} -> quantity
+        Map<Long, Integer> foodSelections = new HashMap<>();
+        for (Map.Entry<String, String> entry : allParams.entrySet()) {
+            if (entry.getKey().startsWith("food_")) {
+                try {
+                    Long foodId = Long.parseLong(entry.getKey().substring(5));
+                    int qty = Integer.parseInt(entry.getValue());
+                    if (qty > 0) foodSelections.put(foodId, qty);
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+
         try {
             if (seatHoldService.hasActiveConflict(seatIds, session.getId())) {
                 redirectAttributes.addFlashAttribute("error", "Some seats were selected by another user. Please reselect.");
                 return "redirect:/bookings/seats/" + showtimeId;
             }
-            Booking booking = bookingService.confirmCheckout(showtimeId, seatIds, userEmail, guestName, guestPhone, guestEmail);
+            Booking booking = bookingService.confirmCheckout(
+                    showtimeId, seatIds, userEmail,
+                    guestName, guestPhone, guestEmail,
+                    promoCode, paymentMethod, foodSelections);
             seatHoldService.releaseHolds(session.getId());
             return "redirect:/bookings/confirmation/" + booking.getId();
         } catch (IllegalArgumentException ex) {

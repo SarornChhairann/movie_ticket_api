@@ -56,11 +56,16 @@
                 <td>
                     <form th:if="${booking.status.name() != 'CANCELLED'}"
                           th:action="@{/bookings/cancel/{id}(id=${booking.id})}" method="post"
-                          onsubmit="return confirm('Cancel booking #' + [[${booking.id}]] + '?');">
+                          onsubmit="return confirm('Cancel booking #' + [[${booking.id}]] + '? This cannot be undone.');">
                         <button class="btn btn-sm btn-outline-danger px-3" type="submit">
                             <i class="bi bi-x-circle me-1"></i>Cancel
                         </button>
                     </form>
+                    <!-- Cancellation window hint -->
+                    <small th:if="${booking.status.name() == 'CONFIRMED'}"
+                           class="d-block text-muted mt-1" style="font-size:.72rem">
+                        Cancel &gt;2h before show
+                    </small>
                 </td>
             </tr>
             </tbody>

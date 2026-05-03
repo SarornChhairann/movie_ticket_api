@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/admin-base :: layout('Promo Codes', ~{::content})}">
+<th:block th:fragment="content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold mb-0"><i class="bi bi-tag me-2"></i>Promo Codes</h4>
+        <a class="btn btn-primary px-4" th:href="@{/admin/promo-codes/new}">
+            <i class="bi bi-plus-lg me-1"></i>New Code
+        </a>
+    </div>
+    <div class="admin-table">
+        <table class="table mb-0 align-middle">
+            <thead>
+            <tr>
+                <th>Code</th>
+                <th>Discount</th>
+                <th>Valid Until</th>
+                <th>Uses</th>
+                <th>Active</th>
+                <th class="text-end">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="promo : ${promoCodes}">
+                <td class="fw-semibold" th:text="${promo.code}"></td>
+                <td th:text="${promo.discountPercent} + '%'"></td>
+                <td th:text="${promo.validUntil != null} ? ${promo.validUntil} : '—'"></td>
+                <td>
+                    <span th:text="${promo.usedCount}"></span>
+                    <span class="text-muted" th:text="${promo.maxUses > 0} ? ('/' + ${promo.maxUses}) : ' (unlimited)'"></span>
+                </td>
+                <td>
+                    <span th:if="${promo.active}" class="badge bg-success">Active</span>
+                    <span th:unless="${promo.active}" class="badge bg-secondary">Inactive</span>
+                </td>
+                <td class="text-end">
+                    <a class="btn btn-sm btn-outline-secondary me-1"
+                       th:href="@{/admin/promo-codes/edit/{id}(id=${promo.id})}">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <a class="btn btn-sm btn-outline-danger"
+                       th:href="@{/admin/promo-codes/delete/{id}(id=${promo.id})}"
+                       onclick="return confirm('Delete this promo code?')">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(promoCodes)}">
+                <td colspan="6" class="text-center text-muted py-4">No promo codes yet.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</th:block>
+</html>

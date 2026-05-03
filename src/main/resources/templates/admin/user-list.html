@@ -3,10 +3,27 @@
       th:replace="~{layout/admin-base :: layout('Users', ~{::content})}">
 <th:block th:fragment="content">
     <h4 class="fw-bold mb-4"><i class="bi bi-people me-2"></i>Users</h4>
+
+    <!-- Search bar -->
+    <form th:action="@{/admin/users}" method="get" class="mb-3 d-flex gap-2">
+        <input type="text" name="q" class="form-control" placeholder="Search by name or email…"
+               th:value="${q}" style="max-width:360px">
+        <button class="btn btn-primary px-4" type="submit"><i class="bi bi-search me-1"></i>Search</button>
+        <a th:href="@{/admin/users}" class="btn btn-outline-secondary" th:if="${q != null and !#strings.isEmpty(q)}">Clear</a>
+    </form>
+
     <div class="admin-table">
         <table class="table mb-0 align-middle">
             <thead>
-            <tr><th>#</th><th>Name</th><th>Email</th><th>Role</th></tr>
+            <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Points</th>
+                <th class="text-end">Actions</th>
+            </tr>
             </thead>
             <tbody>
             <tr th:each="user : ${users}">
@@ -18,9 +35,21 @@
                           th:classappend="${user.role.name() == 'ADMIN'} ? 'bg-danger' : 'bg-primary'"
                           th:text="${user.role}"></span>
                 </td>
+                <td>
+                    <span class="badge"
+                          th:classappend="${user.status.name() == 'ACTIVE'} ? 'bg-success' :
+                                          (${user.status.name() == 'SUSPENDED'} ? 'bg-warning text-dark' : 'bg-dark')"
+                          th:text="${user.status}"></span>
+                </td>
+                <td><i class="bi bi-star-fill text-warning me-1" style="font-size:.75rem"></i><span th:text="${user.points}"></span></td>
+                <td class="text-end">
+                    <a class="btn btn-sm btn-outline-primary" th:href="@{/admin/users/{id}(id=${user.id})}">
+                        <i class="bi bi-person-lines-fill"></i>
+                    </a>
+                </td>
             </tr>
             <tr th:if="${#lists.isEmpty(users)}">
-                <td colspan="4" class="text-center text-muted py-4">No users yet.</td>
+                <td colspan="7" class="text-center text-muted py-4">No users found.</td>
             </tr>
             </tbody>
         </table>

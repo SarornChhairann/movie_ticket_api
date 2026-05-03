@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/admin-base :: layout('Promo Code', ~{::content})}">
+<th:block th:fragment="content">
+    <a class="btn btn-outline-secondary btn-sm mb-4" th:href="@{/admin/promo-codes}">
+        <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+    <h4 class="fw-bold mb-4" th:text="${promoCode.id == null} ? 'New Promo Code' : 'Edit Promo Code'"></h4>
+
+    <div class="card border-0 shadow-sm rounded-4" style="max-width:560px">
+        <div class="card-body p-4">
+            <form th:action="@{/admin/promo-codes/save}" method="post" th:object="${promoCode}">
+                <input type="hidden" th:field="*{id}">
+                <input type="hidden" th:field="*{usedCount}">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Code</label>
+                    <input class="form-control text-uppercase" type="text" th:field="*{code}"
+                           placeholder="e.g. SAVE20" required>
+                    <div class="form-text">Customers enter this at checkout.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Discount (%)</label>
+                    <input class="form-control" type="number" min="1" max="100" th:field="*{discountPercent}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Valid Until</label>
+                    <input class="form-control" type="date" th:field="*{validUntil}">
+                    <div class="form-text">Leave blank for no expiry.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Max Uses</label>
+                    <input class="form-control" type="number" min="0" th:field="*{maxUses}">
+                    <div class="form-text">0 = unlimited.</div>
+                </div>
+                <div class="mb-4 form-check">
+                    <input class="form-check-input" type="checkbox" th:field="*{active}" id="activeCheck">
+                    <label class="form-check-label fw-semibold" for="activeCheck">Active</label>
+                </div>
+                <button class="btn btn-primary px-5 fw-semibold" type="submit">Save</button>
+            </form>
+        </div>
+    </div>
+</th:block>
+</html>

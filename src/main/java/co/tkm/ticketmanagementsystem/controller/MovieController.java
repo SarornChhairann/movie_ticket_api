@@ -80,14 +80,28 @@ public class MovieController {
     }
 
     @GetMapping("/movies/{id}")
-    public String detail(@PathVariable Long id, Model model) {
+    public String detail(@PathVariable Long id,
+                         @RequestParam(value = "city", required = false) String city,
+                         Model model) {
         Movie movie = movieService.findById(id);
         List<Showtime> showtimes = showtimeRepository.findByMovie(movie);
+
+        // Filter by city if selected
+        if (city != null && !city.isBlank()) {
+            showtimes = showtimes.stream()
+                    .filter(s -> city.equalsIgnoreCase(s.getHall().getCity()))
+                    .collect(Collectors.toList());
+        }
+
         Map<String, List<Showtime>> grouped = showtimes.stream()
                 .collect(Collectors.groupingBy(s -> s.getShowDate().toString(), LinkedHashMap::new, Collectors.toList()));
 
+        List<String> cities = hallService.findDistinctCities();
+
         model.addAttribute("movie", movie);
         model.addAttribute("showtimeByDate", grouped);
+        model.addAttribute("cities", cities);
+        model.addAttribute("selectedCity", city);
         return "movies/detail";
     }
 }

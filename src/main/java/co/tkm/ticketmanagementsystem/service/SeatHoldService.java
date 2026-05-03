@@ -16,15 +16,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SeatHoldService {
 
-    private static final int HOLD_MINUTES = 10;
-
     private final SeatHoldRepository seatHoldRepository;
+    private final SystemSettingService systemSettingService;
 
     @Transactional
     public void holdSeats(List<Long> showtimeSeatIds, String sessionId) {
-        // Remove existing holds for this session on these seats, then re-create
         seatHoldRepository.deleteBySessionIdAndSeatIds(sessionId, showtimeSeatIds);
-        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(HOLD_MINUTES);
+        int holdMinutes = systemSettingService.getInt(SystemSettingService.HOLD_MINUTES, 10);
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(holdMinutes);
         List<SeatHold> holds = showtimeSeatIds.stream()
                 .map(seatId -> {
                     SeatHold hold = new SeatHold();
@@ -60,6 +59,6 @@ public class SeatHoldService {
     }
 
     public int getHoldMinutes() {
-        return HOLD_MINUTES;
+        return systemSettingService.getInt(SystemSettingService.HOLD_MINUTES, 10);
     }
 }

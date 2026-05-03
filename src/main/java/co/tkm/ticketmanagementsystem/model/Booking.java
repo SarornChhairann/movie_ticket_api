@@ -56,6 +56,21 @@ public class Booking {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
+    @Column(precision = 10, scale = 2)
+    private BigDecimal serviceFee;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal taxAmount;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal discountAmount;
+
+    @Column(length = 50)
+    private String promoCode;
+
+    @Column(length = 30)
+    private String paymentMethod;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

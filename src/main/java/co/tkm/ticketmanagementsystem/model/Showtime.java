@@ -58,4 +58,7 @@ public class Showtime {
     @DecimalMin("0.0")
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal couplePrice;
+
+    @Column(nullable = false)
+    private boolean blocked = false;
 }

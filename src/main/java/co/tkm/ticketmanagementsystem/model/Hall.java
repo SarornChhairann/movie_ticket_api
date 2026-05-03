@@ -37,4 +37,7 @@ public class Hall {
 
     @Column(length = 300)
     private String address;
+
+    @Column(columnDefinition = "text")
+    private String amenities;
 }

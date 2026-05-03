@@ -1,6 +1,7 @@
 package co.tkm.ticketmanagementsystem.model;
 
 import co.tkm.ticketmanagementsystem.enums.Role;
+import co.tkm.ticketmanagementsystem.enums.UserStatus;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -48,10 +49,16 @@ public class User {
     @Column(nullable = false, length = 20)
     private Role role = Role.CUSTOMER;
 
+    @Column(nullable = false)
+    private int points = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserStatus status = UserStatus.ACTIVE;
+
     @PrePersist
     public void applyDefaultRole() {
-        if (role == null) {
-            role = Role.CUSTOMER;
-        }
+        if (role == null) role = Role.CUSTOMER;
+        if (status == null) status = UserStatus.ACTIVE;
     }
 }

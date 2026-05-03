@@ -57,4 +57,7 @@ public class Ticket {
     @NotNull
     @Column(nullable = false)
     private LocalDateTime issuedAt;
+
+    @Column(nullable = true)
+    private LocalDateTime scannedAt;
 }

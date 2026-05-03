@@ -13,7 +13,7 @@
     <div class="row g-4">
         <!-- Order summary -->
         <div class="col-md-5">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body p-4">
                     <h6 class="fw-bold mb-3 text-muted" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.8px">Order Summary</h6>
                     <p class="mb-2 fw-semibold" th:text="${checkoutData.showtime.movie.title}"></p>
@@ -26,34 +26,64 @@
                         <span th:text="${checkoutData.showtime.showDate}"></span> &nbsp;
                         <span th:text="${checkoutData.showtime.showTime}"></span>
                     </p>
-                    <hr>
                     <div class="mb-2" style="font-size:.9rem">
                         <strong>Seats:</strong>
                         <span th:each="seat, stat : ${checkoutData.selectedSeats}">
                             <span class="badge bg-light text-dark border ms-1" th:text="${seat.seat.seatCode}"></span>
                         </span>
                     </div>
+                    <hr>
+                    <!-- Price breakdown -->
+                    <div style="font-size:.88rem">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Seat price</span>
+                            <span th:text="'$' + ${checkoutData.baseAmount}"></span>
+                        </div>
+                        <div th:if="${checkoutData.weekendSurcharge != null and checkoutData.weekendSurcharge.compareTo(T(java.math.BigDecimal).ZERO) > 0}"
+                             class="d-flex justify-content-between mb-1 text-warning">
+                            <span><i class="bi bi-sun me-1"></i>Weekend surcharge (10%)</span>
+                            <span th:text="'+$' + ${checkoutData.weekendSurcharge}"></span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1 text-muted">
+                            <span>Tax (10%)</span>
+                            <span th:text="'+$' + ${checkoutData.taxAmount}"></span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1 text-muted">
+                            <span>Service fee</span>
+                            <span th:text="'+$' + ${checkoutData.serviceFee}"></span>
+                        </div>
+                        <div th:if="${checkoutData.discountAmount != null and checkoutData.discountAmount.compareTo(T(java.math.BigDecimal).ZERO) > 0}"
+                             class="d-flex justify-content-between mb-1 text-success">
+                            <span><i class="bi bi-tag me-1"></i>Promo discount</span>
+                            <span th:text="'-$' + ${checkoutData.discountAmount}"></span>
+                        </div>
+                        <!-- Food total placeholder (updated by JS) -->
+                        <div id="foodSummaryRow" class="d-flex justify-content-between mb-1 text-muted d-none">
+                            <span><i class="bi bi-cup-straw me-1"></i>Food &amp; Drinks</span>
+                            <span id="foodTotalDisplay">$0.00</span>
+                        </div>
+                    </div>
                     <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
                         <span class="fw-bold">Total</span>
-                        <span class="fw-bold fs-5 text-success" th:text="'$' + ${checkoutData.totalAmount}"></span>
+                        <span class="fw-bold fs-5 text-success" id="grandTotal"
+                              th:text="'$' + ${checkoutData.totalAmount}"></span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Payment + optional guest form -->
+        <!-- Payment form -->
         <div class="col-md-7">
-            <form th:action="@{/bookings/checkout/{id}(id=${checkoutData.showtime.id})}" method="post">
+            <form th:action="@{/bookings/checkout/{id}(id=${checkoutData.showtime.id})}" method="post" id="checkoutForm">
                 <div th:each="seatId : ${seatIds}">
                     <input type="hidden" name="seatIds" th:value="${seatId}">
                 </div>
+                <input type="hidden" name="promoCode" id="promoCodeInput" th:value="${checkoutData.promoCode}">
 
-                <!-- Guest info — shown only when NOT authenticated -->
+                <!-- Guest info -->
                 <div th:if="${!isAuthenticated}" class="card border-0 shadow-sm rounded-4 mb-3">
                     <div class="card-body p-4">
-                        <h6 class="fw-bold mb-3">
-                            <i class="bi bi-person me-2"></i>Your Details
-                        </h6>
+                        <h6 class="fw-bold mb-3"><i class="bi bi-person me-2"></i>Your Details</h6>
                         <div class="mb-3">
                             <label class="form-label fw-semibold" style="font-size:.88rem">Full Name</label>
                             <input class="form-control" type="text" name="guestName" placeholder="Your name" required>
@@ -65,34 +95,136 @@
                         <div class="mb-1">
                             <label class="form-label fw-semibold" style="font-size:.88rem">Email (for e-ticket)</label>
                             <input class="form-control" type="email" name="guestEmail" placeholder="you@example.com">
-                            <div class="form-text">Optional — we'll send your ticket confirmation here.</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Mock payment -->
+                <!-- Promo code -->
+                <div class="card border-0 shadow-sm rounded-4 mb-3">
+                    <div class="card-body p-4">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-tag me-2"></i>Promo Code</h6>
+                        <div class="input-group">
+                            <input class="form-control" type="text" id="promoField"
+                                   placeholder="Enter code (e.g. SAVE20)"
+                                   th:value="${checkoutData.promoCode}">
+                            <button class="btn btn-outline-secondary" type="button" id="applyPromoBtn">Apply</button>
+                        </div>
+                        <div id="promoMessage" class="mt-2" style="font-size:.85rem"></div>
+                    </div>
+                </div>
+
+                <!-- Food add-ons -->
+                <div th:if="${!#lists.isEmpty(checkoutData.availableFoodItems)}"
+                     class="card border-0 shadow-sm rounded-4 mb-3">
+                    <div class="card-body p-4">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-cup-straw me-2"></i>Add Food &amp; Drinks</h6>
+                        <div class="row g-2">
+                            <div class="col-12" th:each="item : ${checkoutData.availableFoodItems}">
+                                <div class="d-flex align-items-center justify-content-between p-2 rounded-3"
+                                     style="background:#f8fafc;border:1px solid #e2e8f0">
+                                    <div>
+                                        <div class="fw-semibold" style="font-size:.9rem" th:text="${item.name}"></div>
+                                        <div class="text-muted" style="font-size:.78rem" th:text="${item.description}"></div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="text-success fw-semibold" style="font-size:.9rem"
+                                              th:text="'$' + ${item.price}" th:attr="data-price=${item.price}"></span>
+                                        <input type="number" min="0" max="10" value="0"
+                                               class="form-control form-control-sm food-qty"
+                                               style="width:65px"
+                                               th:name="'food_' + ${item.id}"
+                                               th:attr="data-price=${item.price}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment method -->
                 <div class="card border-0 shadow-sm rounded-4 mb-4">
                     <div class="card-body p-4">
-                        <h6 class="fw-bold mb-3"><i class="bi bi-credit-card me-2"></i>Payment</h6>
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold" style="font-size:.88rem">Card Number</label>
-                            <input class="form-control" value="4111 1111 1111 1111" readonly style="background:#f8fafc;color:#64748b">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-credit-card me-2"></i>Payment Method</h6>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="payment-option w-100" style="cursor:pointer">
+                                    <input type="radio" name="paymentMethod" value="CARD" class="d-none" checked>
+                                    <div class="p-3 rounded-3 border text-center payment-option-card active-payment">
+                                        <i class="bi bi-credit-card fs-4 d-block mb-1"></i>
+                                        <span style="font-size:.85rem">Card</span>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <label class="payment-option w-100" style="cursor:pointer">
+                                    <input type="radio" name="paymentMethod" value="KHQR" class="d-none">
+                                    <div class="p-3 rounded-3 border text-center payment-option-card">
+                                        <i class="bi bi-qr-code fs-4 d-block mb-1"></i>
+                                        <span style="font-size:.85rem">KHQR</span>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <label class="payment-option w-100" style="cursor:pointer">
+                                    <input type="radio" name="paymentMethod" value="ABA" class="d-none">
+                                    <div class="p-3 rounded-3 border text-center payment-option-card">
+                                        <i class="bi bi-bank fs-4 d-block mb-1"></i>
+                                        <span style="font-size:.85rem">ABA Pay</span>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <label class="payment-option w-100" style="cursor:pointer">
+                                    <input type="radio" name="paymentMethod" value="WING" class="d-none">
+                                    <div class="p-3 rounded-3 border text-center payment-option-card">
+                                        <i class="bi bi-wallet2 fs-4 d-block mb-1"></i>
+                                        <span style="font-size:.85rem">Wing</span>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
-                        <div class="row g-3">
-                            <div class="col-6">
-                                <label class="form-label fw-semibold" style="font-size:.88rem">Expiry</label>
-                                <input class="form-control" value="12/30" readonly style="background:#f8fafc;color:#64748b">
+
+                        <!-- Card details (shown only for CARD) -->
+                        <div id="cardDetails" class="mt-3">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" style="font-size:.88rem">Card Number</label>
+                                <input class="form-control" value="4111 1111 1111 1111" readonly style="background:#f8fafc;color:#64748b">
                             </div>
-                            <div class="col-6">
-                                <label class="form-label fw-semibold" style="font-size:.88rem">CVV</label>
-                                <input class="form-control" value="123" readonly style="background:#f8fafc;color:#64748b">
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold" style="font-size:.88rem">Expiry</label>
+                                    <input class="form-control" value="12/30" readonly style="background:#f8fafc;color:#64748b">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold" style="font-size:.88rem">CVV</label>
+                                    <input class="form-control" value="123" readonly style="background:#f8fafc;color:#64748b">
+                                </div>
                             </div>
+                        </div>
+
+                        <!-- KHQR mock -->
+                        <div id="khqrDetails" class="mt-3 text-center d-none">
+                            <p class="text-muted mb-2" style="font-size:.85rem">Scan this QR code with your banking app</p>
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=KHQR-MOCK-PAYMENT"
+                                 alt="KHQR Mock" width="160" class="border rounded-3 p-2">
+                            <p class="text-success mt-2 fw-semibold" style="font-size:.82rem">
+                                <i class="bi bi-info-circle me-1"></i>Mock QR — no real payment
+                            </p>
+                        </div>
+
+                        <!-- ABA/Wing generic -->
+                        <div id="walletDetails" class="mt-3 text-center d-none">
+                            <p class="text-muted" style="font-size:.85rem">You will be redirected to your wallet app to complete payment.</p>
+                            <p class="text-warning fw-semibold" style="font-size:.82rem">
+                                <i class="bi bi-exclamation-triangle me-1"></i>Mock — no real redirect
+                            </p>
                         </div>
                     </div>
                 </div>
 
                 <button class="btn btn-success w-100 fw-bold py-3 rounded-3" type="submit" style="font-size:1rem">
-                    <i class="bi bi-lock-fill me-2"></i>Confirm &amp; Pay $<span th:text="${checkoutData.totalAmount}"></span>
+                    <i class="bi bi-lock-fill me-2"></i>Confirm &amp; Pay
+                    $<span id="confirmTotal" th:text="${checkoutData.totalAmount}"></span>
                 </button>
                 <p class="text-center text-muted mt-2" style="font-size:.78rem">
                     <i class="bi bi-shield-check me-1"></i>Secure mock payment — no real charges
@@ -101,7 +233,13 @@
         </div>
     </div>
 
+    <style>
+        .active-payment { border-color: #0d6efd !important; background: #eff6ff; color: #0d6efd; }
+        .payment-option-card { transition: all .2s; }
+    </style>
+
     <script th:inline="javascript">
+        // Countdown timer
         (function() {
             const holdMinutes = [[${holdMinutes}]];
             let totalSeconds = holdMinutes * 60;
@@ -120,6 +258,85 @@
                 el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
             }, 1000);
         })();
+
+        // Payment method toggle
+        const baseTotal = parseFloat([[${checkoutData.totalAmount}]]) || 0;
+        document.querySelectorAll('input[name="paymentMethod"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                document.querySelectorAll('.payment-option-card').forEach(el => el.classList.remove('active-payment'));
+                this.closest('label').querySelector('.payment-option-card').classList.add('active-payment');
+
+                document.getElementById('cardDetails').classList.add('d-none');
+                document.getElementById('khqrDetails').classList.add('d-none');
+                document.getElementById('walletDetails').classList.add('d-none');
+
+                if (this.value === 'CARD') document.getElementById('cardDetails').classList.remove('d-none');
+                else if (this.value === 'KHQR') document.getElementById('khqrDetails').classList.remove('d-none');
+                else document.getElementById('walletDetails').classList.remove('d-none');
+            });
+        });
+
+        // Promo code apply
+        let promoDiscount = 0;
+        document.getElementById('applyPromoBtn').addEventListener('click', function() {
+            const code = document.getElementById('promoField').value.trim();
+            const msgEl = document.getElementById('promoMessage');
+            if (!code) { msgEl.innerHTML = '<span class="text-danger">Please enter a code.</span>'; return; }
+
+            fetch('/bookings/promo/validate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'code=' + encodeURIComponent(code)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.valid) {
+                    msgEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>' + data.message + '</span>';
+                    document.getElementById('promoCodeInput').value = code;
+                    promoDiscount = parseFloat(data.discountPercent) || 0;
+                } else {
+                    msgEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>' + data.message + '</span>';
+                    promoDiscount = 0;
+                    document.getElementById('promoCodeInput').value = '';
+                }
+                updateTotal();
+            });
+        });
+
+        // Food + promo total recalculation
+        // baseTotalFixed = server total WITHOUT promo (promo code submitted at page load is null)
+        const baseTotalFixed = [[${checkoutData.totalAmount}]];
+        // subtotalFixed = base seats + weekend surcharge (discount applies to this)
+        const subtotalFixed = parseFloat([[${checkoutData.baseAmount}]]) + parseFloat([[${checkoutData.weekendSurcharge != null ? checkoutData.weekendSurcharge : 0}]]);
+
+        function updateTotal() {
+            let foodTotal = 0;
+            document.querySelectorAll('.food-qty').forEach(function(input) {
+                const qty = parseInt(input.value) || 0;
+                const price = parseFloat(input.dataset.price) || 0;
+                foodTotal += qty * price;
+            });
+
+            const foodRow = document.getElementById('foodSummaryRow');
+            const foodDisplay = document.getElementById('foodTotalDisplay');
+            if (foodTotal > 0) {
+                foodRow.classList.remove('d-none');
+                foodDisplay.textContent = '$' + foodTotal.toFixed(2);
+            } else {
+                foodRow.classList.add('d-none');
+            }
+
+            // Re-apply promo discount if active
+            const discountAmt = subtotalFixed * promoDiscount / 100;
+            const grand = parseFloat(baseTotalFixed) - discountAmt + foodTotal;
+            document.getElementById('grandTotal').textContent = '$' + grand.toFixed(2);
+            document.getElementById('confirmTotal').textContent = grand.toFixed(2);
+        }
+
+        document.querySelectorAll('.food-qty').forEach(function(input) {
+            input.addEventListener('change', updateTotal);
+            input.addEventListener('input', updateTotal);
+        });
     </script>
 </th:block>
 </html>

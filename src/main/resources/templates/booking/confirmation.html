@@ -8,7 +8,7 @@
             <i class="bi bi-check-lg text-success" style="font-size:1.8rem"></i>
         </div>
         <h3 class="fw-bold">Booking Confirmed!</h3>
-        <p class="text-muted">Your tickets are ready. Save your ticket codes below.</p>
+        <p class="text-muted">Your tickets are ready. Download or save your ticket codes below.</p>
     </div>
 
     <!-- Summary card -->
@@ -24,11 +24,31 @@
                 <span th:text="${booking.showtime.showDate}"></span> &nbsp;
                 <span th:text="${booking.showtime.showTime}"></span>
             </p>
-            <p class="mb-1"><strong>Total Paid:</strong>
+            <p class="mb-1"><strong>Hall:</strong> <span th:text="${booking.showtime.hall.name}"></span></p>
+            <!-- Price breakdown -->
+            <hr class="my-2">
+            <div style="font-size:.85rem">
+                <div th:if="${booking.serviceFee != null}" class="d-flex justify-content-between text-muted mb-1">
+                    <span>Service fee</span><span th:text="'$' + ${booking.serviceFee}"></span>
+                </div>
+                <div th:if="${booking.taxAmount != null}" class="d-flex justify-content-between text-muted mb-1">
+                    <span>Tax</span><span th:text="'$' + ${booking.taxAmount}"></span>
+                </div>
+                <div th:if="${booking.discountAmount != null and booking.discountAmount.compareTo(T(java.math.BigDecimal).ZERO) > 0}"
+                     class="d-flex justify-content-between text-success mb-1">
+                    <span><i class="bi bi-tag me-1"></i>Promo (<span th:text="${booking.promoCode}"></span>)</span>
+                    <span th:text="'-$' + ${booking.discountAmount}"></span>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                <span class="fw-bold">Total Paid</span>
                 <span class="fw-bold text-success" th:text="'$' + ${booking.totalAmount}"></span>
-            </p>
-            <p class="mb-0"><strong>Status:</strong>
+            </div>
+            <p class="mb-0 mt-2"><strong>Status:</strong>
                 <span class="badge bg-success" th:text="${booking.status}"></span>
+            </p>
+            <p th:if="${booking.paymentMethod != null}" class="mb-0 mt-1 text-muted" style="font-size:.82rem">
+                <i class="bi bi-credit-card me-1"></i>Paid via <span th:text="${booking.paymentMethod}"></span>
             </p>
         </div>
     </div>
@@ -44,10 +64,16 @@
                    th:href="@{/tickets/{code}(code=${ticket.ticketCode})}"
                    th:text="${ticket.ticketCode}"></a>
             </div>
-            <div class="text-center">
+            <div class="text-center mb-3">
                 <img th:src="@{/tickets/{code}/qr(code=${ticket.ticketCode})}"
                      alt="QR Code" width="160" height="160"
                      style="border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff">
+            </div>
+            <div class="text-center">
+                <a class="btn btn-dark btn-sm px-4 fw-semibold"
+                   th:href="@{/tickets/{code}/pdf(code=${ticket.ticketCode})}">
+                    <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
+                </a>
             </div>
         </div>
     </div>

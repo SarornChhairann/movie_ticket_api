@@ -9,22 +9,55 @@
     <div class="admin-table">
         <table class="table mb-0 align-middle">
             <thead>
-            <tr><th>Movie</th><th>Hall</th><th>Date</th><th>Time</th><th>Normal $</th><th>Couple $</th><th class="text-end">Actions</th></tr>
+            <tr>
+                <th>Movie</th>
+                <th>Hall</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Normal $</th>
+                <th>Couple $</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+            </tr>
             </thead>
             <tbody>
-            <tr th:each="showtime : ${showtimes}">
+            <tr th:each="showtime : ${showtimes}"
+                th:classappend="${showtime.blocked} ? 'table-secondary' : ''">
                 <td class="fw-semibold" th:text="${showtime.movie.title}"></td>
                 <td th:text="${showtime.hall.name}"></td>
                 <td th:text="${showtime.showDate}"></td>
                 <td th:text="${showtime.showTime}"></td>
                 <td th:text="${showtime.normalPrice}"></td>
                 <td th:text="${showtime.couplePrice}"></td>
-                <td class="text-end">
-                    <a class="btn btn-sm btn-outline-danger" th:href="@{/admin/showtimes/delete/{id}(id=${showtime.id})}"><i class="bi bi-trash"></i></a>
+                <td>
+                    <span class="badge" th:if="${showtime.blocked}" style="background:#6b7280">Blocked</span>
+                    <span class="badge bg-success" th:unless="${showtime.blocked}">Active</span>
+                </td>
+                <td class="text-end d-flex gap-1 justify-content-end">
+                    <!-- Block / Unblock -->
+                    <form th:action="@{/admin/showtimes/{id}/block(id=${showtime.id})}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-sm"
+                                th:classappend="${showtime.blocked} ? 'btn-outline-success' : 'btn-outline-warning'"
+                                th:title="${showtime.blocked} ? 'Unblock' : 'Block'">
+                            <i class="bi" th:classappend="${showtime.blocked} ? 'bi-play-circle' : 'bi-slash-circle'"></i>
+                        </button>
+                    </form>
+                    <!-- Copy to next week -->
+                    <form th:action="@{/admin/showtimes/{id}/copy-next-week(id=${showtime.id})}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Copy to next week">
+                            <i class="bi bi-copy"></i>
+                        </button>
+                    </form>
+                    <!-- Delete -->
+                    <a class="btn btn-sm btn-outline-danger"
+                       th:href="@{/admin/showtimes/delete/{id}(id=${showtime.id})}"
+                       onclick="return confirm('Delete this showtime?')">
+                        <i class="bi bi-trash"></i>
+                    </a>
                 </td>
             </tr>
             <tr th:if="${#lists.isEmpty(showtimes)}">
-                <td colspan="7" class="text-center text-muted py-4">No showtimes yet.</td>
+                <td colspan="8" class="text-center text-muted py-4">No showtimes yet.</td>
             </tr>
             </tbody>
         </table>

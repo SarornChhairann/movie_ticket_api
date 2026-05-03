@@ -9,10 +9,13 @@ import co.tkm.ticketmanagementsystem.repository.MovieRepository;
 import co.tkm.ticketmanagementsystem.repository.SeatRepository;
 import co.tkm.ticketmanagementsystem.repository.ShowtimeRepository;
 import co.tkm.ticketmanagementsystem.repository.ShowtimeSeatRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,5 +69,68 @@ public class ShowtimeService {
 
     public long count() {
         return showtimeRepository.count();
+    }
+
+    @Transactional
+    public void toggleBlocked(Long id) {
+        Showtime s = showtimeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Showtime not found: " + id));
+        s.setBlocked(!s.isBlocked());
+        showtimeRepository.save(s);
+    }
+
+    @Transactional
+    public Showtime copyToNextWeek(Long id) {
+        Showtime original = showtimeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Showtime not found: " + id));
+        Showtime copy = new Showtime();
+        copy.setMovie(original.getMovie());
+        copy.setHall(original.getHall());
+        copy.setShowDate(original.getShowDate().plusWeeks(1));
+        copy.setShowTime(original.getShowTime());
+        copy.setNormalPrice(original.getNormalPrice());
+        copy.setCouplePrice(original.getCouplePrice());
+        copy.setBlocked(false);
+        return save(copy);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Showtime> findByWeek(LocalDate weekStart) {
+        LocalDate weekEnd = weekStart.plusDays(6);
+        return showtimeRepository.findByShowDateBetweenOrderByShowDateAscShowTimeAsc(weekStart, weekEnd);
+    }
+
+    @Transactional(readOnly = true)
+    public Showtime findById(Long id) {
+        return showtimeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Showtime not found: " + id));
+    }
+
+    /**
+     * Throws IllegalArgumentException if the given hall/date/time overlaps with any
+     * existing showtime in the same hall (accounting for each movie's duration).
+     *
+     * @param hallId            hall to check
+     * @param showDate          date of the new showtime
+     * @param showTime          start time of the new showtime
+     * @param newDurationMin    duration of the new movie in minutes
+     * @param excludeId         showtime id to exclude from check (for edits), or null
+     */
+    @Transactional(readOnly = true)
+    public void validateNoOverlap(Long hallId, LocalDate showDate, LocalTime showTime,
+                                  int newDurationMin, Long excludeId) {
+        List<Showtime> existing = showtimeRepository.findByHallIdAndShowDateWithMovie(hallId, showDate);
+        LocalTime newEnd = showTime.plusMinutes(newDurationMin);
+
+        for (Showtime s : existing) {
+            if (excludeId != null && s.getId().equals(excludeId)) continue;
+            LocalTime existEnd = s.getShowTime().plusMinutes(s.getMovie().getDurationMinutes());
+            // overlap: newStart < existEnd AND newEnd > existStart
+            if (showTime.isBefore(existEnd) && newEnd.isAfter(s.getShowTime())) {
+                throw new IllegalArgumentException(
+                        "Time conflict: hall is already occupied by \"" + s.getMovie().getTitle()
+                        + "\" from " + s.getShowTime() + " to " + existEnd + ".");
+            }
+        }
     }
 }

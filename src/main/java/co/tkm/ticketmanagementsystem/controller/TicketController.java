@@ -1,9 +1,11 @@
 package co.tkm.ticketmanagementsystem.controller;
 
 import co.tkm.ticketmanagementsystem.model.Ticket;
+import co.tkm.ticketmanagementsystem.service.PdfTicketService;
 import co.tkm.ticketmanagementsystem.service.QrCodeService;
 import co.tkm.ticketmanagementsystem.service.TicketService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -21,6 +23,7 @@ public class TicketController {
 
     private final TicketService ticketService;
     private final QrCodeService qrCodeService;
+    private final PdfTicketService pdfTicketService;
 
     @GetMapping("/search")
     public String searchPage() {
@@ -57,5 +60,16 @@ public class TicketController {
         ticketService.findByTicketCode(ticketCode); // validate exists
         byte[] png = qrCodeService.generateQrPng(ticketCode, 250);
         return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(png);
+    }
+
+    @GetMapping("/{ticketCode}/pdf")
+    public ResponseEntity<byte[]> downloadPdf(@PathVariable String ticketCode) {
+        Ticket ticket = ticketService.findByTicketCode(ticketCode);
+        byte[] pdf = pdfTicketService.generatePdf(ticket);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"ticket-" + ticketCode + ".pdf\"")
+                .body(pdf);
     }
 }

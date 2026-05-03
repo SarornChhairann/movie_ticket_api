@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,5 +64,30 @@ public class TicketService {
         List<Ticket> tickets = ticketRepository.findByBooking(booking);
         tickets.forEach(ticket -> ticket.getSeat().getSeatCode());
         return tickets;
+    }
+
+    @Transactional
+    public Ticket checkIn(String ticketCode) {
+        Ticket ticket = ticketRepository.findByTicketCode(ticketCode)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketCode));
+
+        ticket.getBooking().getShowtime().getMovie().getTitle();
+        ticket.getBooking().getShowtime().getHall().getName();
+        ticket.getSeat().getSeatCode();
+
+        if (ticket.getStatus() == TicketStatus.CANCELLED) {
+            throw new IllegalArgumentException("This ticket has been cancelled.");
+        }
+        if (ticket.getScannedAt() != null) {
+            throw new IllegalArgumentException("Ticket already scanned at " + ticket.getScannedAt() + ".");
+        }
+
+        LocalDate showDate = ticket.getBooking().getShowtime().getShowDate();
+        if (!showDate.equals(LocalDate.now())) {
+            throw new IllegalArgumentException("Ticket is valid for " + showDate + ", not today.");
+        }
+
+        ticket.setScannedAt(LocalDateTime.now());
+        return ticketRepository.save(ticket);
     }
 }
