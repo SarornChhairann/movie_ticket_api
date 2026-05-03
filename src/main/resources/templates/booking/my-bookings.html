@@ -30,6 +30,7 @@
                 <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Status</th>
                 <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Ticket</th>
                 <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px"></th>
+                <th style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px"></th>
             </tr>
             </thead>
             <tbody>
@@ -66,6 +67,12 @@
                            class="d-block text-muted mt-1" style="font-size:.72rem">
                         Cancel &gt;2h before show
                     </small>
+                </td>
+                <td>
+                    <a class="btn btn-sm btn-outline-secondary px-3"
+                       th:href="@{/movies/{id}(id=${booking.showtime.movie.id})}">
+                        <i class="bi bi-arrow-repeat me-1"></i>Book Again
+                    </a>
                 </td>
             </tr>
             </tbody>

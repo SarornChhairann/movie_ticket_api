@@ -2,56 +2,224 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/base :: layout(${movie.title}, ~{::content})}">
 <th:block th:fragment="content">
-    <a class="btn btn-outline-secondary btn-sm mb-4 no-print" th:href="@{/movies}">
-        <i class="bi bi-arrow-left me-1"></i>All Movies
-    </a>
 
-    <!-- Movie header -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
-        <div class="row g-0">
-            <div class="col-md-3" th:if="${movie.imagePath != null and !#strings.isEmpty(movie.imagePath)}">
-                <img th:src="${movie.imagePath}" alt="Movie poster"
-                     style="width:100%;height:100%;object-fit:cover;min-height:260px;">
+<!-- ════════════════════════════════ HERO ════════════════════════════════ -->
+<div class="md-hero position-relative rounded-4 overflow-hidden mb-5" style="min-height:420px">
+    <!-- Blurred backdrop -->
+    <div class="position-absolute top-0 start-0 end-0 bottom-0 md-hero-bg"
+         th:style="${(movie.bannerPath != null and !#strings.isEmpty(movie.bannerPath))
+                     ? 'background-image:url(' + movie.bannerPath + ')'
+                     : ((movie.imagePath != null and !#strings.isEmpty(movie.imagePath))
+                         ? 'background-image:url(' + movie.imagePath + ')'
+                         : 'background:var(--mtms-surface)')}">
+    </div>
+    <!-- Gradient overlay -->
+    <div class="position-absolute top-0 start-0 end-0 bottom-0 md-hero-overlay"></div>
+
+    <!-- Hero content -->
+    <div class="position-relative d-flex align-items-end p-4 p-md-5" style="min-height:420px;z-index:2">
+        <!-- Poster (desktop) -->
+        <div class="me-4 flex-shrink-0 d-none d-md-block"
+             th:if="${movie.imagePath != null and !#strings.isEmpty(movie.imagePath)}">
+            <img th:src="${movie.imagePath}" alt="Poster"
+                 style="width:150px;height:220px;object-fit:cover;border-radius:12px;
+                        box-shadow:0 8px 32px rgba(0,0,0,.75);border:2px solid rgba(255,255,255,.12)">
+        </div>
+
+        <div class="flex-grow-1">
+            <!-- Status pill -->
+            <span th:if="${movie.status.name() == 'NOW_SHOWING'}"
+                  class="badge mb-2 px-3 py-1 fw-semibold"
+                  style="background:rgba(34,197,94,.22);color:#86efac;border:1px solid rgba(34,197,94,.35);
+                         font-size:.72rem;letter-spacing:.7px">
+                <i class="bi bi-circle-fill me-1" style="font-size:.4rem;vertical-align:middle"></i>NOW SHOWING
+            </span>
+            <span th:if="${movie.status.name() == 'COMING_SOON'}"
+                  class="badge mb-2 px-3 py-1 fw-semibold"
+                  style="background:rgba(214,178,94,.22);color:var(--mtms-accent);border:1px solid rgba(214,178,94,.35);
+                         font-size:.72rem;letter-spacing:.7px">
+                <i class="bi bi-clock me-1"></i>COMING SOON
+            </span>
+
+            <h1 class="fw-bold mb-2" style="font-size:clamp(1.6rem,4vw,2.8rem);text-shadow:0 2px 16px rgba(0,0,0,.8)"
+                th:text="${movie.title}"></h1>
+
+            <!-- Meta row -->
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3" style="font-size:.87rem;opacity:.9">
+                <span class="badge"
+                      style="background:rgba(42,167,255,.18);color:rgba(234,241,255,.9);border:1px solid rgba(42,167,255,.25)"
+                      th:text="${movie.genre}"></span>
+                <span th:if="${movie.format != null and !#strings.isEmpty(movie.format)}"
+                      class="badge bg-dark" th:text="${movie.format}"></span>
+                <span th:if="${movie.rating != null and !#strings.isEmpty(movie.rating)}"
+                      class="badge bg-warning fw-bold" th:text="${movie.rating}"></span>
+                <span class="text-muted">
+                    <i class="bi bi-clock me-1"></i><span th:text="${movie.durationMinutes}"></span> min
+                </span>
+                <span th:if="${movie.language != null and !#strings.isEmpty(movie.language)}" class="text-muted">
+                    <i class="bi bi-translate me-1"></i><span th:text="${movie.language}"></span>
+                </span>
             </div>
-            <div th:classappend="${movie.imagePath != null and !#strings.isEmpty(movie.imagePath)} ? 'col-md-9' : 'col-12'"
-                 class="p-4 d-flex flex-column justify-content-center">
-                <div class="d-flex flex-wrap gap-1 mb-2">
-                    <span class="badge" style="background:rgba(42,167,255,.14);color:rgba(234,241,255,.85);border:1px solid rgba(42,167,255,.22)" th:text="${movie.genre}"></span>
-                    <span th:if="${movie.format != null and !#strings.isEmpty(movie.format)}"
-                          class="badge bg-dark" th:text="${movie.format}"></span>
-                    <span th:if="${movie.rating != null and !#strings.isEmpty(movie.rating)}"
-                          class="badge bg-warning" th:text="${movie.rating}"></span>
+
+            <!-- CTAs -->
+            <div class="d-flex flex-wrap gap-2">
+                <!-- Now Showing -->
+                <th:block th:if="${movie.status.name() == 'NOW_SHOWING'}">
+                    <a href="#showtimes" class="btn btn-primary px-4 fw-semibold">
+                        <i class="bi bi-ticket-perforated me-2"></i>Book Now
+                    </a>
+                    <button th:if="${movie.trailerUrl != null and !#strings.isEmpty(movie.trailerUrl)}"
+                            class="btn btn-outline-light px-4 fw-semibold"
+                            data-bs-toggle="modal" data-bs-target="#trailerModal">
+                        <i class="bi bi-play-circle me-2"></i>Watch Trailer
+                    </button>
+                </th:block>
+
+                <!-- Coming Soon -->
+                <th:block th:if="${movie.status.name() == 'COMING_SOON'}">
+                    <button class="btn btn-primary px-4 fw-semibold"
+                            data-bs-toggle="modal" data-bs-target="#remindModal">
+                        <i class="bi bi-bell me-2"></i>Remind Me
+                    </button>
+                    <button th:if="${movie.trailerUrl != null and !#strings.isEmpty(movie.trailerUrl)}"
+                            class="btn btn-outline-light px-4 fw-semibold"
+                            data-bs-toggle="modal" data-bs-target="#trailerModal">
+                        <i class="bi bi-play-circle me-2"></i>Watch Trailer
+                    </button>
+                </th:block>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════ COUNTDOWN ════════════════════════════════ -->
+<div th:if="${movie.status.name() == 'COMING_SOON' and movie.releaseDate != null}"
+     class="card border-0 shadow-sm rounded-4 p-4 text-center mb-5"
+     style="background:linear-gradient(135deg,rgba(214,178,94,.08),rgba(214,178,94,.04));
+            border:1px solid rgba(214,178,94,.20)!important">
+    <p class="mb-3 fw-semibold"
+       style="color:var(--mtms-accent);font-size:.8rem;letter-spacing:.7px;text-transform:uppercase">
+        <i class="bi bi-calendar-event me-2"></i>Releases
+        <span th:text="${#temporals.format(movie.releaseDate,'d MMMM yyyy')}"></span>
+    </p>
+    <div class="d-flex justify-content-center gap-3"
+         id="mdCountdown" th:attr="data-release=${movie.releaseDate}">
+        <div class="md-count-block">
+            <span id="cd-days" class="md-count-num">--</span>
+            <span class="md-count-label">Days</span>
+        </div>
+        <span class="md-count-sep">:</span>
+        <div class="md-count-block">
+            <span id="cd-hours" class="md-count-num">--</span>
+            <span class="md-count-label">Hours</span>
+        </div>
+        <span class="md-count-sep">:</span>
+        <div class="md-count-block">
+            <span id="cd-mins" class="md-count-num">--</span>
+            <span class="md-count-label">Mins</span>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════ MAIN GRID ════════════════════════════════ -->
+<div class="row g-4 mb-5">
+    <!-- Left: Synopsis + Cast -->
+    <div class="col-lg-8">
+        <!-- Synopsis -->
+        <div th:if="${movie.description != null and !#strings.isEmpty(movie.description)}"
+             class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+            <h6 class="fw-bold mb-3"
+                style="color:var(--mtms-accent);font-size:.72rem;text-transform:uppercase;letter-spacing:.9px">
+                <i class="bi bi-file-text me-2"></i>Synopsis
+            </h6>
+            <p class="mb-0" style="line-height:1.8;color:var(--mtms-text)" th:text="${movie.description}"></p>
+        </div>
+
+        <!-- Cast -->
+        <div th:if="${movie.cast != null and !#strings.isEmpty(movie.cast)}"
+             class="card border-0 shadow-sm rounded-4 p-4">
+            <h6 class="fw-bold mb-3"
+                style="color:var(--mtms-accent);font-size:.72rem;text-transform:uppercase;letter-spacing:.9px">
+                <i class="bi bi-people me-2"></i>Cast &amp; Crew
+            </h6>
+            <div class="d-flex flex-wrap gap-2">
+                <span th:each="person : ${movie.cast.split(',')}"
+                      class="badge px-3 py-2 fw-normal"
+                      style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+                             color:var(--mtms-text);font-size:.82rem"
+                      th:text="${person.trim()}"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Details card -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-4 p-4">
+            <h6 class="fw-bold mb-3"
+                style="color:var(--mtms-accent);font-size:.72rem;text-transform:uppercase;letter-spacing:.9px">
+                <i class="bi bi-info-circle me-2"></i>Movie Details
+            </h6>
+            <dl class="mb-0" style="font-size:.875rem">
+                <div class="d-flex justify-content-between align-items-center py-2"
+                     style="border-bottom:1px solid rgba(255,255,255,.07)">
+                    <dt class="fw-normal mb-0" style="color:var(--mtms-muted)">Status</dt>
+                    <dd class="mb-0 fw-semibold"
+                        th:text="${movie.status.name() == 'NOW_SHOWING'} ? 'Now Showing' : 'Coming Soon'"></dd>
                 </div>
-                <h2 class="fw-bold mb-2" th:text="${movie.title}"></h2>
-                <p class="text-muted mb-2" style="font-size:.9rem">
-                    <i class="bi bi-clock me-1"></i>
-                    <span th:text="${movie.durationMinutes} + ' min'"></span>
-                    <span th:if="${movie.language != null and !#strings.isEmpty(movie.language)}"
-                          class="ms-3"><i class="bi bi-translate me-1"></i><span th:text="${movie.language}"></span></span>
-                </p>
-                <p th:if="${movie.description != null and !#strings.isEmpty(movie.description)}"
-                   class="mb-2 text-secondary" th:text="${movie.description}"></p>
-                <p th:if="${movie.cast != null and !#strings.isEmpty(movie.cast)}"
-                   class="mb-0 text-muted" style="font-size:.85rem">
-                    <i class="bi bi-people me-1"></i><span th:text="${movie.cast}"></span>
-                </p>
-            </div>
+                <div class="d-flex justify-content-between align-items-center py-2"
+                     style="border-bottom:1px solid rgba(255,255,255,.07)">
+                    <dt class="fw-normal mb-0" style="color:var(--mtms-muted)">Genre</dt>
+                    <dd class="mb-0" th:text="${movie.genre}"></dd>
+                </div>
+                <div th:if="${movie.director != null and !#strings.isEmpty(movie.director)}"
+                     class="d-flex justify-content-between align-items-center py-2"
+                     style="border-bottom:1px solid rgba(255,255,255,.07)">
+                    <dt class="fw-normal mb-0" style="color:var(--mtms-muted)">Director</dt>
+                    <dd class="mb-0" th:text="${movie.director}"></dd>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2"
+                     style="border-bottom:1px solid rgba(255,255,255,.07)">
+                    <dt class="fw-normal mb-0" style="color:var(--mtms-muted)">Duration</dt>
+                    <dd class="mb-0" th:text="${movie.durationMinutes} + ' min'"></dd>
+                </div>
+                <div th:if="${movie.language != null and !#strings.isEmpty(movie.language)}"
+                     class="d-flex justify-content-between align-items-center py-2"
+                     style="border-bottom:1px solid rgba(255,255,255,.07)">
+                    <dt class="fw-normal mb-0" style="color:var(--mtms-muted)">Language</dt>
+                    <dd class="mb-0" th:text="${movie.language}"></dd>
+                </div>
+                <div th:if="${movie.format != null and !#strings.isEmpty(movie.format)}"
+                     class="d-flex justify-content-between align-items-center py-2"
+                     style="border-bottom:1px solid rgba(255,255,255,.07)">
+                    <dt class="fw-normal mb-0" style="color:var(--mtms-muted)">Format</dt>
+                    <dd class="mb-0" th:text="${movie.format}"></dd>
+                </div>
+                <div th:if="${movie.rating != null and !#strings.isEmpty(movie.rating)}"
+                     class="d-flex justify-content-between align-items-center py-2"
+                     style="border-bottom:1px solid rgba(255,255,255,.07)">
+                    <dt class="fw-normal mb-0" style="color:var(--mtms-muted)">Rating</dt>
+                    <dd class="mb-0">
+                        <span class="badge bg-warning fw-bold" th:text="${movie.rating}"></span>
+                    </dd>
+                </div>
+                <div th:if="${movie.releaseDate != null}"
+                     class="d-flex justify-content-between align-items-center py-2">
+                    <dt class="fw-normal mb-0" style="color:var(--mtms-muted)">Release Date</dt>
+                    <dd class="mb-0" th:text="${#temporals.format(movie.releaseDate,'d MMM yyyy')}"></dd>
+                </div>
+            </dl>
         </div>
     </div>
+</div>
 
-    <!-- Trailer -->
-    <div th:if="${movie.trailerUrl != null and !#strings.isEmpty(movie.trailerUrl)}" class="mb-4">
-        <h5 class="fw-bold mb-3"><i class="bi bi-play-circle me-2"></i>Trailer</h5>
-        <div class="ratio ratio-16x9 rounded-4 overflow-hidden shadow-sm" style="max-width:640px">
-            <iframe th:src="${movie.trailerUrl}" allowfullscreen title="Movie Trailer"></iframe>
-        </div>
-    </div>
-
-    <!-- Showtimes -->
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-        <h5 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2"></i>Showtimes</h5>
+<!-- ════════════════════════════════ SHOWTIMES ════════════════════════════════ -->
+<div id="showtimes" class="mb-5">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+        <h5 class="fw-bold mb-0">
+            <i class="bi bi-calendar3 me-2" style="color:var(--mtms-accent)"></i>Showtimes
+        </h5>
         <form method="get" class="d-flex align-items-center gap-2" style="font-size:.88rem">
-            <label class="text-muted fw-semibold mb-0">City:</label>
+            <label class="fw-semibold mb-0" style="color:var(--mtms-muted)">City:</label>
             <select name="city" class="form-select form-select-sm" style="min-width:140px"
                     onchange="this.form.submit()">
                 <option value="" th:selected="${selectedCity == null or #strings.isEmpty(selectedCity)}">All Cities</option>
@@ -60,46 +228,257 @@
             </select>
         </form>
     </div>
-    <div th:if="${#maps.isEmpty(showtimeByDate)}" class="alert alert-info rounded-3" style="border-radius:12px">
-        <i class="bi bi-info-circle me-2"></i>No showtimes
-        <span th:if="${selectedCity != null and !#strings.isEmpty(selectedCity)}">
-            in <strong th:text="${selectedCity}"></strong>
-        </span>
-        scheduled yet. Check back soon!
+
+    <!-- Coming Soon: no tickets yet -->
+    <div th:if="${movie.status.name() == 'COMING_SOON'}"
+         class="card border-0 rounded-4 p-5 text-center"
+         style="background:rgba(214,178,94,.05);border:1px solid rgba(214,178,94,.18)!important">
+        <i class="bi bi-calendar-x" style="font-size:2.8rem;color:var(--mtms-accent);opacity:.65"></i>
+        <p class="fw-semibold mt-3 mb-1">Showtimes Not Available Yet</p>
+        <p class="text-muted mb-4" style="font-size:.88rem">Tickets go on sale closer to the release date.</p>
+        <button class="btn btn-primary px-5 fw-semibold mx-auto"
+                style="width:fit-content"
+                data-bs-toggle="modal" data-bs-target="#remindModal">
+            <i class="bi bi-bell me-2"></i>Get Notified When Tickets Open
+        </button>
     </div>
 
-    <div th:each="entry : ${showtimeByDate}" class="mb-4">
-        <div class="d-flex align-items-center gap-2 mb-2">
-            <i class="bi bi-calendar-event" style="color:var(--mtms-accent)"></i>
-            <span class="fw-semibold" th:text="${entry.key}"></span>
+    <!-- Now Showing: slot list -->
+    <div th:if="${movie.status.name() == 'NOW_SHOWING'}">
+        <div th:if="${#maps.isEmpty(showtimeByDate)}"
+             class="card border-0 rounded-4 p-4 text-center"
+             style="border:1px solid rgba(255,255,255,.08)!important">
+            <i class="bi bi-info-circle" style="font-size:2rem;color:var(--mtms-muted)"></i>
+            <p class="mt-2 mb-0 text-muted">No showtimes
+                <span th:if="${selectedCity != null and !#strings.isEmpty(selectedCity)}">
+                    in <strong th:text="${selectedCity}"></strong>
+                </span>
+                scheduled yet. Check back soon!
+            </p>
         </div>
-        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-            <table class="table mb-0 align-middle">
-                <thead>
-                <tr>
-                    <th>Time</th>
-                    <th>Hall</th>
-                    <th>Normal</th>
-                    <th>Couple</th>
-                    <th></th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="showtime : ${entry.value}">
-                    <td class="fw-semibold" th:text="${showtime.showTime}"></td>
-                    <td th:text="${showtime.hall.name}"></td>
-                    <td><span class="badge bg-light" th:text="'$' + ${showtime.normalPrice}"></span></td>
-                    <td><span class="badge" style="background:rgba(214,178,94,.18);color:var(--mtms-accent);border:1px solid rgba(214,178,94,.28)" th:text="'$' + ${showtime.couplePrice}"></span></td>
-                    <td class="text-end">
-                        <a class="btn btn-primary btn-sm px-3 fw-semibold"
-                           th:href="@{/bookings/seats/{id}(id=${showtime.id})}">
-                            <i class="bi bi-ticket-perforated me-1"></i>Select Seats
-                        </a>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
+
+        <div th:each="entry : ${showtimeByDate}" class="mb-4">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="bi bi-calendar-event" style="color:var(--mtms-accent)"></i>
+                <span class="fw-semibold" th:text="${entry.key}"></span>
+            </div>
+
+            <div th:each="showtime : ${entry.value}"
+                 class="md-showtime-row d-flex align-items-center flex-wrap gap-3 p-3 rounded-3 mb-2"
+                 style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);transition:background .2s">
+                <!-- Hall info -->
+                <div style="min-width:130px">
+                    <div class="fw-semibold" style="font-size:.9rem" th:text="${showtime.hall.name}"></div>
+                    <div class="text-muted" style="font-size:.76rem" th:text="${showtime.hall.city}"></div>
+                </div>
+
+                <!-- Time pill -->
+                <div class="flex-grow-1">
+                    <a class="md-slot-btn" th:href="@{/bookings/seats/{id}(id=${showtime.id})}">
+                        <i class="bi bi-clock me-1"></i>
+                        <span th:text="${showtime.showTime}"></span>
+                    </a>
+                </div>
+
+                <!-- Prices + Book -->
+                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                    <span class="md-price-badge">
+                        <i class="bi bi-person me-1"></i>$<span th:text="${showtime.normalPrice}"></span>
+                    </span>
+                    <span class="md-price-badge md-price-couple">
+                        <i class="bi bi-heart me-1"></i>$<span th:text="${showtime.couplePrice}"></span>
+                    </span>
+                    <a class="btn btn-primary btn-sm px-3 fw-semibold"
+                       th:href="@{/bookings/seats/{id}(id=${showtime.id})}">
+                        <i class="bi bi-ticket-perforated me-1"></i>Book
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
+</div>
+
+<!-- Back link -->
+<div class="mb-4">
+    <a class="btn btn-outline-secondary btn-sm" th:href="@{/movies}">
+        <i class="bi bi-arrow-left me-1"></i>All Movies
+    </a>
+</div>
+
+<!-- ════════════════════════════════ TRAILER MODAL ════════════════════════════════ -->
+<div th:if="${movie.trailerUrl != null and !#strings.isEmpty(movie.trailerUrl)}"
+     class="modal fade" id="trailerModal" tabindex="-1" aria-label="Trailer">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0" style="background:#000">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold" th:text="${movie.title} + ' — Trailer'"></h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="ratio ratio-16x9">
+                    <iframe id="trailerFrame" th:src="${movie.trailerUrl}"
+                            allowfullscreen title="Movie Trailer"
+                            allow="autoplay; encrypted-media"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════ REMIND ME MODAL ════════════════════════════════ -->
+<div class="modal fade" id="remindModal" tabindex="-1" aria-label="Remind Me">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:420px">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h5 class="modal-title fw-bold mb-0">
+                        <i class="bi bi-bell me-2" style="color:var(--mtms-accent)"></i>Get Notified
+                    </h5>
+                    <p class="text-muted mb-0 mt-1" style="font-size:.84rem">
+                        We'll email you when tickets open for <strong th:text="${movie.title}"></strong>.
+                    </p>
+                </div>
+                <button type="button" class="btn-close btn-close-white ms-auto align-self-start mt-1" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <div id="remindSuccess" class="alert alert-success d-none" role="alert">
+                    <i class="bi bi-check-circle me-2"></i>You're on the list! We'll let you know.
+                </div>
+                <div id="remindForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:.85rem">Your Email</label>
+                        <input type="email" id="remindEmail" class="form-control"
+                               placeholder="you@example.com">
+                        <div class="invalid-feedback">Please enter a valid email address.</div>
+                    </div>
+                    <button class="btn btn-primary w-100 fw-semibold" onclick="mdSubmitRemind()">
+                        <i class="bi bi-bell me-2"></i>Notify Me
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════ STYLES ════════════════════════════════ -->
+<style>
+.md-hero-bg {
+    background-size: cover;
+    background-position: center top;
+    filter: blur(3px) brightness(.38);
+    transform: scale(1.06);
+}
+.md-hero-overlay {
+    background: linear-gradient(to top,
+        rgba(5,6,10,.98) 0%,
+        rgba(5,6,10,.65) 45%,
+        rgba(5,6,10,.28) 100%);
+}
+/* Countdown */
+.md-count-block { display:flex;flex-direction:column;align-items:center;min-width:64px }
+.md-count-num   { font-size:2.2rem;font-weight:700;line-height:1;color:var(--mtms-accent) }
+.md-count-label { font-size:.68rem;text-transform:uppercase;letter-spacing:.7px;color:var(--mtms-muted);margin-top:.2rem }
+.md-count-sep   { font-size:2rem;font-weight:700;color:var(--mtms-accent);line-height:1;align-self:center;opacity:.5;padding-bottom:.5rem }
+
+/* Showtime slot pill */
+.md-slot-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: .35rem .9rem;
+    border-radius: 999px;
+    border: 1px solid rgba(214,178,94,.35);
+    background: rgba(214,178,94,.10);
+    color: var(--mtms-accent);
+    font-size: .875rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background .2s, border-color .2s, transform .15s;
+}
+.md-slot-btn:hover {
+    background: rgba(214,178,94,.22);
+    border-color: var(--mtms-accent);
+    color: var(--mtms-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(214,178,94,.20);
+}
+
+/* Price pills */
+.md-price-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: .22rem .65rem;
+    border-radius: 999px;
+    font-size: .76rem;
+    font-weight: 600;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.12);
+    color: var(--mtms-text);
+    white-space: nowrap;
+}
+.md-price-couple {
+    background: rgba(214,178,94,.12);
+    border-color: rgba(214,178,94,.28);
+    color: var(--mtms-accent);
+}
+.md-showtime-row:hover { background: rgba(255,255,255,.07) !important; }
+</style>
+
+<!-- ════════════════════════════════ SCRIPTS ════════════════════════════════ -->
+<script>
+(function () {
+    // ── Countdown ──
+    const el = document.getElementById('mdCountdown');
+    if (el) {
+        const release = new Date(el.dataset.release + 'T00:00:00');
+        function tick() {
+            const diff = release - Date.now();
+            if (diff <= 0) {
+                document.getElementById('cd-days').textContent  = '0';
+                document.getElementById('cd-hours').textContent = '00';
+                document.getElementById('cd-mins').textContent  = '00';
+                return;
+            }
+            const d = Math.floor(diff / 86400000);
+            const h = Math.floor((diff % 86400000) / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            document.getElementById('cd-days').textContent  = d;
+            document.getElementById('cd-hours').textContent = String(h).padStart(2, '0');
+            document.getElementById('cd-mins').textContent  = String(m).padStart(2, '0');
+        }
+        tick();
+        setInterval(tick, 30000);
+    }
+
+    // ── Stop trailer on modal close ──
+    const tm = document.getElementById('trailerModal');
+    if (tm) {
+        tm.addEventListener('hide.bs.modal', function () {
+            const f = document.getElementById('trailerFrame');
+            if (f) { const s = f.src; f.src = ''; f.src = s; }
+        });
+    }
+
+    // ── Scroll Book Now to showtimes ──
+    document.querySelectorAll('a[href="#showtimes"]').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.getElementById('showtimes');
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+})();
+
+function mdSubmitRemind() {
+    const inp = document.getElementById('remindEmail');
+    if (!inp.value.trim() || !inp.value.includes('@')) {
+        inp.classList.add('is-invalid');
+        return;
+    }
+    inp.classList.remove('is-invalid');
+    document.getElementById('remindForm').classList.add('d-none');
+    document.getElementById('remindSuccess').classList.remove('d-none');
+}
+</script>
+
 </th:block>
 </html>
