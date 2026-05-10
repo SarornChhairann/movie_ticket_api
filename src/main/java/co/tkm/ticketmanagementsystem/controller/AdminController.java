@@ -2,6 +2,8 @@ package co.tkm.ticketmanagementsystem.controller;
 
 import co.tkm.ticketmanagementsystem.enums.UserStatus;
 import co.tkm.ticketmanagementsystem.enums.MovieStatus;
+import co.tkm.ticketmanagementsystem.enums.BookingStatus;
+import co.tkm.ticketmanagementsystem.model.Cinema;
 import co.tkm.ticketmanagementsystem.model.FoodItem;
 import co.tkm.ticketmanagementsystem.model.Hall;
 import co.tkm.ticketmanagementsystem.model.Movie;
@@ -10,6 +12,7 @@ import co.tkm.ticketmanagementsystem.model.Showtime;
 import co.tkm.ticketmanagementsystem.repository.BookingFoodItemRepository;
 import co.tkm.ticketmanagementsystem.repository.BookingRepository;
 import co.tkm.ticketmanagementsystem.service.BookingService;
+import co.tkm.ticketmanagementsystem.service.CinemaService;
 import co.tkm.ticketmanagementsystem.service.FoodItemService;
 import co.tkm.ticketmanagementsystem.service.HallService;
 import co.tkm.ticketmanagementsystem.service.MovieService;
@@ -35,8 +38,13 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 
 @Controller
 @RequestMapping("/admin")
@@ -45,6 +53,7 @@ public class AdminController {
 
     private final MovieService movieService;
     private final HallService hallService;
+    private final CinemaService cinemaService;
     private final ShowtimeService showtimeService;
     private final BookingRepository bookingRepository;
     private final BookingService bookingService;
@@ -147,19 +156,35 @@ public class AdminController {
 
     @GetMapping("/halls/new")
     public String newHall(Model model) {
-        model.addAttribute("hall", new Hall());
+        Hall hall = new Hall();
+        hall.setCinema(new Cinema());
+        model.addAttribute("hall", hall);
+        model.addAttribute("cinemas", cinemaService.findAll());
         return "admin/hall-form";
     }
 
     @PostMapping("/halls/save")
-    public String saveHall(@ModelAttribute Hall hall) {
-        hallService.save(hall);
-        return "redirect:/admin/halls";
+    public String saveHall(@ModelAttribute Hall hall, Model model, RedirectAttributes ra) {
+        try {
+            hallService.save(hall);
+            ra.addFlashAttribute("success", "Hall saved.");
+            return "redirect:/admin/halls";
+        } catch (IllegalArgumentException ex) {
+            model.addAttribute("hall", hall);
+            model.addAttribute("cinemas", cinemaService.findAll());
+            model.addAttribute("error", ex.getMessage());
+            return "admin/hall-form";
+        }
     }
 
     @GetMapping("/halls/edit/{id}")
     public String editHall(@PathVariable Long id, Model model) {
-        model.addAttribute("hall", hallService.findById(id));
+        Hall hall = hallService.findById(id);
+        if (hall.getCinema() == null) {
+            hall.setCinema(new Cinema());
+        }
+        model.addAttribute("hall", hall);
+        model.addAttribute("cinemas", cinemaService.findAll());
         return "admin/hall-form";
     }
 
@@ -169,11 +194,81 @@ public class AdminController {
         return "redirect:/admin/halls";
     }
 
+    // ---- Cinemas ----
+
+    @GetMapping("/cinemas")
+    public String cinemas(Model model) {
+        model.addAttribute("cinemas", cinemaService.findAll());
+        return "admin/cinema-list";
+    }
+
+    @GetMapping("/cinemas/new")
+    public String newCinema(Model model) {
+        model.addAttribute("cinema", new Cinema());
+        return "admin/cinema-form";
+    }
+
+    @PostMapping("/cinemas/save")
+    public String saveCinema(@ModelAttribute Cinema cinema, Model model, RedirectAttributes ra) {
+        try {
+            cinemaService.save(cinema);
+            ra.addFlashAttribute("success", "Cinema saved.");
+            return "redirect:/admin/cinemas";
+        } catch (IllegalArgumentException ex) {
+            model.addAttribute("cinema", cinema);
+            model.addAttribute("error", ex.getMessage());
+            return "admin/cinema-form";
+        }
+    }
+
+    @GetMapping("/cinemas/edit/{id}")
+    public String editCinema(@PathVariable UUID id, Model model) {
+        model.addAttribute("cinema", cinemaService.findById(id));
+        return "admin/cinema-form";
+    }
+
+    @GetMapping("/cinemas/delete/{id}")
+    public String deleteCinema(@PathVariable UUID id, RedirectAttributes ra) {
+        long halls = hallService.countByCinemaId(id);
+        if (halls > 0) {
+            ra.addFlashAttribute("error", "Cannot delete cinema: it has " + halls + " hall(s). Delete or move halls first.");
+            return "redirect:/admin/cinemas";
+        }
+        cinemaService.deleteById(id);
+        ra.addFlashAttribute("success", "Cinema deleted.");
+        return "redirect:/admin/cinemas";
+    }
+
     // ---- Showtimes ----
 
     @GetMapping("/showtimes")
     public String showtimes(Model model) {
-        model.addAttribute("showtimes", showtimeService.findAll());
+        List<Showtime> showtimes = showtimeService.findAll();
+        model.addAttribute("showtimes", showtimes);
+
+        List<Long> ids = showtimes.stream().map(Showtime::getId).filter(Objects::nonNull).toList();
+        Map<Long, Long> bookingCounts = new HashMap<>();
+        Map<Long, Long> activeBookingCounts = new HashMap<>();
+        for (Long id : ids) {
+            long c = bookingRepository.countByShowtimeId(id);
+            if (c > 0) bookingCounts.put(id, c);
+            long a = bookingRepository.countByShowtimeIdAndStatusNot(id, BookingStatus.CANCELLED);
+            if (a > 0) activeBookingCounts.put(id, a);
+        }
+        model.addAttribute("bookingCounts", bookingCounts);
+        model.addAttribute("activeBookingCounts", activeBookingCounts);
+
+        int editLockHours = systemSettingService.getInt(SystemSettingService.CANCELLATION_HOURS, 2);
+        ZoneId zone = ZoneId.of("Asia/Phnom_Penh");
+        LocalDateTime lockCutoff = LocalDateTime.now(zone).plusHours(Math.max(0, editLockHours));
+        Map<Long, Boolean> lockedEdits = new HashMap<>();
+        for (Showtime s : showtimes) {
+            if (s.getId() == null || s.getShowDate() == null || s.getShowTime() == null) continue;
+            LocalDateTime start = LocalDateTime.of(s.getShowDate(), s.getShowTime());
+            lockedEdits.put(s.getId(), !start.isAfter(lockCutoff));
+        }
+        model.addAttribute("editLockHours", editLockHours);
+        model.addAttribute("lockedEdits", lockedEdits);
         return "admin/showtime-list";
     }
 
@@ -182,6 +277,27 @@ public class AdminController {
         model.addAttribute("showtime", new Showtime());
         model.addAttribute("movies", movieService.findAll());
         model.addAttribute("halls", hallService.findAll());
+        return "admin/showtime-form";
+    }
+
+    @GetMapping("/showtimes/edit/{id}")
+    public String editShowtime(@PathVariable Long id, Model model, RedirectAttributes ra) {
+        Showtime showtime = showtimeService.findById(id);
+        long bookings = bookingRepository.countByShowtimeId(id);
+        if (bookings > 0) {
+            ra.addFlashAttribute("error", "Cannot edit showtime because bookings already exist.");
+            return "redirect:/admin/showtimes";
+        }
+        if (showtimeService.isWithinEditLockWindow(showtime)) {
+            int hours = systemSettingService.getInt(SystemSettingService.CANCELLATION_HOURS, 2);
+            ra.addFlashAttribute("error", "Cannot edit showtime within " + hours + " hour(s) of start time.");
+            return "redirect:/admin/showtimes";
+        }
+
+        model.addAttribute("showtime", showtime);
+        model.addAttribute("movies", movieService.findAll());
+        model.addAttribute("halls", hallService.findAll());
+        model.addAttribute("publishNow", !showtime.isBlocked());
         return "admin/showtime-form";
     }
 
@@ -208,7 +324,7 @@ public class AdminController {
 
             ra.addFlashAttribute("success", publishNow ? "Showtime published." : "Showtime saved as draft (blocked).");
             return "redirect:/admin/showtimes";
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException | IllegalStateException ex) {
             model.addAttribute("error", ex.getMessage());
             model.addAttribute("showtime", showtime);
             model.addAttribute("movies", movieService.findAll());
@@ -220,15 +336,28 @@ public class AdminController {
     }
 
     @GetMapping("/showtimes/delete/{id}")
-    public String deleteShowtime(@PathVariable Long id) {
-        showtimeService.deleteById(id);
+    public String deleteShowtime(@PathVariable Long id, RedirectAttributes ra) {
+        try {
+            showtimeService.deleteById(id);
+            ra.addFlashAttribute("success", "Showtime deleted.");
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            ra.addFlashAttribute("error", ex.getMessage());
+        } catch (Exception ex) {
+            ra.addFlashAttribute("error", "Unable to delete showtime. Please try again.");
+        }
         return "redirect:/admin/showtimes";
     }
 
     @PostMapping("/showtimes/{id}/block")
     public String toggleBlockShowtime(@PathVariable Long id, RedirectAttributes ra) {
-        showtimeService.toggleBlocked(id);
-        ra.addFlashAttribute("success", "Showtime status updated.");
+        try {
+            showtimeService.toggleBlocked(id);
+            ra.addFlashAttribute("success", "Showtime status updated.");
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            ra.addFlashAttribute("error", ex.getMessage());
+        } catch (Exception ex) {
+            ra.addFlashAttribute("error", "Unable to update showtime status. Please try again.");
+        }
         return "redirect:/admin/showtimes";
     }
 

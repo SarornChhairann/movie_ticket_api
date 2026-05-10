@@ -1,8 +1,10 @@
 package co.tkm.ticketmanagementsystem.service;
 
 import co.tkm.ticketmanagementsystem.enums.SeatType;
+import co.tkm.ticketmanagementsystem.model.Cinema;
 import co.tkm.ticketmanagementsystem.model.Hall;
 import co.tkm.ticketmanagementsystem.model.Seat;
+import co.tkm.ticketmanagementsystem.repository.CinemaRepository;
 import co.tkm.ticketmanagementsystem.repository.HallRepository;
 import co.tkm.ticketmanagementsystem.repository.SeatRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -23,11 +26,22 @@ public class HallService {
 
     private final HallRepository hallRepository;
     private final SeatRepository seatRepository;
+    private final CinemaRepository cinemaRepository;
 
     @Transactional
     public Hall save(Hall hall) {
+        if (hall.getCinema() == null || hall.getCinema().getId() == null) {
+            throw new IllegalArgumentException("Cinema is required.");
+        }
+        Cinema cinema = cinemaRepository.findById(hall.getCinema().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Cinema not found: " + hall.getCinema().getId()));
+        hall.setCinema(cinema);
+
         if (hall.getTotalSeats() == null || hall.getTotalSeats() <= 0) {
             hall.setTotalSeats(DEFAULT_ROWS * TOTAL_SEATS_PER_ROW);
+        }
+        if (hall.getCapacity() == null) {
+            hall.setCapacity(hall.getTotalSeats());
         }
         Hall saved = hallRepository.save(hall);
         if (seatRepository.findByHall(saved).isEmpty()) {
@@ -74,12 +88,28 @@ public class HallService {
     @Transactional
     public Hall update(Long id, Hall data) {
         Hall hall = findById(id);
+        if (data.getCinema() == null || data.getCinema().getId() == null) {
+            throw new IllegalArgumentException("Cinema is required.");
+        }
+        Cinema cinema = cinemaRepository.findById(data.getCinema().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Cinema not found: " + data.getCinema().getId()));
+        hall.setCinema(cinema);
         hall.setName(data.getName());
+        hall.setCity(data.getCity());
+        hall.setAddress(data.getAddress());
+        hall.setType(data.getType());
+        hall.setHasDolbyAtmos(data.isHasDolbyAtmos());
+        hall.setHasScreenX(data.isHasScreenX());
         Integer requestedTotalSeats = data.getTotalSeats();
         if (requestedTotalSeats == null) {
             hall.setTotalSeats(DEFAULT_ROWS * TOTAL_SEATS_PER_ROW);
         } else {
             hall.setTotalSeats(requestedTotalSeats);
+        }
+        if (data.getCapacity() == null) {
+            hall.setCapacity(hall.getTotalSeats());
+        } else {
+            hall.setCapacity(data.getCapacity());
         }
         return hallRepository.save(hall);
     }
@@ -91,5 +121,10 @@ public class HallService {
 
     public long count() {
         return hallRepository.count();
+    }
+
+    public long countByCinemaId(UUID cinemaId) {
+        if (cinemaId == null) return 0;
+        return hallRepository.countByCinemaId(cinemaId);
     }
 }

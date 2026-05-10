@@ -1,0 +1,117 @@
+.mtms-flash-root {
+    position: fixed;
+    inset: 0;
+    z-index: 1070;
+    pointer-events: none;
+}
+
+.mtms-flash-stack {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(420px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    pointer-events: none;
+}
+
+.mtms-flash-pos-top-right { top: calc(env(safe-area-inset-top, 0px) + 14px); right: calc(env(safe-area-inset-right, 0px) + 14px); align-items: flex-end; }
+.mtms-flash-pos-top-left { top: calc(env(safe-area-inset-top, 0px) + 14px); left: calc(env(safe-area-inset-left, 0px) + 14px); align-items: flex-start; }
+.mtms-flash-pos-bottom-right { bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); right: calc(env(safe-area-inset-right, 0px) + 14px); align-items: flex-end; }
+.mtms-flash-pos-bottom-left { bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); left: calc(env(safe-area-inset-left, 0px) + 14px); align-items: flex-start; }
+.mtms-flash-pos-top-center { top: calc(env(safe-area-inset-top, 0px) + 14px); left: 50%; transform: translateX(-50%); align-items: center; }
+.mtms-flash-pos-bottom-center { bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); left: 50%; transform: translateX(-50%); align-items: center; }
+.mtms-flash-pos-center { top: 50%; left: 50%; transform: translate(-50%, -50%); align-items: center; }
+
+.mtms-flash {
+    pointer-events: auto;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 12px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.10);
+    background: rgba(7,20,40,.96);
+    box-shadow: 0 16px 44px rgba(0,0,0,.55);
+    color: rgba(234,241,255,.92);
+    opacity: 0;
+    transform: translateY(-10px) scale(.98);
+    transition: opacity .22s ease, transform .22s cubic-bezier(.2,.8,.2,1);
+    outline: none;
+}
+
+.mtms-flash--in {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.mtms-flash--out {
+    opacity: 0;
+    transform: translateY(-8px) scale(.98);
+}
+
+.mtms-flash__icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border: 1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.06);
+    color: rgba(234,241,255,.92);
+}
+
+.mtms-flash__body { flex: 1 1 auto; min-width: 0; }
+.mtms-flash__title { font-weight: 800; font-size: .9rem; line-height: 1.2; margin-top: 1px; margin-bottom: 2px; color: #fff; }
+.mtms-flash__message { font-size: .88rem; line-height: 1.25; color: rgba(234,241,255,.86); overflow-wrap: anywhere; }
+
+.mtms-flash__actions { display: flex; gap: 8px; align-items: center; }
+.mtms-flash__close {
+    pointer-events: auto;
+    border: 0;
+    background: transparent;
+    color: rgba(234,241,255,.78);
+    padding: 6px;
+    border-radius: 10px;
+    line-height: 1;
+}
+.mtms-flash__close:hover, .mtms-flash__close:focus-visible { background: rgba(255,255,255,.10); color: #fff; outline: none; }
+
+.mtms-flash--success { border-color: rgba(34,197,94,.28); }
+.mtms-flash--success .mtms-flash__icon { border-color: rgba(34,197,94,.28); background: rgba(34,197,94,.14); color: #86efac; }
+
+.mtms-flash--error { border-color: rgba(239,68,68,.30); }
+.mtms-flash--error .mtms-flash__icon { border-color: rgba(239,68,68,.30); background: rgba(239,68,68,.14); color: #fca5a5; }
+
+.mtms-flash--warning { border-color: rgba(245,166,35,.30); }
+.mtms-flash--warning .mtms-flash__icon { border-color: rgba(245,166,35,.30); background: rgba(245,166,35,.14); color: #fcd34d; }
+
+.mtms-flash--info { border-color: rgba(42,167,255,.30); }
+.mtms-flash--info .mtms-flash__icon { border-color: rgba(42,167,255,.30); background: rgba(42,167,255,.14); color: #93c5fd; }
+
+@media (max-width: 576px) {
+    .mtms-flash-stack {
+        width: calc(100vw - 16px);
+        max-width: calc(100vw - 16px);
+    }
+    .mtms-flash-pos-top-right,
+    .mtms-flash-pos-top-left,
+    .mtms-flash-pos-top-center {
+        top: calc(env(safe-area-inset-top, 0px) + 10px);
+        left: 8px;
+        right: 8px;
+        transform: none;
+        align-items: stretch;
+    }
+    .mtms-flash-pos-bottom-right,
+    .mtms-flash-pos-bottom-left,
+    .mtms-flash-pos-bottom-center {
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+        left: 8px;
+        right: 8px;
+        transform: none;
+        align-items: stretch;
+    }
+}

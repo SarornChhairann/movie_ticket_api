@@ -4,19 +4,21 @@
 <th:block th:fragment="content">
     <div class="d-flex align-items-center gap-2 mb-4">
         <a class="btn btn-outline-secondary btn-sm" th:href="@{/admin/showtimes}"><i class="bi bi-arrow-left"></i></a>
-        <h4 class="fw-bold mb-0">New Showtime</h4>
+        <h4 class="fw-bold mb-0" th:text="${showtime.id != null} ? 'Edit Showtime' : 'New Showtime'">Showtime</h4>
     </div>
     <div class="admin-form-card card p-4" style="max-width:560px">
         <div th:if="${error}" class="alert alert-danger">
             <i class="bi bi-exclamation-triangle me-2"></i><span th:text="${error}"></span>
         </div>
         <form th:action="@{/admin/showtimes/save}" th:object="${showtime}" method="post">
+            <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
             <input type="hidden" th:field="*{id}">
             <div class="mb-3">
                 <label class="form-label fw-semibold">Movie</label>
                 <select class="form-select" name="movie.id" required>
                     <option value="">— Select movie —</option>
                     <option th:each="movie : ${movies}" th:value="${movie.id}"
+                            th:selected="${showtime.movie != null and showtime.movie.id != null and movie.id == showtime.movie.id}"
                             th:text="${movie.title} + ' (' + ${movie.status} + ')'"></option>
                 </select>
             </div>
@@ -25,6 +27,7 @@
                 <select class="form-select" name="hall.id" required>
                     <option value="">— Select hall —</option>
                     <option th:each="hall : ${halls}" th:value="${hall.id}"
+                            th:selected="${showtime.hall != null and showtime.hall.id != null and hall.id == showtime.hall.id}"
                             th:text="${hall.city != null and !#strings.isEmpty(hall.city)} ? (${hall.city} + ' — ' + ${hall.name}) : ${hall.name}"></option>
                 </select>
             </div>

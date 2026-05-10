@@ -22,4 +22,9 @@ public interface ShowtimeSeatRepository extends JpaRepository<ShowtimeSeat, Long
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select ss from ShowtimeSeat ss where ss.showtime.id = :showtimeId and ss.id in :ids")
     List<ShowtimeSeat> findAllByShowtimeIdAndIdsForUpdate(@Param("showtimeId") Long showtimeId, @Param("ids") List<Long> ids);
+
+    @Query("select ss.id from ShowtimeSeat ss where ss.showtime.id = :showtimeId")
+    List<Long> findIdsByShowtimeId(@Param("showtimeId") Long showtimeId);
+
+    void deleteByShowtimeId(Long showtimeId);
 }

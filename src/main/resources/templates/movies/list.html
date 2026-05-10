@@ -533,6 +533,12 @@
                     <div class="p-2">
                         <p class="fw-semibold mb-0" style="font-size:.83rem;line-clamp:2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--mtms-text)"
                            th:text="${movie.title}"></p>
+                        <button type="button"
+                                class="btn btn-sm btn-primary w-100 mt-2 mtms-remind-btn"
+                                data-action="remind"
+                                th:attr="data-remind-movie-id=${movie.id},data-remind-title=${movie.title}">
+                            <i class="bi bi-bell me-1"></i>Remind Me
+                        </button>
                     </div>
                 </div>
             </a>

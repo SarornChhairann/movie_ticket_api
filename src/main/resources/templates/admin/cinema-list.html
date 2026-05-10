@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/admin-base :: layout('Cinemas', ~{::content})}">
+<th:block th:fragment="content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold mb-0"><i class="bi bi-geo-alt me-2"></i>Cinemas</h4>
+        <a class="btn btn-primary px-4" th:href="@{/admin/cinemas/new}"><i class="bi bi-plus-lg me-1"></i>New Cinema</a>
+    </div>
+
+    <div class="admin-table">
+        <table class="table mb-0 align-middle">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Address</th>
+                <th>Opening Hours</th>
+                <th class="text-end">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="c : ${cinemas}">
+                <td class="fw-semibold" th:text="${c.name}"></td>
+                <td class="text-muted" th:text="${c.address}"></td>
+                <td><span class="badge bg-light text-dark border" th:text="${c.openingHours != null ? c.openingHours : '-'}"></span></td>
+                <td class="text-end">
+                    <a class="btn btn-sm btn-outline-primary me-1" th:href="@{/admin/cinemas/edit/{id}(id=${c.id})}" title="Edit">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <a class="btn btn-sm btn-outline-danger"
+                       th:href="@{/admin/cinemas/delete/{id}(id=${c.id})}"
+                       data-confirm="Delete this cinema?"
+                       data-confirm-title="Delete cinema"
+                       data-confirm-ok="Delete"
+                       data-confirm-cancel="Cancel"
+                       data-confirm-danger="true"
+                       title="Delete">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(cinemas)}">
+                <td colspan="4" class="text-center text-muted py-4">No cinemas yet.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</th:block>
+</html>
+

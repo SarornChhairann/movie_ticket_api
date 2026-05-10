@@ -24,6 +24,7 @@ public class CheckInController {
 
     @PostMapping
     public String processCheckIn(@RequestParam("ticketCode") String ticketCode, Model model) {
+        model.addAttribute("globalFlash", false);
         String code = ticketCode == null ? "" : ticketCode.trim();
         if (code.isEmpty()) {
             model.addAttribute("error", "Please enter a ticket code.");

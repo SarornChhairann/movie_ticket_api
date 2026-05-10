@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface MovieRepository extends JpaRepository<Movie, Long> {
@@ -35,4 +36,15 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
     java.util.Optional<Movie> findFirstByStatusAndImagePathIsNotNullOrderByIdDesc(MovieStatus status);
 
     List<Movie> findTop6ByStatusOrderByIdDesc(MovieStatus status);
+
+    @Query("""
+        SELECT m FROM Movie m
+        WHERE m.status = co.tkm.ticketmanagementsystem.enums.MovieStatus.COMING_SOON
+          AND m.releaseDate IS NOT NULL
+          AND m.releaseDate >= :startDate
+          AND m.releaseDate <= :endDate
+        ORDER BY m.releaseDate ASC, m.title ASC
+        """)
+    List<Movie> findComingSoonBetween(@Param("startDate") LocalDate startDate,
+                                      @Param("endDate") LocalDate endDate);
 }

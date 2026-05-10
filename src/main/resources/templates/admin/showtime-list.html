@@ -16,13 +16,17 @@
                 <th>Time</th>
                 <th>Normal $</th>
                 <th>Couple $</th>
+                <th>Bookings</th>
                 <th>Status</th>
                 <th class="text-end">Actions</th>
             </tr>
             </thead>
             <tbody>
             <tr th:each="showtime : ${showtimes}"
-                th:classappend="${showtime.blocked} ? 'table-secondary' : ''">
+                th:classappend="${showtime.blocked} ? 'table-secondary' : ''"
+                th:with="bookingCount=${bookingCounts != null and bookingCounts.containsKey(showtime.id)} ? ${bookingCounts[showtime.id]} : 0,
+                         activeBookingCount=${activeBookingCounts != null and activeBookingCounts.containsKey(showtime.id)} ? ${activeBookingCounts[showtime.id]} : 0,
+                         editLocked=${lockedEdits != null and lockedEdits.containsKey(showtime.id)} ? ${lockedEdits[showtime.id]} : false">
                 <td class="fw-semibold" th:text="${showtime.movie.title}"></td>
                 <td th:text="${showtime.hall.name}"></td>
                 <td th:text="${showtime.showDate}"></td>
@@ -30,34 +34,68 @@
                 <td th:text="${showtime.normalPrice}"></td>
                 <td th:text="${showtime.couplePrice}"></td>
                 <td>
+                    <span th:if="${bookingCount > 0}" class="badge bg-danger-subtle text-danger border border-danger-subtle"
+                          th:text="${bookingCount}"></span>
+                    <span th:unless="${bookingCount > 0}" class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">0</span>
+                    <small th:if="${activeBookingCount > 0}" class="ms-1 text-muted" th:text="'active ' + ${activeBookingCount}"></small>
+                </td>
+                <td>
                     <span class="badge" th:if="${showtime.blocked}" style="background:#6b7280">Blocked</span>
                     <span class="badge bg-success" th:unless="${showtime.blocked}">Active</span>
                 </td>
                 <td class="text-end d-flex gap-1 justify-content-end">
+                    <a th:if="${bookingCount == 0 and !editLocked}"
+                       class="btn btn-sm btn-outline-secondary"
+                       th:href="@{/admin/showtimes/edit/{id}(id=${showtime.id})}"
+                       title="Edit">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <span th:unless="${bookingCount == 0 and !editLocked}"
+                          class="btn btn-sm btn-outline-secondary disabled"
+                          tabindex="-1" aria-disabled="true"
+                          th:title="${bookingCount > 0} ? 'Edit disabled: bookings exist' : ('Edit disabled: within ' + ${editLockHours} + 'h')">
+                        <i class="bi bi-pencil"></i>
+                    </span>
                     <!-- Block / Unblock -->
                     <form th:action="@{/admin/showtimes/{id}/block(id=${showtime.id})}" method="post" class="d-inline">
+                        <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                         <button type="submit" class="btn btn-sm"
                                 th:classappend="${showtime.blocked} ? 'btn-outline-success' : 'btn-outline-warning'"
-                                th:title="${showtime.blocked} ? 'Unblock' : 'Block'">
+                                th:disabled="${(!showtime.blocked and (activeBookingCount > 0 or editLocked)) or (showtime.blocked and editLocked)}"
+                                th:title="${(!showtime.blocked and activeBookingCount > 0)} ? 'Cannot block: active bookings exist' :
+                                          (${editLocked} ? ('Action disabled: within ' + ${editLockHours} + 'h') :
+                                          (${showtime.blocked} ? 'Unblock' : 'Block'))">
                             <i class="bi" th:classappend="${showtime.blocked} ? 'bi-play-circle' : 'bi-slash-circle'"></i>
                         </button>
                     </form>
                     <!-- Copy to next week -->
                     <form th:action="@{/admin/showtimes/{id}/copy-next-week(id=${showtime.id})}" method="post" class="d-inline">
+                        <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                         <button type="submit" class="btn btn-sm btn-outline-secondary" title="Copy to next week">
                             <i class="bi bi-copy"></i>
                         </button>
                     </form>
                     <!-- Delete -->
-                    <a class="btn btn-sm btn-outline-danger"
+                    <a th:if="${showtime.blocked and bookingCount == 0}"
+                       class="btn btn-sm btn-outline-danger"
                        th:href="@{/admin/showtimes/delete/{id}(id=${showtime.id})}"
-                       onclick="return confirm('Delete this showtime?')">
+                       data-confirm="Delete this showtime?"
+                       data-confirm-title="Delete showtime"
+                       data-confirm-ok="Delete"
+                       data-confirm-cancel="Cancel"
+                       data-confirm-danger="true">
                         <i class="bi bi-trash"></i>
                     </a>
+                    <span th:unless="${showtime.blocked and bookingCount == 0}"
+                          class="btn btn-sm btn-outline-danger disabled"
+                          tabindex="-1" aria-disabled="true"
+                          th:title="${!showtime.blocked} ? 'Delete disabled: block first' : 'Delete disabled: bookings exist'">
+                        <i class="bi bi-trash"></i>
+                    </span>
                 </td>
             </tr>
             <tr th:if="${#lists.isEmpty(showtimes)}">
-                <td colspan="8" class="text-center text-muted py-4">No showtimes yet.</td>
+                <td colspan="9" class="text-center text-muted py-4">No showtimes yet.</td>
             </tr>
             </tbody>
         </table>

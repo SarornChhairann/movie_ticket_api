@@ -40,7 +40,11 @@
                     </a>
                     <a class="btn btn-sm btn-outline-danger"
                        th:href="@{/admin/promo-codes/delete/{id}(id=${promo.id})}"
-                       onclick="return confirm('Delete this promo code?')">
+                       data-confirm="Delete this promo code?"
+                       data-confirm-title="Delete promo code"
+                       data-confirm-ok="Delete"
+                       data-confirm-cancel="Cancel"
+                       data-confirm-danger="true">
                         <i class="bi bi-trash"></i>
                     </a>
                 </td>

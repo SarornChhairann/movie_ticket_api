@@ -47,7 +47,11 @@
                 <td><small th:text="${#temporals.format(n.sentAt, 'dd MMM yyyy HH:mm')}"></small></td>
                 <td class="text-end">
                     <form th:action="@{/admin/notifications/{id}/delete(id=${n.id})}" method="post" class="d-inline"
-                          onsubmit="return confirm('Delete this notification record?')">
+                          data-confirm="Delete this notification record?"
+                          data-confirm-title="Delete notification"
+                          data-confirm-ok="Delete"
+                          data-confirm-cancel="Cancel"
+                          data-confirm-danger="true">
                         <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                     </form>
                 </td>

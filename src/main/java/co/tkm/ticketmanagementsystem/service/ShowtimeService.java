@@ -1,12 +1,15 @@
 package co.tkm.ticketmanagementsystem.service;
 
 import co.tkm.ticketmanagementsystem.enums.ShowtimeSeatStatus;
+import co.tkm.ticketmanagementsystem.enums.BookingStatus;
 import co.tkm.ticketmanagementsystem.model.Movie;
 import co.tkm.ticketmanagementsystem.model.Seat;
 import co.tkm.ticketmanagementsystem.model.Showtime;
 import co.tkm.ticketmanagementsystem.model.ShowtimeSeat;
+import co.tkm.ticketmanagementsystem.repository.BookingRepository;
 import co.tkm.ticketmanagementsystem.repository.MovieRepository;
 import co.tkm.ticketmanagementsystem.repository.SeatRepository;
+import co.tkm.ticketmanagementsystem.repository.SeatHoldRepository;
 import co.tkm.ticketmanagementsystem.repository.ShowtimeRepository;
 import co.tkm.ticketmanagementsystem.repository.ShowtimeSeatRepository;
 
@@ -15,9 +18,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -27,9 +33,25 @@ public class ShowtimeService {
     private final MovieRepository movieRepository;
     private final SeatRepository seatRepository;
     private final ShowtimeSeatRepository showtimeSeatRepository;
+    private final BookingRepository bookingRepository;
+    private final SeatHoldRepository seatHoldRepository;
+    private final SystemSettingService systemSettingService;
+    private final MovieBrowseCacheService movieBrowseCacheService;
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Phnom_Penh");
 
     @Transactional
     public Showtime save(Showtime showtime) {
+        if (showtime.getId() != null) {
+            Showtime existing = showtimeRepository.findById(showtime.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Showtime not found: " + showtime.getId()));
+            if (bookingRepository.existsByShowtimeId(showtime.getId())) {
+                throw new IllegalStateException("Cannot edit showtime because bookings already exist.");
+            }
+            if (isWithinEditLockWindow(existing)) {
+                int hours = getEditLockHours();
+                throw new IllegalStateException("Cannot edit showtime within " + hours + " hour(s) of start time.");
+            }
+        }
         validateNoOverlap(
                 showtime.getHall().getId(),
                 showtime.getShowDate(),
@@ -50,6 +72,7 @@ public class ShowtimeService {
             }
             showtimeSeatRepository.saveAll(showtimeSeats);
         }
+        movieBrowseCacheService.evictAll();
         return saved;
     }
 
@@ -71,7 +94,26 @@ public class ShowtimeService {
 
     @Transactional
     public void deleteById(Long id) {
+        Showtime showtime = showtimeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Showtime not found: " + id));
+
+        if (!showtime.isBlocked()) {
+            throw new IllegalStateException("Only blocked showtimes can be deleted. Block the showtime first.");
+        }
+
+        boolean hasAnyBookings = bookingRepository.existsByShowtimeId(id);
+        if (hasAnyBookings) {
+            long total = bookingRepository.countByShowtimeId(id);
+            throw new IllegalStateException("Cannot delete showtime: it has " + total + " booking(s). Deletion is disabled to preserve booking history.");
+        }
+
+        List<Long> showtimeSeatIds = showtimeSeatRepository.findIdsByShowtimeId(id);
+        if (!showtimeSeatIds.isEmpty()) {
+            seatHoldRepository.deleteBySeatIds(showtimeSeatIds);
+        }
+        showtimeSeatRepository.deleteByShowtimeId(id);
         showtimeRepository.deleteById(id);
+        movieBrowseCacheService.evictAll();
     }
 
     public long count() {
@@ -82,8 +124,42 @@ public class ShowtimeService {
     public void toggleBlocked(Long id) {
         Showtime s = showtimeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Showtime not found: " + id));
-        s.setBlocked(!s.isBlocked());
+        boolean targetBlocked = !s.isBlocked();
+        if (targetBlocked) {
+            boolean hasActiveBookings = bookingRepository.existsByShowtimeIdAndStatusNot(id, BookingStatus.CANCELLED);
+            if (hasActiveBookings) {
+                throw new IllegalStateException("Cannot block a showtime that has active bookings. Cancel bookings first.");
+            }
+            if (isWithinEditLockWindow(s)) {
+                int hours = getEditLockHours();
+                throw new IllegalStateException("Cannot block a showtime within " + hours + " hour(s) of start time.");
+            }
+        } else {
+            LocalDateTime showDateTime = LocalDateTime.of(s.getShowDate(), s.getShowTime());
+            if (showDateTime.isBefore(LocalDateTime.now(APP_ZONE))) {
+                throw new IllegalStateException("Cannot publish a showtime in the past.");
+            }
+            if (isWithinEditLockWindow(s)) {
+                int hours = getEditLockHours();
+                throw new IllegalStateException("Cannot publish a showtime within " + hours + " hour(s) of start time.");
+            }
+        }
+        s.setBlocked(targetBlocked);
         showtimeRepository.save(s);
+        movieBrowseCacheService.evictAll();
+    }
+
+    public boolean isWithinEditLockWindow(Showtime showtime) {
+        if (showtime == null || showtime.getShowDate() == null || showtime.getShowTime() == null) return false;
+        int hours = getEditLockHours();
+        LocalDateTime start = LocalDateTime.of(showtime.getShowDate(), showtime.getShowTime());
+        return !start.isAfter(LocalDateTime.now(APP_ZONE).plusHours(hours));
+    }
+
+    private int getEditLockHours() {
+        int hours = systemSettingService.getInt(SystemSettingService.CANCELLATION_HOURS, 2);
+        if (hours < 0) return 0;
+        return Math.min(hours, 72);
     }
 
     @Transactional
@@ -98,7 +174,9 @@ public class ShowtimeService {
         copy.setNormalPrice(original.getNormalPrice());
         copy.setCouplePrice(original.getCouplePrice());
         copy.setBlocked(false);
-        return save(copy);
+        Showtime saved = save(copy);
+        movieBrowseCacheService.evictAll();
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -117,6 +195,22 @@ public class ShowtimeService {
     public List<Showtime> findForMovieDateCity(Long movieId, LocalDate showDate, String city) {
         String c = (city == null) ? "" : city.trim();
         return showtimeRepository.findForMovieDateCity(movieId, showDate, c);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Long> findAvailableMovieIds(LocalDate showDate, String city) {
+        String c = (city == null) ? "" : city.trim();
+        return showtimeRepository.findAvailableMovieIds(showDate, c);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Showtime> findForMovieDateCinema(Long movieId, LocalDate showDate, UUID cinemaId) {
+        return showtimeRepository.findForMovieDateCinema(movieId, showDate, cinemaId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Long> findAvailableMovieIdsByCinema(LocalDate showDate, UUID cinemaId) {
+        return showtimeRepository.findAvailableMovieIdsByCinema(showDate, cinemaId);
     }
 
     /**

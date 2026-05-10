@@ -43,4 +43,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> searchBookings(@Param("q") String q);
 
     List<Booking> findByUserOrderByBookedAtDesc(User user);
+
+    boolean existsByShowtimeIdAndStatusNot(Long showtimeId, BookingStatus status);
+
+    long countByShowtimeIdAndStatusNot(Long showtimeId, BookingStatus status);
+
+    boolean existsByShowtimeId(Long showtimeId);
+
+    long countByShowtimeId(Long showtimeId);
 }

@@ -56,6 +56,9 @@
                 <span class="text-muted">
                     <i class="bi bi-clock me-1"></i><span th:text="${movie.durationMinutes}"></span> min
                 </span>
+                <span th:if="${movie.releaseDate != null}" class="text-muted">
+                    <i class="bi bi-calendar-event me-1"></i><span th:text="${#temporals.format(movie.releaseDate,'d MMM yyyy')}"></span>
+                </span>
                 <span th:if="${movie.language != null and !#strings.isEmpty(movie.language)}" class="text-muted">
                     <i class="bi bi-translate me-1"></i><span th:text="${movie.language}"></span>
                 </span>
@@ -70,6 +73,8 @@
                     </a>
                     <button th:if="${movie.trailerUrl != null and !#strings.isEmpty(movie.trailerUrl)}"
                             class="btn btn-outline-light px-4 fw-semibold"
+                            data-action="open-trailer"
+                            th:attr="data-trailer-url=${movie.trailerUrl}"
                             data-bs-toggle="modal" data-bs-target="#trailerModal">
                         <i class="bi bi-play-circle me-2"></i>Watch Trailer
                     </button>
@@ -77,12 +82,15 @@
 
                 <!-- Coming Soon -->
                 <th:block th:if="${movie.status.name() == 'COMING_SOON'}">
-                    <button class="btn btn-primary px-4 fw-semibold"
-                            data-bs-toggle="modal" data-bs-target="#remindModal">
+                    <button class="btn btn-primary px-4 fw-semibold mtms-remind-btn"
+                            data-action="remind"
+                            th:attr="data-remind-movie-id=${movie.id},data-remind-title=${movie.title}">
                         <i class="bi bi-bell me-2"></i>Remind Me
                     </button>
                     <button th:if="${movie.trailerUrl != null and !#strings.isEmpty(movie.trailerUrl)}"
                             class="btn btn-outline-light px-4 fw-semibold"
+                            data-action="open-trailer"
+                            th:attr="data-trailer-url=${movie.trailerUrl}"
                             data-bs-toggle="modal" data-bs-target="#trailerModal">
                         <i class="bi bi-play-circle me-2"></i>Watch Trailer
                     </button>
@@ -125,6 +133,83 @@
 <div class="row g-4 mb-5">
     <!-- Left: Synopsis + Cast -->
     <div class="col-lg-8">
+        <div th:if="${(movie.trailerUrl != null and !#strings.isEmpty(movie.trailerUrl)) or (movie.imagePath != null and !#strings.isEmpty(movie.imagePath)) or (movie.bannerPath != null and !#strings.isEmpty(movie.bannerPath))}"
+             class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+            <h6 class="fw-bold mb-3"
+                style="color:var(--mtms-accent);font-size:.72rem;text-transform:uppercase;letter-spacing:.9px">
+                <i class="bi bi-camera-reels me-2"></i>Trailer &amp; Media
+            </h6>
+
+            <div th:if="${movie.trailerUrl != null and !#strings.isEmpty(movie.trailerUrl)}"
+                 class="position-relative rounded-4 overflow-hidden mb-3"
+                 style="border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04)">
+                <div class="position-absolute top-0 start-0 end-0 bottom-0"
+                     th:style="${(movie.bannerPath != null and !#strings.isEmpty(movie.bannerPath))
+                         ? 'background-image:url(' + movie.bannerPath + ');background-size:cover;background-position:center;filter:blur(0px) brightness(.65)'
+                         : ((movie.imagePath != null and !#strings.isEmpty(movie.imagePath))
+                             ? 'background-image:url(' + movie.imagePath + ');background-size:cover;background-position:center;filter:blur(0px) brightness(.65)'
+                             : 'background:var(--mtms-surface)')}"></div>
+                <div class="position-relative p-4 d-flex align-items-end" style="min-height:260px">
+                    <div class="d-flex align-items-center justify-content-between w-100 flex-wrap gap-2">
+                        <div>
+                            <div class="fw-bold" style="font-size:1.05rem">Watch Trailer</div>
+                            <div class="text-muted" style="font-size:.86rem">Opens in a cinematic full HD player.</div>
+                        </div>
+                        <button type="button"
+                                class="btn btn-primary px-4 fw-semibold"
+                                data-action="open-trailer"
+                                th:attr="data-trailer-url=${movie.trailerUrl}"
+                                data-bs-toggle="modal" data-bs-target="#trailerModal">
+                            <i class="bi bi-play-fill me-2"></i>Play
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3"
+                 th:if="${(movie.imagePath != null and !#strings.isEmpty(movie.imagePath)) or (movie.bannerPath != null and !#strings.isEmpty(movie.bannerPath))}">
+                <div class="col-6 col-md-4"
+                     th:if="${movie.imagePath != null and !#strings.isEmpty(movie.imagePath)}">
+                    <img th:src="${movie.imagePath}" alt="Poster"
+                         class="w-100 rounded-3"
+                         style="height:180px;object-fit:cover;border:1px solid rgba(255,255,255,.10)">
+                </div>
+                <div class="col-6 col-md-8"
+                     th:if="${movie.bannerPath != null and !#strings.isEmpty(movie.bannerPath)}">
+                    <img th:src="${movie.bannerPath}" alt="Still"
+                         class="w-100 rounded-3"
+                         style="height:180px;object-fit:cover;border:1px solid rgba(255,255,255,.10)">
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${(movie.format != null and !#strings.isEmpty(movie.format)) or (movie.language != null and !#strings.isEmpty(movie.language)) or (movie.rating != null and !#strings.isEmpty(movie.rating))}"
+             class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+            <h6 class="fw-bold mb-3"
+                style="color:var(--mtms-accent);font-size:.72rem;text-transform:uppercase;letter-spacing:.9px">
+                <i class="bi bi-badge-cc me-2"></i>Format &amp; Accessibility
+            </h6>
+            <div class="d-flex flex-wrap gap-2">
+                <span th:if="${movie.format != null and !#strings.isEmpty(movie.format)}"
+                      th:each="f : ${movie.format.split(',')}"
+                      class="badge px-3 py-2 fw-normal"
+                      style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+                             color:var(--mtms-text);font-size:.82rem"
+                      th:text="${f.trim()}"></span>
+                <span th:if="${movie.language != null and !#strings.isEmpty(movie.language)}"
+                      th:each="l : ${movie.language.split(',')}"
+                      class="badge px-3 py-2 fw-normal"
+                      style="background:rgba(42,167,255,.12);border:1px solid rgba(42,167,255,.20);
+                             color:rgba(234,241,255,.92);font-size:.82rem"
+                      th:text="${l.trim()}"></span>
+                <span th:if="${movie.rating != null and !#strings.isEmpty(movie.rating)}"
+                      class="badge px-3 py-2 fw-bold"
+                      style="background:rgba(255,193,7,.18);border:1px solid rgba(255,193,7,.28);
+                             color:#ffd451;font-size:.82rem"
+                      th:text="${movie.rating}"></span>
+            </div>
+        </div>
+
         <!-- Synopsis -->
         <div th:if="${movie.description != null and !#strings.isEmpty(movie.description)}"
              class="card border-0 shadow-sm rounded-4 p-4 mb-4">
@@ -136,14 +221,22 @@
         </div>
 
         <!-- Cast -->
-        <div th:if="${movie.cast != null and !#strings.isEmpty(movie.cast)}"
+        <div th:if="${(movie.cast != null and !#strings.isEmpty(movie.cast)) or (movie.director != null and !#strings.isEmpty(movie.director))}"
              class="card border-0 shadow-sm rounded-4 p-4">
             <h6 class="fw-bold mb-3"
                 style="color:var(--mtms-accent);font-size:.72rem;text-transform:uppercase;letter-spacing:.9px">
                 <i class="bi bi-people me-2"></i>Cast &amp; Crew
             </h6>
+            <div th:if="${movie.director != null and !#strings.isEmpty(movie.director)}" class="mb-3">
+                <div class="text-muted" style="font-size:.78rem">Director</div>
+                <span class="badge px-3 py-2 fw-normal"
+                      style="background:rgba(42,167,255,.12);border:1px solid rgba(42,167,255,.20);
+                             color:rgba(234,241,255,.92);font-size:.82rem"
+                      th:text="${movie.director}"></span>
+            </div>
             <div class="d-flex flex-wrap gap-2">
-                <span th:each="person : ${movie.cast.split(',')}"
+                <span th:if="${movie.cast != null and !#strings.isEmpty(movie.cast)}"
+                      th:each="person : ${movie.cast.split(',')}"
                       class="badge px-3 py-2 fw-normal"
                       style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
                              color:var(--mtms-text);font-size:.82rem"
@@ -154,7 +247,8 @@
 
     <!-- Right: Details card -->
     <div class="col-lg-4">
-        <div class="card border-0 shadow-sm rounded-4 p-4">
+        <div class="position-sticky" style="top:92px">
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
             <h6 class="fw-bold mb-3"
                 style="color:var(--mtms-accent);font-size:.72rem;text-transform:uppercase;letter-spacing:.9px">
                 <i class="bi bi-info-circle me-2"></i>Movie Details
@@ -209,23 +303,67 @@
                 </div>
             </dl>
         </div>
+
+        <div class="card border-0 shadow-sm rounded-4 p-4">
+            <h6 class="fw-bold mb-2"
+                style="color:var(--mtms-accent);font-size:.72rem;text-transform:uppercase;letter-spacing:.9px">
+                <i class="bi bi-lightning-charge me-2"></i>Booking Tips
+            </h6>
+            <div class="text-muted" style="font-size:.88rem;line-height:1.7">
+                Seats are held temporarily while you complete checkout. Choose fast to secure the best seats.
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                <a class="btn btn-outline-light btn-sm px-3" th:href="@{/bookings/my-bookings}">
+                    <i class="bi bi-ticket-perforated me-1"></i>My Booking
+                </a>
+                <button type="button" class="btn btn-outline-light btn-sm px-3" data-bs-toggle="modal" data-bs-target="#seatPreviewModal">
+                    <i class="bi bi-grid-3x3-gap me-1"></i>Seat Preview
+                </button>
+            </div>
+        </div>
+        </div>
     </div>
 </div>
 
 <!-- ════════════════════════════════ SHOWTIMES ════════════════════════════════ -->
 <div id="showtimes" class="mb-5">
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
-        <h5 class="fw-bold mb-0">
-            <i class="bi bi-calendar3 me-2" style="color:var(--mtms-accent)"></i>Showtimes
-        </h5>
-        <form method="get" class="d-flex align-items-center gap-2" style="font-size:.88rem">
-            <label class="fw-semibold mb-0" style="color:var(--mtms-muted)">City:</label>
-            <select name="city" class="form-select form-select-sm" style="min-width:140px"
+    <div class="d-flex align-items-end justify-content-between flex-wrap gap-3 mb-4">
+        <div>
+            <h5 class="fw-bold mb-1">
+                <i class="bi bi-calendar3 me-2" style="color:var(--mtms-accent)"></i>Showtimes
+            </h5>
+            <div class="text-muted" style="font-size:.9rem">Pick date, city, and cinema — then choose your time slot.</div>
+        </div>
+        <form method="get" class="d-flex align-items-center flex-wrap gap-2" style="font-size:.88rem">
+            <select name="date" class="form-select form-select-sm"
+                    style="min-width:170px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--mtms-text);border-radius:12px"
+                    onchange="this.form.submit()">
+                <option value="" th:selected="${selectedDate == null}">All Dates</option>
+                <option th:each="d : ${availableDates}"
+                        th:value="${d}"
+                        th:text="${#temporals.format(d,'EEE, d MMM')}"
+                        th:selected="${selectedDate != null and d.equals(selectedDate)}"></option>
+            </select>
+            <select name="city" class="form-select form-select-sm"
+                    style="min-width:140px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--mtms-text);border-radius:12px"
                     onchange="this.form.submit()">
                 <option value="" th:selected="${selectedCity == null or #strings.isEmpty(selectedCity)}">All Cities</option>
                 <option th:each="c : ${cities}" th:value="${c}" th:text="${c}"
                         th:selected="${c == selectedCity}"></option>
             </select>
+            <select name="hallId" class="form-select form-select-sm"
+                    style="min-width:200px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--mtms-text);border-radius:12px"
+                    onchange="this.form.submit()">
+                <option value="" th:selected="${selectedHallId == null}">All Cinemas</option>
+                <option th:each="h : ${availableHalls}"
+                        th:value="${h.id}"
+                        th:text="${h.name + ((h.city != null and !#strings.isEmpty(h.city)) ? ' — ' + h.city : '')}"
+                        th:selected="${selectedHallId != null and h.id.equals(selectedHallId)}"></option>
+            </select>
+            <a class="btn btn-outline-secondary btn-sm px-3"
+               th:href="@{/movies/{id}(id=${movie.id})}">
+                Clear
+            </a>
         </form>
     </div>
 
@@ -236,9 +374,10 @@
         <i class="bi bi-calendar-x" style="font-size:2.8rem;color:var(--mtms-accent);opacity:.65"></i>
         <p class="fw-semibold mt-3 mb-1">Showtimes Not Available Yet</p>
         <p class="text-muted mb-4" style="font-size:.88rem">Tickets go on sale closer to the release date.</p>
-        <button class="btn btn-primary px-5 fw-semibold mx-auto"
+        <button class="btn btn-primary px-5 fw-semibold mx-auto mtms-remind-btn"
                 style="width:fit-content"
-                data-bs-toggle="modal" data-bs-target="#remindModal">
+                data-action="remind"
+                th:attr="data-remind-movie-id=${movie.id},data-remind-title=${movie.title}">
             <i class="bi bi-bell me-2"></i>Get Notified When Tickets Open
         </button>
     </div>
@@ -260,7 +399,7 @@
         <div th:each="entry : ${showtimeByDate}" class="mb-4">
             <div class="d-flex align-items-center gap-2 mb-3">
                 <i class="bi bi-calendar-event" style="color:var(--mtms-accent)"></i>
-                <span class="fw-semibold" th:text="${entry.key}"></span>
+                <span class="fw-semibold" th:text="${#temporals.format(entry.key,'EEEE, d MMM yyyy')}"></span>
             </div>
 
             <div th:each="showtime : ${entry.value}"
@@ -276,7 +415,7 @@
                 <div class="flex-grow-1">
                     <a class="md-slot-btn" th:href="@{/bookings/seats/{id}(id=${showtime.id})}">
                         <i class="bi bi-clock me-1"></i>
-                        <span th:text="${showtime.showTime}"></span>
+                        <span th:text="${#temporals.format(showtime.showTime,'HH:mm')}"></span>
                     </a>
                 </div>
 
@@ -311,7 +450,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0" style="background:#000">
             <div class="modal-header border-0 pb-0">
-                <h6 class="modal-title fw-bold" th:text="${movie.title} + ' — Trailer'"></h6>
+                <h6 class="modal-title fw-bold" id="trailerModalTitle" th:text="${movie.title} + ' — Trailer'"></h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0">
@@ -325,35 +464,21 @@
     </div>
 </div>
 
-<!-- ════════════════════════════════ REMIND ME MODAL ════════════════════════════════ -->
-<div class="modal fade" id="remindModal" tabindex="-1" aria-label="Remind Me">
-    <div class="modal-dialog modal-dialog-centered" style="max-width:420px">
-        <div class="modal-content border-0 rounded-4">
-            <div class="modal-header border-0 pb-0">
-                <div>
-                    <h5 class="modal-title fw-bold mb-0">
-                        <i class="bi bi-bell me-2" style="color:var(--mtms-accent)"></i>Get Notified
-                    </h5>
-                    <p class="text-muted mb-0 mt-1" style="font-size:.84rem">
-                        We'll email you when tickets open for <strong th:text="${movie.title}"></strong>.
-                    </p>
-                </div>
-                <button type="button" class="btn-close btn-close-white ms-auto align-self-start mt-1" data-bs-dismiss="modal"></button>
+<div class="modal fade" id="seatPreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:rgba(8,18,34,.98);border:1px solid rgba(255,255,255,.12);border-radius:18px;overflow:hidden">
+            <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,.10)">
+                <h6 class="modal-title" style="color:#fff">Seat Selection Preview</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body pt-3">
-                <div id="remindSuccess" class="alert alert-success d-none" role="alert">
-                    <i class="bi bi-check-circle me-2"></i>You're on the list! We'll let you know.
+            <div class="modal-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="badge" style="background:rgba(34,197,94,.22);color:#86efac;border:1px solid rgba(34,197,94,.35)">Available</span>
+                    <span class="badge" style="background:rgba(255,255,255,.10);color:rgba(234,241,255,.70);border:1px solid rgba(255,255,255,.14)">Taken</span>
                 </div>
-                <div id="remindForm">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold" style="font-size:.85rem">Your Email</label>
-                        <input type="email" id="remindEmail" class="form-control"
-                               placeholder="you@example.com">
-                        <div class="invalid-feedback">Please enter a valid email address.</div>
-                    </div>
-                    <button class="btn btn-primary w-100 fw-semibold" onclick="mdSubmitRemind()">
-                        <i class="bi bi-bell me-2"></i>Notify Me
-                    </button>
+                <div id="seatPreviewGrid" class="d-grid" style="grid-template-columns:repeat(10,1fr);gap:8px"></div>
+                <div class="small mt-3" style="color:rgba(234,241,255,.68)">
+                    Preview only. Final seat selection happens after choosing a showtime.
                 </div>
             </div>
         </div>
@@ -449,12 +574,57 @@
         setInterval(tick, 30000);
     }
 
-    // ── Stop trailer on modal close ──
+    // ── Trailer modal: normalize YouTube URLs + stop on close ──
     const tm = document.getElementById('trailerModal');
     if (tm) {
+        const f = document.getElementById('trailerFrame');
+        const titleEl = document.getElementById('trailerModalTitle');
+        const toEmbedUrl = function (raw) {
+            if (!raw) return null;
+            let u;
+            try { u = new URL(raw, window.location.origin); } catch (e) { return null; }
+            const host = (u.hostname || '').toLowerCase();
+            if (host === 'youtu.be') {
+                const id = (u.pathname || '').replace('/', '').trim();
+                if (!id) return null;
+                return 'https://www.youtube.com/embed/' + encodeURIComponent(id) + '?autoplay=1&rel=0&playsinline=1&vq=hd1080';
+            }
+            if (host.endsWith('youtube.com')) {
+                if ((u.pathname || '') === '/watch') {
+                    const id2 = u.searchParams.get('v');
+                    if (!id2) return null;
+                    return 'https://www.youtube.com/embed/' + encodeURIComponent(id2) + '?autoplay=1&rel=0&playsinline=1&vq=hd1080';
+                }
+                if ((u.pathname || '').startsWith('/embed/')) {
+                    const id3 = (u.pathname || '').split('/embed/')[1];
+                    if (!id3) return null;
+                    return 'https://www.youtube.com/embed/' + encodeURIComponent(id3) + '?autoplay=1&rel=0&playsinline=1&vq=hd1080';
+                }
+            }
+            if (host.endsWith('vimeo.com')) {
+                const seg = (u.pathname || '').split('/').filter(Boolean);
+                const vid = seg.length ? seg[seg.length - 1] : '';
+                if (!vid) return null;
+                return 'https://player.vimeo.com/video/' + encodeURIComponent(vid) + '?autoplay=1';
+            }
+            return raw;
+        };
+
+        tm.addEventListener('show.bs.modal', function (ev) {
+            const trigger = ev.relatedTarget;
+            const raw = trigger && trigger.getAttribute ? trigger.getAttribute('data-trailer-url') : null;
+            if (raw && f) {
+                const embed = toEmbedUrl(raw);
+                if (embed) f.src = embed;
+            }
+            if (titleEl && trigger && trigger.closest) {
+                const movieTitle = document.querySelector('h1') ? document.querySelector('h1').textContent.trim() : '';
+                titleEl.textContent = (movieTitle ? (movieTitle + ' — Trailer') : 'Trailer');
+            }
+        });
+
         tm.addEventListener('hide.bs.modal', function () {
-            const f = document.getElementById('trailerFrame');
-            if (f) { const s = f.src; f.src = ''; f.src = s; }
+            if (f) f.src = '';
         });
     }
 
@@ -466,18 +636,25 @@
             if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     });
+
+    const sp = document.getElementById('seatPreviewGrid');
+    const spm = document.getElementById('seatPreviewModal');
+    if (sp && spm) {
+        spm.addEventListener('show.bs.modal', function () {
+            sp.innerHTML = '';
+            for (let i = 0; i < 70; i++) {
+                const d = document.createElement('div');
+                const booked = Math.random() < 0.34;
+                d.style.height = '26px';
+                d.style.borderRadius = '8px';
+                d.style.border = '1px solid rgba(255,255,255,.12)';
+                d.style.background = booked ? 'rgba(139,150,169,.38)' : 'rgba(100,216,107,.22)';
+                sp.appendChild(d);
+            }
+        });
+    }
 })();
 
-function mdSubmitRemind() {
-    const inp = document.getElementById('remindEmail');
-    if (!inp.value.trim() || !inp.value.includes('@')) {
-        inp.classList.add('is-invalid');
-        return;
-    }
-    inp.classList.remove('is-invalid');
-    document.getElementById('remindForm').classList.add('d-none');
-    document.getElementById('remindSuccess').classList.remove('d-none');
-}
 </script>
 
 </th:block>

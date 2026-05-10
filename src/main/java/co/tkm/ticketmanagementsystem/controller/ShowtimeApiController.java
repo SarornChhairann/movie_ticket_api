@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/showtimes")
@@ -24,21 +25,34 @@ public class ShowtimeApiController {
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<ShowtimeSearchResponse>> search(@RequestParam("movieId") Long movieId,
                                                                @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                                               @RequestParam(value = "cinemaId", required = false) UUID cinemaId,
                                                                @RequestParam(value = "city", required = false) String city) {
-        String normalizedCity = (city == null) ? "" : city.trim();
-        List<Showtime> showtimes = showtimeService.findForMovieDateCity(movieId, date, normalizedCity);
+        List<Showtime> showtimes = (cinemaId != null)
+                ? showtimeService.findForMovieDateCinema(movieId, date, cinemaId)
+                : showtimeService.findForMovieDateCity(movieId, date, (city == null) ? "" : city.trim());
         List<ShowtimeSearchResponse> payload = showtimes.stream()
                 .filter(s -> !s.isBlocked())
                 .map(s -> new ShowtimeSearchResponse(
                         s.getId(),
                         s.getShowTime().toString(),
                         s.getHall().getName(),
-                        s.getHall().getCity(),
+                        (s.getHall().getCinema() != null ? s.getHall().getCinema().getName() : s.getHall().getCity()),
                         s.getNormalPrice().toPlainString(),
                         s.getCouplePrice().toPlainString()
                 ))
                 .toList();
         return ResponseEntity.ok(payload);
+    }
+
+    @GetMapping(value = "/available-movies", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<Long>> availableMovies(@RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                                      @RequestParam(value = "cinemaId", required = false) UUID cinemaId,
+                                                      @RequestParam(value = "city", required = false) String city) {
+        return ResponseEntity.ok(
+                cinemaId != null
+                        ? showtimeService.findAvailableMovieIdsByCinema(date, cinemaId)
+                        : showtimeService.findAvailableMovieIds(date, (city == null) ? "" : city.trim())
+        );
     }
 
     public record ShowtimeSearchResponse(Long id,
@@ -49,4 +63,3 @@ public class ShowtimeApiController {
                                          String couplePrice) {
     }
 }
-

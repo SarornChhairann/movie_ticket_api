@@ -12,13 +12,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Controller
@@ -84,19 +88,63 @@ public class MovieController {
     @GetMapping("/movies/{id}")
     public String detail(@PathVariable Long id,
                          @RequestParam(value = "city", required = false) String city,
+                         @RequestParam(value = "cinemaId", required = false) UUID cinemaId,
+                         @RequestParam(value = "date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                         @RequestParam(value = "hallId", required = false) Long hallId,
                          Model model) {
         Movie movie = movieService.findById(id);
-        List<Showtime> showtimes = showtimeRepository.findByMovie(movie);
+        List<Showtime> showtimes = showtimeRepository.findByMovieIdWithHall(id);
 
-        // Filter by city if selected
+        if (cinemaId != null) {
+            showtimes = showtimes.stream()
+                    .filter(s -> s.getHall() != null
+                            && s.getHall().getCinema() != null
+                            && cinemaId.equals(s.getHall().getCinema().getId()))
+                    .collect(Collectors.toList());
+        } else
         if (city != null && !city.isBlank()) {
             showtimes = showtimes.stream()
-                    .filter(s -> city.equalsIgnoreCase(s.getHall().getCity()))
+                    .filter(s -> s.getHall() != null
+                            && s.getHall().getCity() != null
+                            && city.equalsIgnoreCase(s.getHall().getCity()))
                     .collect(Collectors.toList());
         }
 
-        Map<String, List<Showtime>> grouped = showtimes.stream()
-                .collect(Collectors.groupingBy(s -> s.getShowDate().toString(), LinkedHashMap::new, Collectors.toList()));
+        List<LocalDate> availableDates = showtimes.stream()
+                .map(Showtime::getShowDate)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        LocalDate selectedDate = date != null
+                ? date
+                : (movie.getStatus() == MovieStatus.NOW_SHOWING && !availableDates.isEmpty()
+                    ? availableDates.get(0)
+                    : null);
+
+        List<Showtime> showtimesForSelector = showtimes;
+        if (selectedDate != null) {
+            showtimesForSelector = showtimesForSelector.stream()
+                    .filter(s -> selectedDate.equals(s.getShowDate()))
+                    .collect(Collectors.toList());
+        }
+
+        List<Hall> availableHalls = showtimesForSelector.stream()
+                .map(Showtime::getHall)
+                .filter(h -> h != null && h.getId() != null)
+                .distinct()
+                .sorted(Comparator.comparing(Hall::getName, Comparator.nullsLast(String::compareToIgnoreCase)))
+                .collect(Collectors.toList());
+
+        List<Showtime> filteredShowtimes = showtimesForSelector;
+        if (hallId != null) {
+            filteredShowtimes = filteredShowtimes.stream()
+                    .filter(s -> s.getHall() != null && hallId.equals(s.getHall().getId()))
+                    .collect(Collectors.toList());
+        }
+
+        Map<LocalDate, List<Showtime>> grouped = filteredShowtimes.stream()
+                .collect(Collectors.groupingBy(Showtime::getShowDate, LinkedHashMap::new, Collectors.toList()));
 
         List<String> cities = hallService.findDistinctCities();
 
@@ -104,6 +152,11 @@ public class MovieController {
         model.addAttribute("showtimeByDate", grouped);
         model.addAttribute("cities", cities);
         model.addAttribute("selectedCity", city);
+        model.addAttribute("selectedCinemaId", cinemaId);
+        model.addAttribute("availableDates", availableDates);
+        model.addAttribute("selectedDate", selectedDate);
+        model.addAttribute("availableHalls", availableHalls);
+        model.addAttribute("selectedHallId", hallId);
         return "movies/detail";
     }
 }

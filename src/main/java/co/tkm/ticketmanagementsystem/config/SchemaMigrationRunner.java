@@ -185,6 +185,81 @@ public class SchemaMigrationRunner implements BeanPostProcessor, PriorityOrdered
                 jdbcTemplate.execute("ALTER TABLE movies ADD COLUMN release_date DATE");
             }
         });
+
+        applyIfNotApplied(jdbcTemplate, "2026_05_03_011_movie_reminders_table", () -> {
+            if (!tableExists(jdbcTemplate, "movies")) {
+                return;
+            }
+            jdbcTemplate.execute("""
+                    CREATE TABLE IF NOT EXISTS movie_reminders (
+                        id BIGSERIAL PRIMARY KEY,
+                        movie_id BIGINT NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
+                        email VARCHAR(180) NOT NULL,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    )
+                    """);
+            jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_movie_reminders_movie_email ON movie_reminders(movie_id, email)");
+        });
+
+        applyIfNotApplied(jdbcTemplate, "2026_05_10_001_cinemas_table", () -> {
+            jdbcTemplate.execute("""
+                    CREATE TABLE IF NOT EXISTS cinemas (
+                        id UUID PRIMARY KEY,
+                        name VARCHAR(140) NOT NULL,
+                        address VARCHAR(300),
+                        opening_hours VARCHAR(50),
+                        total_halls INT,
+                        latitude DOUBLE PRECISION,
+                        longitude DOUBLE PRECISION
+                    )
+                    """);
+        });
+
+        applyIfNotApplied(jdbcTemplate, "2026_05_10_002_halls_cinema_columns", () -> {
+            if (!tableExists(jdbcTemplate, "halls")) {
+                return;
+            }
+            jdbcTemplate.execute("ALTER TABLE halls ADD COLUMN IF NOT EXISTS cinema_id UUID");
+            jdbcTemplate.execute("ALTER TABLE halls ADD COLUMN IF NOT EXISTS type VARCHAR(40)");
+            jdbcTemplate.execute("ALTER TABLE halls ADD COLUMN IF NOT EXISTS capacity INT");
+            jdbcTemplate.execute("ALTER TABLE halls ADD COLUMN IF NOT EXISTS has_dolby_atmos BOOLEAN NOT NULL DEFAULT FALSE");
+            boolean hasScreenx = columnExists(jdbcTemplate, "halls", "has_screenx");
+            boolean hasScreenX = columnExists(jdbcTemplate, "halls", "has_screen_x");
+            if (hasScreenx && !hasScreenX) {
+                jdbcTemplate.execute("ALTER TABLE halls RENAME COLUMN has_screenx TO has_screen_x");
+            }
+            jdbcTemplate.execute("ALTER TABLE halls ADD COLUMN IF NOT EXISTS has_screen_x BOOLEAN NOT NULL DEFAULT FALSE");
+
+            jdbcTemplate.execute("""
+                    DO $$
+                    BEGIN
+                        IF NOT EXISTS (
+                            SELECT 1 FROM information_schema.table_constraints
+                            WHERE table_schema = current_schema()
+                              AND table_name = 'halls'
+                              AND constraint_type = 'FOREIGN KEY'
+                              AND constraint_name = 'fk_halls_cinema_id'
+                        ) THEN
+                            ALTER TABLE halls
+                                ADD CONSTRAINT fk_halls_cinema_id
+                                FOREIGN KEY (cinema_id) REFERENCES cinemas(id);
+                        END IF;
+                    END $$;
+                    """);
+            jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS ix_halls_cinema_id ON halls(cinema_id)");
+        });
+
+        applyIfNotApplied(jdbcTemplate, "2026_05_10_003_halls_has_screenx_rename", () -> {
+            if (!tableExists(jdbcTemplate, "halls")) {
+                return;
+            }
+            boolean hasScreenx = columnExists(jdbcTemplate, "halls", "has_screenx");
+            boolean hasScreenX = columnExists(jdbcTemplate, "halls", "has_screen_x");
+            if (hasScreenx && !hasScreenX) {
+                jdbcTemplate.execute("ALTER TABLE halls RENAME COLUMN has_screenx TO has_screen_x");
+            }
+            jdbcTemplate.execute("ALTER TABLE halls ADD COLUMN IF NOT EXISTS has_screen_x BOOLEAN NOT NULL DEFAULT FALSE");
+        });
     }
 
     private void applyIfNotApplied(JdbcTemplate jdbcTemplate, String id, Runnable migration) {

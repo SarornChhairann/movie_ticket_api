@@ -67,7 +67,7 @@
                     <form th:if="${booking.status.name() != 'CANCELLED'}"
                           th:action="@{/admin/bookings/{id}/cancel(id=${booking.id})}"
                           method="post" class="d-inline"
-                          onsubmit="return confirm('Cancel booking #' + this.action.split('/').slice(-2,-1)[0] + '?')">
+                          th:attr="data-confirm=${'Cancel booking #' + booking.id + '?'},data-confirm-title='Cancel booking',data-confirm-ok='Cancel booking',data-confirm-cancel='Keep booking',data-confirm-danger='true'">
                         <button class="btn btn-sm btn-outline-danger" type="submit">
                             <i class="bi bi-x-circle"></i>
                         </button>

@@ -36,4 +36,8 @@ public interface SeatHoldRepository extends JpaRepository<SeatHold, Long> {
     @Query("DELETE FROM SeatHold sh WHERE sh.showtimeSeatId IN :seatIds AND sh.sessionId = :sessionId")
     void deleteBySessionIdAndSeatIds(@Param("sessionId") String sessionId,
                                      @Param("seatIds") List<Long> seatIds);
+
+    @Modifying
+    @Query("DELETE FROM SeatHold sh WHERE sh.showtimeSeatId IN :seatIds")
+    void deleteBySeatIds(@Param("seatIds") List<Long> seatIds);
 }

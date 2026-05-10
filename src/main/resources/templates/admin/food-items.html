@@ -43,7 +43,11 @@
                     </a>
                     <a class="btn btn-sm btn-outline-danger"
                        th:href="@{/admin/food-items/delete/{id}(id=${item.id})}"
-                       onclick="return confirm('Delete this item?')">
+                       data-confirm="Delete this item?"
+                       data-confirm-title="Delete item"
+                       data-confirm-ok="Delete"
+                       data-confirm-cancel="Cancel"
+                       data-confirm-danger="true">
                         <i class="bi bi-trash"></i>
                     </a>
                 </td>

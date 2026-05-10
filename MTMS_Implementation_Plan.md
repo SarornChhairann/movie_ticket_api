@@ -346,3 +346,102 @@ src/main/resources/
 | 13 | E-ticket page | 2 |
 | 14 | Shared layout & navigation | 2 |
 | 15 | Final testing & cleanup | 2 |
+
+---
+
+## Global Flash Message System
+
+### Overview
+
+The application uses a global, JavaScript-driven flash system to display notifications and confirmations consistently across all pages (public + admin). It supports:
+
+- Message types: success, error, warning, info
+- Auto-dismiss with configurable timeouts
+- Manual dismiss with close buttons
+- Queued messages with configurable max visible
+- Fetch error interception (API errors, validation responses, network failures)
+- Reusable confirmation dialog for links and forms
+- Position controls (top/bottom/center placements)
+- Accessibility (ARIA roles, keyboard escape-to-dismiss, focus restoration for confirm)
+
+### Layout Integration
+
+Enabled globally by including these assets in the shared layouts:
+
+- [base.html](file:///Volumes/Data/SU25/java%20SU25/Ticket-Management-System/src/main/resources/templates/layout/base.html)
+- [admin-base.html](file:///Volumes/Data/SU25/java%20SU25/Ticket-Management-System/src/main/resources/templates/layout/admin-base.html)
+- [flash.css](file:///Volumes/Data/SU25/java%20SU25/Ticket-Management-System/src/main/resources/static/mtms/flash.css)
+- [flash.js](file:///Volumes/Data/SU25/java%20SU25/Ticket-Management-System/src/main/resources/static/mtms/flash.js)
+
+### Client API Reference
+
+Global API: `window.MTMSFlash`
+
+```js
+MTMSFlash.push({ type: 'success', message: 'Saved!', timeoutMs: 2500, position: 'top-right' })
+MTMSFlash.success('Saved!')
+MTMSFlash.error('Something went wrong', { timeoutMs: 0 })
+MTMSFlash.warning('Please check your input')
+MTMSFlash.info('Loading…', { position: 'bottom-center' })
+
+MTMSFlash.configure({
+  position: 'top-right',
+  maxVisible: 3,
+  newestOnTop: true,
+  maxQueue: 50,
+  defaultTimeoutMs: 4000
+})
+
+MTMSFlash.confirm({
+  title: 'Delete item',
+  message: 'Delete this item?',
+  confirmText: 'Delete',
+  cancelText: 'Cancel',
+  danger: true
+}).then(ok => { if (ok) console.log('confirmed') })
+```
+
+Supported `position` values:
+
+- `top-right`, `top-left`, `bottom-right`, `bottom-left`, `top-center`, `bottom-center`, `center`
+
+### Confirmation Dialog (Links / Forms)
+
+Any element with a `data-confirm` attribute automatically uses the global confirm dialog.
+
+Examples:
+
+```html
+<a href="/admin/promo-codes/delete/1"
+   data-confirm="Delete this promo code?"
+   data-confirm-title="Delete promo code"
+   data-confirm-ok="Delete"
+   data-confirm-cancel="Cancel"
+   data-confirm-danger="true">Delete</a>
+```
+
+```html
+<form action="/bookings/cancel/123" method="post"
+      data-confirm="Cancel booking #123?"
+      data-confirm-title="Cancel booking"
+      data-confirm-ok="Cancel booking"
+      data-confirm-cancel="Keep booking"
+      data-confirm-danger="true">
+  <button type="submit">Cancel</button>
+</form>
+```
+
+### Server-Side Messages
+
+Server-side flash attributes are mapped into the global system:
+
+- `success` → success toast
+- `error` → error toast
+- `pwSuccess` → success toast (title: Password)
+- `pwError` → error toast (title: Password)
+
+To disable global toast initialization on a page (e.g., when the page already renders detailed success/error UI), set:
+
+```java
+model.addAttribute("globalFlash", false);
+```

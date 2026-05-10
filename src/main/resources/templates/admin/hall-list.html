@@ -9,19 +9,39 @@
     <div class="admin-table">
         <table class="table mb-0 align-middle">
             <thead>
-            <tr><th>Name</th><th>Total Seats</th><th class="text-end">Actions</th></tr>
+            <tr>
+                <th>Cinema</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Total Seats</th>
+                <th class="text-end">Actions</th>
+            </tr>
             </thead>
             <tbody>
             <tr th:each="hall : ${halls}">
+                <td class="text-muted" th:text="${hall.cinema != null ? hall.cinema.name : '-'}"></td>
                 <td class="fw-semibold" th:text="${hall.name}"></td>
+                <td>
+                    <span class="badge bg-light text-dark border" th:text="${hall.type != null ? hall.type : '-'}"></span>
+                    <span class="badge bg-light text-dark border ms-1" th:if="${hall.hasDolbyAtmos}">Atmos</span>
+                    <span class="badge bg-light text-dark border ms-1" th:if="${hall.hasScreenX}">ScreenX</span>
+                </td>
                 <td><span class="badge bg-light text-dark border" th:text="${hall.totalSeats} + ' seats'"></span></td>
                 <td class="text-end">
                     <a class="btn btn-sm btn-outline-primary me-1" th:href="@{/admin/halls/edit/{id}(id=${hall.id})}"><i class="bi bi-pencil"></i></a>
-                    <a class="btn btn-sm btn-outline-danger" th:href="@{/admin/halls/delete/{id}(id=${hall.id})}"><i class="bi bi-trash"></i></a>
+                    <a class="btn btn-sm btn-outline-danger"
+                       th:href="@{/admin/halls/delete/{id}(id=${hall.id})}"
+                       data-confirm="Delete this hall?"
+                       data-confirm-title="Delete hall"
+                       data-confirm-ok="Delete"
+                       data-confirm-cancel="Cancel"
+                       data-confirm-danger="true">
+                        <i class="bi bi-trash"></i>
+                    </a>
                 </td>
             </tr>
             <tr th:if="${#lists.isEmpty(halls)}">
-                <td colspan="3" class="text-center text-muted py-4">No halls yet.</td>
+                <td colspan="5" class="text-center text-muted py-4">No halls yet.</td>
             </tr>
             </tbody>
         </table>
