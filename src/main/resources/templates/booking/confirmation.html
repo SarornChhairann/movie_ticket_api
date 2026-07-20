@@ -2,6 +2,11 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/base :: layout('Booking Confirmed', ~{::content})}">
 <th:block th:fragment="content">
+    <div class="d-flex justify-content-end mb-2 no-print">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="bookingThemeToggle" aria-label="Toggle theme">
+            <i class="bi bi-moon-stars"></i>
+        </button>
+    </div>
     <!-- Progress stepper -->
     <div class="d-flex align-items-center justify-content-center mb-4 no-print">
         <div class="ck-step done">
@@ -116,5 +121,22 @@
             <i class="bi bi-arrow-repeat me-1"></i>Book Again
         </a>
     </div>
+
+    <script>
+        (function () {
+            var btn = document.getElementById('bookingThemeToggle');
+            if (!btn) return;
+            var render = function () {
+                var light = document.body.classList.contains('mtms-theme-light');
+                btn.innerHTML = light ? '<i class="bi bi-moon-stars"></i>' : '<i class="bi bi-sun"></i>';
+            };
+            btn.addEventListener('click', function () {
+                var light = document.body.classList.toggle('mtms-theme-light');
+                try { localStorage.setItem('mtms_theme', light ? 'light' : 'dark'); } catch (e) {}
+                render();
+            });
+            render();
+        })();
+    </script>
 </th:block>
 </html>

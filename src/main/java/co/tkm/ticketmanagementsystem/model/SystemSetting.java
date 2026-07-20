@@ -15,7 +15,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class SystemSetting {
+public class SystemSetting extends AuditableEntity {
 
     @Id
     @Column(name = "setting_key", nullable = false, length = 80)

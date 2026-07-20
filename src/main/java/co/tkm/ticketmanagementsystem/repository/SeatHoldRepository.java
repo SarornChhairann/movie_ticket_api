@@ -24,6 +24,34 @@ public interface SeatHoldRepository extends JpaRepository<SeatHold, Long> {
     List<Long> findHeldSeatIdsByOtherSessions(@Param("sessionId") String sessionId,
                                                @Param("now") LocalDateTime now);
 
+    @Query("""
+        SELECT sh.showtimeSeatId
+        FROM SeatHold sh, ShowtimeSeat ss
+        WHERE ss.id = sh.showtimeSeatId
+          AND ss.showtime.id = :showtimeId
+          AND sh.expiresAt > :now
+          AND (:sessionId = '' OR sh.sessionId <> :sessionId)
+        """)
+    List<Long> findActiveHeldSeatIdsByShowtime(@Param("showtimeId") Long showtimeId,
+                                               @Param("sessionId") String sessionId,
+                                               @Param("now") LocalDateTime now);
+
+    @Query("""
+        SELECT sh.showtimeSeatId FROM SeatHold sh
+        WHERE sh.sessionId = :sessionId
+          AND sh.expiresAt > :now
+        """)
+    List<Long> findActiveHeldSeatIdsBySession(@Param("sessionId") String sessionId,
+                                              @Param("now") LocalDateTime now);
+
+    @Query("""
+        SELECT ss.showtime.id AS showtimeId, sh.showtimeSeatId AS showtimeSeatId, sh.sessionId AS sessionId
+        FROM SeatHold sh, ShowtimeSeat ss
+        WHERE ss.id = sh.showtimeSeatId
+          AND sh.expiresAt < :now
+        """)
+    List<ExpiredHoldRow> findExpiredWithShowtimeId(@Param("now") LocalDateTime now);
+
     @Modifying
     @Query("DELETE FROM SeatHold sh WHERE sh.expiresAt < :now")
     void deleteExpired(@Param("now") LocalDateTime now);
@@ -40,4 +68,10 @@ public interface SeatHoldRepository extends JpaRepository<SeatHold, Long> {
     @Modifying
     @Query("DELETE FROM SeatHold sh WHERE sh.showtimeSeatId IN :seatIds")
     void deleteBySeatIds(@Param("seatIds") List<Long> seatIds);
+
+    interface ExpiredHoldRow {
+        Long getShowtimeId();
+        Long getShowtimeSeatId();
+        String getSessionId();
+    }
 }

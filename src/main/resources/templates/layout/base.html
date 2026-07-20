@@ -31,7 +31,25 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            transition: background-color .25s ease, color .25s ease;
         }
+
+        body.mtms-theme-light {
+            --mtms-dark: #f6f7fb;
+            --mtms-surface: #ffffff;
+            --mtms-card: #ffffff;
+            --mtms-text: #0b1020;
+            --mtms-muted: rgba(11,16,32,.70);
+            --mtms-border: rgba(11,16,32,.14);
+        }
+
+        body.mtms-theme-light .mtms-nav {
+            background: rgba(255,255,255,.86);
+            border-bottom-color: rgba(11,16,32,.10);
+        }
+        body.mtms-theme-light .mtms-nav .nav-link { color: rgba(11,16,32,.78) !important; }
+        body.mtms-theme-light .mtms-nav .nav-link:hover { color: rgba(11,16,32,.95) !important; }
+        body.mtms-theme-light .navbar-toggler-icon { filter: none; }
 
         /* ── Navbar ── */
         .mtms-nav {
@@ -272,6 +290,7 @@
         .seat-normal  { background: rgba(34,197,94,.16);   color: rgba(234,241,255,.90); border: 1px solid rgba(34,197,94,.32); }
         .seat-couple  { background: rgba(214,178,94,.18);  color: rgba(234,241,255,.90); border: 1px solid rgba(214,178,94,.35); }
         .seat-booked  { background: rgba(239,68,68,.13);   color: rgba(234,241,255,.28); cursor: not-allowed; border: 1px solid rgba(239,68,68,.24); }
+        .seat-held { background: rgba(148,163,184,.14); color: rgba(234,241,255,.40); cursor: not-allowed; border: 1px solid rgba(148,163,184,.26); }
         .seat-selected { outline: 2px solid var(--mtms-accent) !important; background: rgba(214,178,94,.28) !important; color: var(--mtms-text) !important; }
         .seat-couple-unit  { grid-column: span 2; }
         .seat-couple-hidden { display: none; }
@@ -508,6 +527,16 @@
     </div>
 </div>
 
+<script>
+    (function () {
+        try {
+            var t = localStorage.getItem('mtms_theme');
+            if (t === 'light') {
+                document.body.classList.add('mtms-theme-light');
+            }
+        } catch (e) {}
+    })();
+</script>
 <script>
     var nameEl = document.getElementById('navUserName');
     var avatarEl = document.getElementById('navAvatar');

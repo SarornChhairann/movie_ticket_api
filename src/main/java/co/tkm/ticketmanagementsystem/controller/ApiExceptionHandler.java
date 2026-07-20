@@ -39,8 +39,8 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("error", ex.getMessage());
-        body.put("type", "SERVER_ERROR");
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+        body.put("type", "CONFLICT");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     @ExceptionHandler({MaxUploadSizeExceededException.class, MultipartException.class})

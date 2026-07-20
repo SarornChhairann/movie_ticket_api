@@ -25,7 +25,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/movies", "/movies/**",
                                 "/bookings/seats/**", "/bookings/checkout/**", "/bookings/confirmation/**",
                                 "/tickets", "/tickets/**",
-                                "/register", "/login", "/css/**", "/js/**", "/static/**", "/uploads/**", "/api/**", "/error").permitAll()
+                                "/register", "/login", "/css/**", "/js/**", "/static/**", "/uploads/**", "/api/**", "/ws/**", "/ws", "/error").permitAll()
                         .requestMatchers("/bookings/my-bookings", "/bookings/cancel/**",
                                 "/profile", "/profile/**").authenticated()
                         .requestMatchers("/admin/**").hasRole("ADMIN")

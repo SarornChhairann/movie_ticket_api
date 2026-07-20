@@ -28,6 +28,7 @@ import co.tkm.ticketmanagementsystem.model.Ticket;
 import co.tkm.ticketmanagementsystem.service.BookingService;
 import co.tkm.ticketmanagementsystem.service.PromoCodeService;
 import co.tkm.ticketmanagementsystem.service.SeatHoldService;
+import co.tkm.ticketmanagementsystem.service.SeatRealtimeService;
 import co.tkm.ticketmanagementsystem.service.TicketService;
 import lombok.RequiredArgsConstructor;
 
@@ -39,12 +40,15 @@ public class BookingController {
     private final BookingService bookingService;
     private final TicketService ticketService;
     private final SeatHoldService seatHoldService;
+    private final SeatRealtimeService seatRealtimeService;
     private final PromoCodeService promoCodeService;
 
     @GetMapping("/seats/{showtimeId}")
     public String seatMap(@PathVariable Long showtimeId, HttpSession session, Model model) {
         List<ShowtimeSeat> showtimeSeats = bookingService.getSeatsForShowtime(showtimeId);
-        Set<Long> heldByOthers = seatHoldService.getHeldSeatIdsByOtherSessions(session.getId());
+        String sessionId = session.getId();
+        Set<Long> heldByOthers = seatHoldService.getHeldSeatIdsByOtherSessionsForShowtime(showtimeId, sessionId);
+        Set<Long> heldByMe = seatHoldService.getHeldSeatIdsBySession(sessionId);
         co.tkm.ticketmanagementsystem.model.Showtime showtime = bookingService.getShowtime(showtimeId);
         DayOfWeek dow = showtime.getShowDate().getDayOfWeek();
         boolean isWeekend = dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY;
@@ -54,6 +58,8 @@ public class BookingController {
         model.addAttribute("showtime", showtime);
         model.addAttribute("showtimeSeats", showtimeSeats);
         model.addAttribute("heldByOthers", heldByOthers);
+        model.addAttribute("heldByMe", heldByMe);
+        model.addAttribute("sessionId", sessionId);
         model.addAttribute("holdMinutes", seatHoldService.getHoldMinutes());
         model.addAttribute("isWeekend", isWeekend);
         model.addAttribute("isMorning", isMorning);
@@ -70,8 +76,12 @@ public class BookingController {
                                   RedirectAttributes redirectAttributes) {
         String userEmail = resolveEmail(authentication);
         try {
+            if (seatHoldService.hasActiveConflict(seatIds, session.getId())) {
+                redirectAttributes.addFlashAttribute("error", "Some seats are currently held by another user. Please reselect.");
+                return "redirect:/bookings/seats/" + showtimeId;
+            }
             CheckoutData checkoutData = bookingService.buildCheckout(showtimeId, seatIds, userEmail, promoCode);
-            seatHoldService.holdSeats(seatIds, session.getId());
+            seatHoldService.holdSeatsRealtime(showtimeId, seatIds, session.getId());
             model.addAttribute("checkoutData", checkoutData);
             model.addAttribute("seatIds", seatIds);
             model.addAttribute("holdMinutes", seatHoldService.getHoldMinutes());
@@ -79,6 +89,9 @@ public class BookingController {
                     && !"anonymousUser".equals(authentication.getPrincipal()));
             return "booking/checkout";
         } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+            return "redirect:/bookings/seats/" + showtimeId;
+        } catch (IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
             return "redirect:/bookings/seats/" + showtimeId;
         }
@@ -131,13 +144,21 @@ public class BookingController {
                 redirectAttributes.addFlashAttribute("error", "Some seats were selected by another user. Please reselect.");
                 return "redirect:/bookings/seats/" + showtimeId;
             }
+            if (!seatHoldService.ownsActiveHolds(seatIds, session.getId())) {
+                redirectAttributes.addFlashAttribute("error", "Your seat hold expired. Please reselect seats.");
+                return "redirect:/bookings/seats/" + showtimeId;
+            }
             Booking booking = bookingService.confirmCheckout(
                     showtimeId, seatIds, userEmail,
                     guestName, guestPhone, guestEmail,
                     promoCode, paymentMethod, foodSelections);
             seatHoldService.releaseHolds(session.getId());
+            seatRealtimeService.publishBooked(showtimeId, seatIds);
             return "redirect:/bookings/confirmation/" + booking.getId();
         } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+            return "redirect:/bookings/seats/" + showtimeId;
+        } catch (IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
             return "redirect:/bookings/seats/" + showtimeId;
         }

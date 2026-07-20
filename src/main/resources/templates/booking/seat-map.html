@@ -3,136 +3,137 @@
       th:replace="~{layout/base :: layout('Select Seats', ~{::content})}">
 <th:block th:fragment="content">
 
-<!-- ── Progress stepper ── -->
-<div class="d-flex align-items-center justify-content-center mb-4 sm-stepper no-print">
-    <div class="sm-step active">
-        <span class="sm-step-dot"><i class="bi bi-grid-3x3-gap"></i></span>
-        <span class="sm-step-label">Seats</span>
-    </div>
-    <div class="sm-step-line"></div>
-    <div class="sm-step">
-        <span class="sm-step-dot">2</span>
-        <span class="sm-step-label">Checkout</span>
-    </div>
-    <div class="sm-step-line"></div>
-    <div class="sm-step">
-        <span class="sm-step-dot">3</span>
-        <span class="sm-step-label">Confirm</span>
-    </div>
-</div>
-
-<!-- ── Showtime info bar ── -->
-<div class="card border-0 shadow-sm rounded-4 p-3 mb-4"
-     style="background:linear-gradient(135deg,rgba(214,178,94,.08),rgba(214,178,94,.04));
-            border:1px solid rgba(214,178,94,.20)!important">
-    <div class="d-flex flex-wrap align-items-center gap-3">
-        <div class="flex-grow-1">
-            <div class="fw-bold" style="font-size:1.05rem" th:text="${showtime.movie.title}"></div>
-            <div class="d-flex flex-wrap gap-3 mt-1" style="font-size:.84rem;color:var(--mtms-muted)">
-                <span><i class="bi bi-building me-1"></i><span th:text="${showtime.hall.name}"></span>
-                    <span th:if="${showtime.hall.city != null}" class="ms-1 text-muted"
-                          th:text="'(' + ${showtime.hall.city} + ')'"></span>
-                </span>
-                <span><i class="bi bi-calendar-event me-1"></i><span th:text="${showtime.showDate}"></span></span>
-                <span><i class="bi bi-clock me-1"></i><span th:text="${showtime.showTime}"></span></span>
-            </div>
+<div class="sm-shell" style="padding: 2.5rem 1rem;">
+    <div class="d-flex align-items-center justify-content-center mb-4 sm-stepper no-print" aria-label="Booking steps">
+        <div class="sm-step active" aria-current="step">
+            <span class="sm-step-dot"><i class="bi bi-grid-3x3-gap"></i></span>
+            <span class="sm-step-label">Seats</span>
         </div>
-        <div class="d-flex gap-2 align-items-center flex-shrink-0 text-end">
-            <div>
-                <div class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.5px">Normal</div>
-                <div class="fw-bold" style="color:#86efac" th:text="'$' + ${showtime.normalPrice}"></div>
-            </div>
-            <div class="vr mx-1" style="opacity:.3"></div>
-            <div>
-                <div class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.5px">Couple</div>
-                <div class="fw-bold" style="color:var(--mtms-accent)" th:text="'$' + ${showtime.couplePrice}"></div>
-            </div>
-            <!-- Pricing badges -->
-            <div class="ms-2 d-flex flex-column gap-1">
-                <span th:if="${isMorning}"
-                      class="badge px-2 py-1"
-                      style="background:rgba(34,197,94,.18);color:#86efac;border:1px solid rgba(34,197,94,.30);font-size:.68rem">
-                    <i class="bi bi-sunrise me-1"></i>Morning -10%
-                </span>
-                <span th:if="${isWeekend}"
-                      class="badge px-2 py-1"
-                      style="background:rgba(245,166,35,.18);color:#fcd34d;border:1px solid rgba(245,166,35,.30);font-size:.68rem">
-                    <i class="bi bi-sun me-1"></i>Weekend +10%
-                </span>
-            </div>
+        <div class="sm-step-line"></div>
+        <div class="sm-step">
+            <span class="sm-step-dot">2</span>
+            <span class="sm-step-label">Checkout</span>
+        </div>
+        <div class="sm-step-line"></div>
+        <div class="sm-step">
+            <span class="sm-step-dot">3</span>
+            <span class="sm-step-label">Confirm</span>
         </div>
     </div>
+
+    <div class="sm-header-card mb-4">
+        <div class="sm-header-main">
+            <div class="sm-header-left">
+                <div class="sm-movie-title" th:text="${showtime.movie.title}"></div>
+                <div class="sm-meta">
+                    <span class="sm-chip">
+                        <i class="bi bi-building me-1"></i><span th:text="${showtime.hall.name}"></span>
+                        <span th:if="${showtime.hall.city != null and !#strings.isEmpty(showtime.hall.city)}"
+                              class="ms-1"
+                              th:text="|(${showtime.hall.city})|"></span>
+                    </span>
+                    <span class="sm-chip">
+                        <i class="bi bi-calendar-event me-1"></i><span th:text="${showtime.showDate}"></span>
+                    </span>
+                    <span class="sm-chip">
+                        <i class="bi bi-clock me-1"></i><span th:text="${showtime.showTime}"></span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="sm-header-right">
+                <div class="sm-prices">
+                    <div class="sm-price">
+                        <div class="sm-price-label">Normal</div>
+                        <div class="sm-price-value sm-price-good">$<span th:text="${showtime.normalPrice}"></span></div>
+                    </div>
+                    <div class="sm-price-divider" aria-hidden="true"></div>
+                    <div class="sm-price">
+                        <div class="sm-price-label">Couple</div>
+                        <div class="sm-price-value">$<span th:text="${showtime.couplePrice}"></span></div>
+                    </div>
+                </div>
+
+                <div class="sm-badges">
+                    <span th:if="${isMorning}" class="sm-badge sm-badge-good">
+                        <i class="bi bi-sunrise me-1"></i>Morning -10%
+                    </span>
+                    <span th:if="${isWeekend}" class="sm-badge sm-badge-warn">
+                        <i class="bi bi-sun me-1"></i>Weekend +10%
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sm-toolbar mb-3">
+        <div>
+            <h4 class="sm-h4 mb-1">
+                <i class="bi bi-grid-3x3-gap me-2" style="color:var(--mtms-accent)"></i>Select Your Seats
+            </h4>
+            <p class="sm-help mb-2" id="seatHelp">
+                Use mouse or keyboard. Couple seats must be selected in adjacent pairs.
+            </p>
+            <div class="sm-kbd-hints no-print" aria-label="Keyboard help">
+                <span class="sm-kbd-pill"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> Move</span>
+                <span class="sm-kbd-pill"><kbd>Space</kbd> Select</span>
+            </div>
+        </div>
+        <div class="sm-actions">
+            <div id="holdTimerBadge" class="d-none" role="status" aria-live="polite">
+                <span class="sm-timer">
+                    <i class="bi bi-hourglass-split me-1"></i>Hold expires in <span id="holdTimerText"></span>
+                </span>
+            </div>
+        </div>
+    </div>
 </div>
 
-<!-- ── Hold timer header ── -->
-<div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
-    <div>
-        <h4 class="fw-bold mb-0">
-            <i class="bi bi-grid-3x3-gap me-2" style="color:var(--mtms-accent)"></i>Select Your Seats
-        </h4>
-        <p class="text-muted mb-0 mt-1" style="font-size:.88rem">
-            Click seats to select. Couple seats must be picked in adjacent pairs.
-        </p>
-    </div>
-    <div id="holdTimerBadge" class="d-none">
-        <span class="badge px-3 py-2 fw-semibold"
-              style="background:rgba(245,166,35,.18);color:#fcd34d;border:1px solid rgba(245,166,35,.28);font-size:.82rem">
-            <i class="bi bi-hourglass-split me-1"></i>Hold expires in <span id="holdTimerText"></span>
-        </span>
-    </div>
-</div>
-
-<form th:action="@{/bookings/checkout/{id}(id=${showtimeId})}" method="get" id="seatForm">
-    <!-- Seat grid -->
-    <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
-        <div class="seat-grid mb-3" id="seatGrid">
+<form th:action="@{/bookings/checkout/{id}(id=${showtimeId})}" method="get" id="seatForm" style="padding: 0 1rem 2.5rem 1rem;">
+    <div class="sm-seat-card mb-3">
+        <div class="sm-screen" aria-hidden="true">SCREEN</div>
+        <div class="seat-grid mb-3" id="seatGrid" role="grid" aria-label="Seat map" aria-describedby="seatHelp" aria-multiselectable="true">
             <div class="seat-item" th:each="showtimeSeat : ${showtimeSeats}">
                 <label class="seat-label"
-                       th:classappend="${showtimeSeat.status.name() == 'BOOKED' or heldByOthers.contains(showtimeSeat.id)}
-                                       ? ' seat-booked'
-                                       : (${showtimeSeat.seat.seatType.name() == 'COUPLE'} ? ' seat-couple' : ' seat-normal')">
+                       th:with="isBooked=${showtimeSeat.status == 'BOOKED'},
+                                isHeldOther=${heldByOthers != null and heldByOthers.contains(showtimeSeat.id)},
+                                isHeldMe=${heldByMe != null and heldByMe.contains(showtimeSeat.id)},
+                                isCouple=${showtimeSeat.seat != null and showtimeSeat.seat.seatType == 'COUPLE'}"
+                       th:classappend="${isBooked} ? ' seat-booked'
+                                       : (${isHeldOther} ? ' seat-held'
+                                          : (${isHeldMe} ? ' seat-selected'
+                                             : (${isCouple} ? ' seat-couple' : ' seat-normal')))">
                     <input type="checkbox"
                            name="seatIds"
                            th:value="${showtimeSeat.id}"
-                           th:disabled="${showtimeSeat.status.name() == 'BOOKED' or heldByOthers.contains(showtimeSeat.id)}"
+                           th:disabled="${isBooked or isHeldOther}"
+                           th:checked="${isHeldMe}"
                            th:attr="data-seat-code=${showtimeSeat.seat.seatCode},
-                                    data-seat-type=${showtimeSeat.seat.seatType.name()}"
-                           class="d-none seat-checkbox">
-                    <span th:text="${showtimeSeat.seat.seatCode}"></span>
+                                    data-seat-id=${showtimeSeat.id},
+                                    data-showtime-id=${showtimeId},
+                                    data-seat-type=${showtimeSeat.seat.seatType},
+                                    aria-label=|Seat ${showtimeSeat.seat.seatCode}|"
+                           class="visually-hidden seat-checkbox">
+                    <span class="seat-code" aria-hidden="true" th:text="${showtimeSeat.seat.seatCode}"></span>
                 </label>
             </div>
         </div>
-        <div class="screen-indicator">▲ &nbsp; SCREEN &nbsp; ▲</div>
     </div>
 
-    <!-- Legend -->
-    <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
-        <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.84rem">
-            <span style="width:18px;height:18px;background:rgba(34,197,94,.16);border:1px solid rgba(34,197,94,.32);border-radius:4px;display:inline-block"></span>
-            Available
-        </span>
-        <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.84rem">
-            <span style="width:36px;height:18px;background:rgba(214,178,94,.18);border:1px solid rgba(214,178,94,.35);border-radius:4px;display:inline-block"></span>
-            Couple / Premium
-        </span>
-        <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.84rem">
-            <span style="width:18px;height:18px;background:rgba(239,68,68,.13);border:1px solid rgba(239,68,68,.24);border-radius:4px;display:inline-block"></span>
-            Taken
-        </span>
-        <span class="d-flex align-items-center gap-1 text-muted" style="font-size:.84rem">
-            <span style="width:18px;height:18px;background:rgba(214,178,94,.28);border-radius:4px;outline:2px solid var(--mtms-accent);display:inline-block"></span>
-            Selected
-        </span>
+    <div class="sm-legend mb-4" role="list" aria-label="Legend">
+        <span class="sm-legend-item" role="listitem"><span class="sm-swatch sm-swatch-available" aria-hidden="true"></span>Available</span>
+        <span class="sm-legend-item" role="listitem"><span class="sm-swatch sm-swatch-couple" aria-hidden="true"></span>Couple</span>
+        <span class="sm-legend-item" role="listitem"><span class="sm-swatch sm-swatch-booked" aria-hidden="true"></span>Taken</span>
+        <span class="sm-legend-item" role="listitem"><span class="sm-swatch sm-swatch-held" aria-hidden="true"></span>Held</span>
+        <span class="sm-legend-item" role="listitem"><span class="sm-swatch sm-swatch-selected" aria-hidden="true"></span>Selected</span>
     </div>
+    <div id="seatLive" class="visually-hidden" aria-live="polite"></div>
 
-    <!-- Price calculator + proceed -->
-    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" id="pricePanel"
-         style="display:none!important;border:1px solid rgba(214,178,94,.20)!important;
-                background:linear-gradient(135deg,rgba(214,178,94,.07),rgba(214,178,94,.03))">
+    <div class="sm-price-card mb-4" id="pricePanel">
         <div class="row g-3 align-items-center">
             <div class="col-sm-7">
-                <div style="font-size:.78rem;color:var(--mtms-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:.4rem">Price Breakdown</div>
-                <div id="priceRows" style="font-size:.85rem"></div>
+                <div class="sm-price-title">Price Breakdown</div>
+                <div id="priceRows" class="sm-price-rows"></div>
                 <div class="d-flex justify-content-between fw-bold mt-2 pt-2"
                      style="border-top:1px solid rgba(255,255,255,.10)">
                     <span>Estimated Total</span>
@@ -159,49 +160,296 @@
 </form>
 
 <style>
-/* ── Stepper ── */
-.sm-stepper { gap: 0; }
-.sm-step { display: flex; flex-direction: column; align-items: center; gap: .3rem; }
-.sm-step-dot {
-    width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center;
-    justify-content: center; font-size: .85rem; font-weight: 700;
-    border: 2px solid rgba(255,255,255,.15);
-    background: rgba(255,255,255,.06);
-    color: var(--mtms-muted);
-    transition: all .3s;
+:root{
+    --lc-bg:#05060a;
+    --lc-surface:#071428;
+    --lc-card:#0b1f3a;
+    --lc-blue:#2aa7ff;
+    --lc-gold:#d6b25e;
+    --lc-text:#eaf1ff;
+    --lc-muted:rgba(234,241,255,.68);
+
+    --mtms-dark:var(--lc-bg);
+    --mtms-surface:var(--lc-surface);
+    --mtms-card:var(--lc-card);
+    --mtms-accent:var(--lc-gold);
+    --mtms-amber:var(--lc-blue);
+    --mtms-text:var(--lc-text);
+    --mtms-muted:var(--lc-muted);
+    --mtms-border:rgba(255,255,255,.10);
+
+    --sm-surface: rgba(255,255,255,.06);
+    --sm-border: rgba(255,255,255,.12);
+    --sm-text: var(--lc-text);
+    --sm-muted: var(--lc-muted);
+    --sm-accent: var(--lc-gold);
+    --sm-blue: var(--lc-blue);
+    --sm-good: #93c5fd;
+    --sm-warn: #fcd34d;
+    --sm-shadow: 0 18px 65px rgba(0,0,0,.42);
 }
-.sm-step.active .sm-step-dot {
-    border-color: var(--mtms-accent);
-    background: rgba(214,178,94,.18);
-    color: var(--mtms-accent);
+
+body {
+    background: var(--lc-bg);
+    color: var(--lc-text);
 }
-.sm-step.done .sm-step-dot {
-    border-color: rgba(34,197,94,.5);
-    background: rgba(34,197,94,.15);
-    color: #86efac;
+main.mtms-main {
+    padding: 0;
 }
-.sm-step-label { font-size: .72rem; color: var(--mtms-muted); letter-spacing: .4px; text-transform: uppercase; }
-.sm-step.active .sm-step-label { color: var(--mtms-accent); font-weight: 600; }
-.sm-step-line {
-    flex: 1; height: 2px; background: rgba(255,255,255,.10); margin: 0 6px;
-    align-self: center; min-width: 40px; margin-bottom: 1.1rem;
+.mtms-nav {
+    background: rgba(5,6,10,.72);
+    backdrop-filter: saturate(160%) blur(10px);
+    border-bottom: 1px solid rgba(214,178,94,.14);
+    box-shadow: none;
+}
+.mtms-nav .navbar-brand { color: var(--lc-gold) !important; }
+.mtms-nav .nav-link { color: rgba(234,241,255,.80) !important; }
+.mtms-nav .nav-link:hover { color: #fff !important; }
+
+body.mtms-theme-light{
+    --mtms-dark:var(--lc-bg);
+    --mtms-surface:var(--lc-surface);
+    --mtms-card:var(--lc-card);
+    --mtms-accent:var(--lc-gold);
+    --mtms-amber:var(--lc-blue);
+    --mtms-text:var(--lc-text);
+    --mtms-muted:var(--lc-muted);
+    --mtms-border:rgba(255,255,255,.10);
+}
+
+.sm-shell{max-width:1100px;margin:0 auto;}
+
+.sm-stepper{gap:0}
+.sm-step{display:flex;flex-direction:column;align-items:center;gap:.3rem}
+.sm-step-dot{
+    width:38px;height:38px;border-radius:999px;display:flex;align-items:center;justify-content:center;
+    font-size:.9rem;font-weight:900;letter-spacing:.2px;
+    border:2px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.06);
+    color:var(--sm-muted);
+    transition:transform .15s ease, border-color .22s ease, background .22s ease, color .22s ease;
+}
+.sm-step.active .sm-step-dot{
+    border-color:rgba(214,178,94,.60);
+    background:rgba(214,178,94,.18);
+    color:var(--sm-accent);
+    box-shadow:0 12px 30px rgba(214,178,94,.16);
+}
+.sm-step-label{font-size:.72rem;color:var(--sm-muted);letter-spacing:.45px;text-transform:uppercase;font-weight:800}
+.sm-step.active .sm-step-label{color:rgba(234,241,255,.92)}
+.sm-step-line{flex:1;height:2px;background:rgba(255,255,255,.10);margin:0 8px;align-self:center;min-width:44px;margin-bottom:1.15rem}
+
+.sm-header-card{
+    border-radius:22px;
+    border:1px solid rgba(255,255,255,.10);
+    background:
+        radial-gradient(800px 420px at 18% 20%, rgba(42,167,255,.18), transparent 60%),
+        radial-gradient(900px 520px at 86% 30%, rgba(214,178,94,.14), transparent 60%),
+        linear-gradient(180deg, rgba(7,20,40,.92), rgba(5,6,10,1));
+    box-shadow:var(--sm-shadow);
+    padding:1.05rem 1.15rem;
+}
+.sm-header-card{color:var(--lc-text)}
+.sm-header-main{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.sm-movie-title{font-weight:950;letter-spacing:-.35px;font-size:1.18rem;line-height:1.2}
+.sm-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:.55rem}
+.sm-chip{
+    display:inline-flex;align-items:center;gap:.4rem;
+    padding:.38rem .75rem;border-radius:999px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(214,178,94,.22);
+    color:rgba(234,241,255,.88);
+    font-size:.84rem;font-weight:800;
+}
+
+.sm-header-right{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;justify-content:flex-end}
+.sm-prices{display:flex;align-items:flex-end;gap:12px}
+.sm-price-label{font-size:.7rem;letter-spacing:.65px;text-transform:uppercase;color:var(--sm-muted);font-weight:900}
+.sm-price-value{font-weight:950;font-size:1.05rem;color:var(--sm-accent);line-height:1}
+.sm-price-value.sm-price-good{color:var(--sm-good)}
+.sm-price-divider{width:1px;height:34px;background:rgba(255,255,255,.14)}
+.sm-badges{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sm-badge{
+    display:inline-flex;align-items:center;gap:.35rem;
+    padding:.32rem .62rem;border-radius:999px;
+    font-size:.75rem;font-weight:950;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.06);
+    color:rgba(234,241,255,.88);
+}
+.sm-badge-good{background:rgba(34,197,94,.14);border-color:rgba(34,197,94,.28);color:var(--sm-good)}
+.sm-badge-warn{background:rgba(245,166,35,.14);border-color:rgba(245,166,35,.26);color:var(--sm-warn)}
+
+.sm-toolbar{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.sm-h4{font-weight:950;letter-spacing:-.35px}
+.sm-help{color:var(--sm-muted);font-size:.92rem;max-width:76ch}
+.sm-kbd-hints{display:flex;flex-wrap:wrap;gap:8px}
+.sm-kbd-pill{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:.28rem .62rem;border-radius:999px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.12);
+    color:rgba(234,241,255,.85);
+    font-size:.78rem;font-weight:800;
+}
+.sm-kbd-pill kbd{
+    background:rgba(0,0,0,.32);
+    border:1px solid rgba(255,255,255,.16);
+    color:#fff;
+    border-radius:10px;
+    padding:.12rem .35rem;
+    font-weight:950;
+    font-size:.78rem;
+}
+body.mtms-theme-light .sm-kbd-pill{background:rgba(255,255,255,.06);color:rgba(234,241,255,.85)}
+body.mtms-theme-light .sm-kbd-pill kbd{background:rgba(0,0,0,.32);border-color:rgba(255,255,255,.16);color:#fff}
+
+.sm-actions{display:flex;align-items:center;gap:10px}
+.sm-timer{
+    display:inline-flex;align-items:center;gap:.35rem;
+    padding:.5rem .8rem;border-radius:999px;
+    background:rgba(245,166,35,.14);
+    border:1px solid rgba(245,166,35,.26);
+    color:var(--sm-warn);
+    font-weight:950;
+    font-size:.82rem;
+}
+
+.sm-seat-card{
+    border-radius:22px;
+    border:1px solid rgba(255,255,255,.10);
+    background:
+        radial-gradient(900px 520px at 18% 12%, rgba(42,167,255,.16), transparent 60%),
+        radial-gradient(900px 520px at 86% 25%, rgba(214,178,94,.12), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    box-shadow:var(--sm-shadow);
+    padding:1.25rem;
+}
+
+.sm-screen{
+    max-width:860px;
+    margin:0 auto 14px;
+    padding:10px 12px;
+    text-align:center;
+    font-weight:950;
+    font-size:.75rem;
+    letter-spacing:.45em;
+    color:rgba(234,241,255,.60);
+    border-radius:14px;
+    background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.10);
+}
+body.mtms-theme-light .sm-screen{color:rgba(234,241,255,.60);border-color:rgba(255,255,255,.10);background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02))}
+
+.seat-grid{
+    --sm-cols: 10;
+    max-width:860px;
+    margin-left:auto;
+    margin-right:auto;
+    gap:10px;
+    grid-template-columns:repeat(var(--sm-cols), minmax(0, 1fr));
+}
+@media (min-width: 992px){.seat-grid{--sm-cols:12}}
+@media (max-width: 576px){.seat-grid{--sm-cols:8;gap:8px}}
+
+.seat-label{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:44px;
+    border-radius:14px;
+    cursor:pointer;
+    user-select:none;
+    font-weight:950;
+    font-size:.78rem;
+    letter-spacing:.15px;
+    border:1px solid var(--sm-border);
+    background:rgba(255,255,255,.05);
+    color:rgba(234,241,255,.92);
+    transition:transform .16s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
+    position:relative;
+}
+body.mtms-theme-light .seat-label{color:rgba(234,241,255,.92);background:rgba(255,255,255,.05)}
+.seat-label:not(.seat-booked):not(.seat-held):hover{
+    transform:translateY(-2px) scale(1.02);
+    box-shadow:0 14px 40px rgba(0,0,0,.42);
+    border-color:rgba(214,178,94,.34);
+}
+.seat-normal{background:rgba(42,167,255,.12);border-color:rgba(42,167,255,.26)}
+.seat-couple{background:rgba(214,178,94,.10);border-color:rgba(214,178,94,.25)}
+.seat-booked{background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.22);color:rgba(234,241,255,.38);cursor:not-allowed}
+.seat-held{background:rgba(148,163,184,.10);border-color:rgba(148,163,184,.22);color:rgba(234,241,255,.46);cursor:not-allowed}
+body.mtms-theme-light .seat-booked{color:rgba(234,241,255,.38)}
+body.mtms-theme-light .seat-held{color:rgba(234,241,255,.46)}
+
+.seat-selected{
+    outline:2px solid var(--sm-accent) !important;
+    outline-offset:2px;
+    background:rgba(214,178,94,.22) !important;
+    color:var(--sm-text) !important;
+    border-color:rgba(214,178,94,.32) !important;
+    box-shadow:0 0 0 6px rgba(214,178,94,.10), 0 18px 55px rgba(0,0,0,.40);
+}
+
+.seat-focus{
+    outline:2px solid rgba(42,167,255,.72) !important;
+    outline-offset:2px;
+}
+
+.seat-code{pointer-events:none}
+
+.sm-legend{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.sm-legend-item{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:.36rem .68rem;border-radius:999px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.12);
+    color:rgba(234,241,255,.85);
+    font-weight:850;
+    font-size:.82rem;
+}
+body.mtms-theme-light .sm-legend-item{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:rgba(234,241,255,.85)}
+.sm-swatch{width:16px;height:16px;border-radius:6px;border:1px solid rgba(255,255,255,.12)}
+.sm-swatch-available{background:rgba(42,167,255,.14);border-color:rgba(42,167,255,.28)}
+.sm-swatch-couple{background:rgba(214,178,94,.18);border-color:rgba(214,178,94,.35)}
+.sm-swatch-booked{background:rgba(239,68,68,.13);border-color:rgba(239,68,68,.24)}
+.sm-swatch-held{background:rgba(148,163,184,.14);border-color:rgba(148,163,184,.26)}
+.sm-swatch-selected{background:rgba(214,178,94,.28);border-color:rgba(214,178,94,.40);box-shadow:0 0 0 2px rgba(214,178,94,.40)}
+
+.sm-price-card{
+    display:none;
+    border-radius:22px;
+    border:1px solid rgba(214,178,94,.20);
+    background:
+        radial-gradient(800px 420px at 15% 25%, rgba(42,167,255,.12), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    box-shadow:var(--sm-shadow);
+    padding:1.25rem;
+}
+.sm-price-title{font-size:.78rem;color:var(--sm-muted);text-transform:uppercase;letter-spacing:.65px;margin-bottom:.45rem;font-weight:900}
+.sm-price-rows{font-size:.88rem}
+
+@media (prefers-reduced-motion: reduce){
+    .seat-label,.sm-step-dot{transition:none}
 }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 <script th:inline="javascript">
 (function() {
-    const normalPrice = parseFloat([[${showtime.normalPrice}]]) || 0;
-    const couplePrice = parseFloat([[${showtime.couplePrice}]]) || 0;
-    const isWeekend   = [[${isWeekend}]];
-    const isMorning   = [[${isMorning}]];
+    const showtimeId = /*[[${showtimeId}]]*/ 0;
+    const sessionId = /*[[${sessionId}]]*/ '';
+
+    const normalPrice = parseFloat(/*[[${showtime.normalPrice}]]*/ 0) || 0;
+    const couplePrice = parseFloat(/*[[${showtime.couplePrice}]]*/ 0) || 0;
+    const isWeekend   = /*[[${isWeekend}]]*/ false;
+    const isMorning   = /*[[${isMorning}]]*/ false;
     const WEEKEND_RATE  = 0.10;
     const MORNING_RATE  = 0.10;
     const TAX_RATE      = 0.10;
     const SERVICE_FEE   = 1.50;
-
-    const holdMinutes   = [[${holdMinutes}]];
-    let holdInterval    = null;
-    let holdStarted     = false;
+    const holdMinutes   = /*[[${holdMinutes}]]*/ 10;
 
     const seatCheckboxes = Array.from(document.querySelectorAll('.seat-checkbox'));
     const pricePanel     = document.getElementById('pricePanel');
@@ -209,38 +457,320 @@
     const proceedSeatCount = document.getElementById('proceedSeatCount');
     const estTotal       = document.getElementById('estTotal');
     const priceRows      = document.getElementById('priceRows');
+    const seatGridEl     = document.getElementById('seatGrid');
+    const liveEl         = document.getElementById('seatLive');
 
-    // Mark couple items
-    seatCheckboxes.forEach(function(cb) {
-        if (cb.dataset.seatType !== 'COUPLE') return;
-        const item = cb.closest('.seat-item');
-        if (item) item.classList.add('seat-couple-unit');
+    const badge  = document.getElementById('holdTimerBadge');
+    const text   = document.getElementById('holdTimerText');
+    let holdInterval = null;
+    let expiresAtMs = 0;
+
+    function announce(msg) {
+        if (!liveEl) return;
+        liveEl.textContent = '';
+        liveEl.textContent = String(msg || '');
+    }
+
+    function updateAria(cb, state) {
+        if (!cb) return;
+        const code = cb.dataset.seatCode || '';
+        cb.setAttribute('aria-label', 'Seat ' + code + ' — ' + (state || ''));
+    }
+
+    const seatById = new Map();
+    const seatByCode = new Map();
+    seatCheckboxes.forEach(function(cb){
+        const id = parseInt(cb.dataset.seatId, 10);
+        seatById.set(id, {cb: cb, label: cb.closest('label')});
+        seatByCode.set(cb.dataset.seatCode, cb);
+        if (cb.dataset.seatType === 'COUPLE') {
+            const item = cb.closest('.seat-item');
+            if (item) item.classList.add('seat-couple-unit');
+        }
     });
 
-    // Hold countdown (starts on first selection)
-    function startHoldTimer() {
-        if (holdStarted) return;
-        holdStarted = true;
-        let totalSec = holdMinutes * 60;
-        const badge  = document.getElementById('holdTimerBadge');
-        const text   = document.getElementById('holdTimerText');
+    function setRovingTabIndex(targetCb) {
+        if (!targetCb) return;
+        seatCheckboxes.forEach(function(cb) {
+            cb.tabIndex = (cb === targetCb) ? 0 : -1;
+        });
+    }
+
+    seatCheckboxes.forEach(function(cb) {
+        cb.addEventListener('focus', function() {
+            const label = cb.closest('label');
+            if (label) label.classList.add('seat-focus');
+        });
+        cb.addEventListener('blur', function() {
+            const label = cb.closest('label');
+            if (label) label.classList.remove('seat-focus');
+        });
+    });
+
+    seatCheckboxes.forEach(function(cb) {
+        const label = cb.closest('label');
+        if (label && label.classList.contains('seat-booked')) {
+            updateAria(cb, 'Taken');
+        } else if (label && label.classList.contains('seat-held')) {
+            updateAria(cb, 'Held');
+        } else if (cb.checked) {
+            updateAria(cb, 'Selected');
+        } else {
+            updateAria(cb, 'Available');
+        }
+    });
+
+    const firstFocusable = seatCheckboxes.find(cb => !cb.disabled);
+    if (firstFocusable) setRovingTabIndex(firstFocusable);
+
+    function toast(type, msg) {
+        if (window.MTMSFlash && typeof window.MTMSFlash.push === 'function') {
+            window.MTMSFlash.push({type: type || 'info', message: msg || ''});
+            return;
+        }
+        try { alert(msg); } catch (e) {}
+    }
+
+    function setTimer(expMs) {
+        expiresAtMs = expMs || 0;
+        if (!badge || !text || !expiresAtMs) return;
         badge.classList.remove('d-none');
-        holdInterval = setInterval(function() {
-            totalSec--;
-            if (totalSec <= 0) {
+        if (holdInterval) clearInterval(holdInterval);
+        holdInterval = setInterval(function(){
+            const now = Date.now();
+            const diff = Math.max(0, Math.floor((expiresAtMs - now) / 1000));
+            const m = Math.floor(diff / 60);
+            const s = diff % 60;
+            text.textContent = m + ':' + String(s).padStart(2, '0');
+            if (diff <= 0) {
                 clearInterval(holdInterval);
-                text.textContent = '0:00';
                 badge.querySelector('span').style.background = 'rgba(239,68,68,.18)';
                 badge.querySelector('span').style.color = '#fca5a5';
                 badge.querySelector('span').style.borderColor = 'rgba(239,68,68,.30)';
+            }
+        }, 500);
+    }
+
+    async function apiHold(seatIds) {
+        const r = await fetch('/api/seat-holds/hold', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({showtimeId: showtimeId, seatIds: seatIds})
+        });
+        if (!r.ok) {
+            let msg = 'Unable to hold seats.';
+            try {
+                const j = await r.json();
+                if (j && j.error) msg = j.error;
+            } catch (e) {}
+            throw new Error(msg);
+        }
+        return r.json();
+    }
+
+    async function apiRelease(seatIds) {
+        const r = await fetch('/api/seat-holds/release', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({showtimeId: showtimeId, seatIds: seatIds})
+        });
+        if (!r.ok) {
+            let msg = 'Unable to release seats.';
+            try {
+                const j = await r.json();
+                if (j && j.error) msg = j.error;
+            } catch (e) {}
+            throw new Error(msg);
+        }
+        return r.json();
+    }
+
+    function parseSeatCode(code) {
+        const m = String(code || '').trim().match(/^([A-Za-z]+)(\d+)$/);
+        if (!m) return null;
+        return {row: m[1].toUpperCase(), num: parseInt(m[2], 10)};
+    }
+
+    function partnerCode(code) {
+        const p = parseSeatCode(code);
+        if (!p) return null;
+        const partner = (p.num % 2 === 0) ? (p.num - 1) : (p.num + 1);
+        return p.row + partner;
+    }
+
+    function rowKey(row) {
+        const s = String(row || '').toUpperCase();
+        let v = 0;
+        for (let i = 0; i < s.length; i++) {
+            const c = s.charCodeAt(i);
+            if (c < 65 || c > 90) return 0;
+            v = (v * 26) + (c - 64);
+        }
+        return v;
+    }
+
+    const seatMeta = new Map();
+    const byRow = new Map();
+    const rowKeys = [];
+    (function buildSeatIndex() {
+        const rowsSet = new Set();
+        seatCheckboxes.forEach(function(cb) {
+            const p = parseSeatCode(cb.dataset.seatCode);
+            if (!p) return;
+            const rk = rowKey(p.row);
+            const meta = {rowKey: rk, num: p.num};
+            seatMeta.set(cb, meta);
+            rowsSet.add(rk);
+            const list = byRow.get(rk) || [];
+            list.push(cb);
+            byRow.set(rk, list);
+        });
+        rowsSet.forEach(function(v) { rowKeys.push(v); });
+        rowKeys.sort(function(a, b) { return a - b; });
+        byRow.forEach(function(list) {
+            list.sort(function(a, b) {
+                const ma = seatMeta.get(a);
+                const mb = seatMeta.get(b);
+                return (ma ? ma.num : 0) - (mb ? mb.num : 0);
+            });
+        });
+    })();
+
+    function firstEnabledInRow(list) {
+        if (!list) return null;
+        for (let i = 0; i < list.length; i++) {
+            if (!list[i].disabled) return list[i];
+        }
+        return null;
+    }
+
+    function lastEnabledInRow(list) {
+        if (!list) return null;
+        for (let i = list.length - 1; i >= 0; i--) {
+            if (!list[i].disabled) return list[i];
+        }
+        return null;
+    }
+
+    function nearestEnabledByNum(list, num) {
+        if (!list || list.length === 0) return null;
+        let best = null;
+        let bestDist = Number.POSITIVE_INFINITY;
+        for (let i = 0; i < list.length; i++) {
+            const cb = list[i];
+            if (cb.disabled) continue;
+            const m = seatMeta.get(cb);
+            if (!m) continue;
+            const dist = Math.abs(m.num - num);
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = cb;
+                if (dist === 0) break;
+            }
+        }
+        return best;
+    }
+
+    function focusSeat(cb) {
+        if (!cb || cb.disabled) return;
+        setRovingTabIndex(cb);
+        try { cb.focus({preventScroll: true}); } catch (e) { cb.focus(); }
+        try { cb.scrollIntoView({block: 'nearest', inline: 'nearest'}); } catch (e) {}
+    }
+
+    function moveFocus(fromCb, key) {
+        const m = seatMeta.get(fromCb);
+        if (!m) return;
+        const list = byRow.get(m.rowKey) || [];
+        const idx = list.indexOf(fromCb);
+
+        if (key === 'Home') {
+            focusSeat(firstEnabledInRow(list));
+            return;
+        }
+        if (key === 'End') {
+            focusSeat(lastEnabledInRow(list));
+            return;
+        }
+
+        if (key === 'ArrowLeft' || key === 'ArrowRight') {
+            const step = (key === 'ArrowRight') ? 1 : -1;
+            for (let i = idx + step; i >= 0 && i < list.length; i += step) {
+                if (!list[i].disabled) {
+                    focusSeat(list[i]);
+                    return;
+                }
+            }
+            return;
+        }
+
+        if (key === 'ArrowUp' || key === 'ArrowDown') {
+            const rowIdx = rowKeys.indexOf(m.rowKey);
+            if (rowIdx < 0) return;
+            const targetRowIdx = rowIdx + ((key === 'ArrowDown') ? 1 : -1);
+            if (targetRowIdx < 0 || targetRowIdx >= rowKeys.length) return;
+            const targetList = byRow.get(rowKeys[targetRowIdx]) || [];
+            focusSeat(nearestEnabledByNum(targetList, m.num));
+        }
+    }
+
+    if (seatGridEl) {
+        seatGridEl.addEventListener('keydown', function(e) {
+            const active = document.activeElement;
+            if (!active || !active.classList || !active.classList.contains('seat-checkbox')) return;
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                active.click();
                 return;
             }
-            const m = Math.floor(totalSec / 60);
-            const s = totalSec % 60;
-            text.textContent = m + ':' + String(s).padStart(2, '0');
-        }, 1000);
-        // Initialize display
-        text.textContent = holdMinutes + ':00';
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Home' || e.key === 'End') {
+                e.preventDefault();
+                moveFocus(active, e.key);
+            }
+        });
+    }
+
+    function setHeldByOther(seatId, held) {
+        const row = seatById.get(seatId);
+        if (!row || !row.cb || !row.label) return;
+        if (row.label.classList.contains('seat-booked')) return;
+        if (held) {
+            row.cb.checked = false;
+            row.cb.disabled = true;
+            updateAria(row.cb, 'Held');
+            if (row.cb.tabIndex === 0) {
+                const next = seatCheckboxes.find(cb => !cb.disabled);
+                if (next) setRovingTabIndex(next);
+            }
+            row.label.classList.remove('seat-selected');
+            row.label.classList.remove('seat-normal');
+            row.label.classList.remove('seat-couple');
+            row.label.classList.add('seat-held');
+        } else {
+            row.cb.disabled = false;
+            updateAria(row.cb, 'Available');
+            row.label.classList.remove('seat-held');
+            if (!row.label.classList.contains('seat-selected')) {
+                row.label.classList.add(row.cb.dataset.seatType === 'COUPLE' ? 'seat-couple' : 'seat-normal');
+            }
+        }
+    }
+
+    function setBooked(seatId) {
+        const row = seatById.get(seatId);
+        if (!row || !row.cb || !row.label) return;
+        row.cb.checked = false;
+        row.cb.disabled = true;
+        updateAria(row.cb, 'Taken');
+        if (row.cb.tabIndex === 0) {
+            const next = seatCheckboxes.find(cb => !cb.disabled);
+            if (next) setRovingTabIndex(next);
+        }
+        row.label.classList.remove('seat-held');
+        row.label.classList.remove('seat-selected');
+        row.label.classList.remove('seat-normal');
+        row.label.classList.remove('seat-couple');
+        row.label.classList.add('seat-booked');
     }
 
     function recalcPrice() {
@@ -250,18 +780,19 @@
         const couples   = checked.filter(c => c.dataset.seatType === 'COUPLE').length;
         const pairs     = Math.floor(couples / 2);
 
-        // Show/hide panels
         if (n > 0) {
             pricePanel.style.setProperty('display', 'block', 'important');
             proceedBtnEmpty.classList.add('d-none');
-            if (!holdStarted) startHoldTimer();
+            if (!expiresAtMs) {
+                const exp = Date.now() + (holdMinutes * 60 * 1000);
+                setTimer(exp);
+            }
         } else {
             pricePanel.style.setProperty('display', 'none', 'important');
             proceedBtnEmpty.classList.remove('d-none');
         }
         proceedSeatCount.textContent = n;
 
-        // Price calculation
         let base = (normals * normalPrice) + (pairs * couplePrice);
         let rows = '';
 
@@ -297,13 +828,166 @@
         estTotal.textContent = '$' + total.toFixed(2);
     }
 
+    function applySelectionVisual(cb) {
+        const label = cb.closest('label');
+        if (!label) return;
+        label.classList.toggle('seat-selected', cb.checked);
+        if (cb.checked) {
+            label.classList.remove('seat-held');
+            updateAria(cb, 'Selected');
+        } else {
+            updateAria(cb, 'Available');
+        }
+    }
+
+    async function holdSelection(cbs) {
+        const ids = cbs.map(cb => parseInt(cb.dataset.seatId, 10));
+        try {
+            cbs.forEach(function(cb){
+                cb.disabled = true;
+            });
+            const res = await apiHold(ids);
+            cbs.forEach(function(cb){
+                if (!cb.closest('label').classList.contains('seat-booked')) {
+                    cb.disabled = false;
+                }
+            });
+            if (res && res.expiresAtEpochMs) setTimer(res.expiresAtEpochMs);
+        } catch (e) {
+            cbs.forEach(function(cb){
+                cb.checked = false;
+                cb.disabled = false;
+                applySelectionVisual(cb);
+            });
+            recalcPrice();
+            toast('error', e && e.message ? e.message : 'Unable to hold seats.');
+            throw e;
+        }
+    }
+
+    async function releaseSelection(cbs) {
+        const ids = cbs.map(cb => parseInt(cb.dataset.seatId, 10));
+        try {
+            await apiRelease(ids);
+        } catch (e) {
+            toast('warning', e && e.message ? e.message : 'Unable to release seats.');
+        }
+    }
+
     seatCheckboxes.forEach(function(cb) {
-        cb.addEventListener('change', function() {
-            cb.closest('label').classList.toggle('seat-selected', cb.checked);
+        cb.addEventListener('change', async function() {
+            const label = cb.closest('label');
+            if (label && label.classList.contains('seat-held')) {
+                cb.checked = false;
+                return;
+            }
+            if (label && label.classList.contains('seat-booked')) {
+                cb.checked = false;
+                return;
+            }
+
+            if (cb.dataset.seatType === 'COUPLE') {
+                const pCode = partnerCode(cb.dataset.seatCode);
+                const pCb = pCode ? seatByCode.get(pCode) : null;
+                if (!pCb) {
+                    cb.checked = false;
+                    toast('error', 'Couple seats must be selected in pairs.');
+                    return;
+                }
+
+                if (cb.checked) {
+                    cb.checked = true;
+                    pCb.checked = true;
+                    applySelectionVisual(cb);
+                    applySelectionVisual(pCb);
+                    await holdSelection([cb, pCb]);
+                    announce('Selected seats ' + (cb.dataset.seatCode || '') + ' and ' + (pCb.dataset.seatCode || ''));
+                } else {
+                    cb.checked = false;
+                    pCb.checked = false;
+                    applySelectionVisual(cb);
+                    applySelectionVisual(pCb);
+                    await releaseSelection([cb, pCb]);
+                    announce('Released seats ' + (cb.dataset.seatCode || '') + ' and ' + (pCb.dataset.seatCode || ''));
+                }
+                recalcPrice();
+                return;
+            }
+
+            applySelectionVisual(cb);
+            if (cb.checked) {
+                await holdSelection([cb]);
+                announce('Selected seat ' + (cb.dataset.seatCode || ''));
+            } else {
+                await releaseSelection([cb]);
+                announce('Released seat ' + (cb.dataset.seatCode || ''));
+            }
             recalcPrice();
         });
     });
 
+    function connectWs() {
+        if (typeof SockJS === 'undefined' || typeof Stomp === 'undefined') return false;
+        try {
+            const socket = new SockJS('/ws');
+            const client = Stomp.over(socket);
+            client.debug = null;
+            client.connect({}, function() {
+                client.subscribe('/topic/showtimes/' + showtimeId + '/seats', function(msg) {
+                    if (!msg || !msg.body) return;
+                    let ev = null;
+                    try { ev = JSON.parse(msg.body); } catch (e) { return; }
+                    if (!ev || !ev.type || !ev.seatIds) return;
+                    if (ev.type === 'HELD') {
+                        if (ev.sessionId && ev.sessionId === sessionId) return;
+                        ev.seatIds.forEach(function(id){ setHeldByOther(parseInt(id,10), true); });
+                        recalcPrice();
+                        return;
+                    }
+                    if (ev.type === 'RELEASED') {
+                        ev.seatIds.forEach(function(id){ setHeldByOther(parseInt(id,10), false); });
+                        recalcPrice();
+                        return;
+                    }
+                    if (ev.type === 'BOOKED') {
+                        ev.seatIds.forEach(function(id){ setBooked(parseInt(id,10)); });
+                        recalcPrice();
+                    }
+                });
+            }, function() {
+                startPolling();
+            });
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    let pollTimer = null;
+    async function pollStateOnce() {
+        try {
+            const r = await fetch('/api/seat-holds/state?showtimeId=' + encodeURIComponent(showtimeId));
+            if (!r.ok) return;
+            const j = await r.json();
+            const heldOthers = new Set((j && j.heldByOthers) ? j.heldByOthers.map(String) : []);
+            seatCheckboxes.forEach(function(cb){
+                const label = cb.closest('label');
+                if (!label || label.classList.contains('seat-booked') || cb.checked) return;
+                const id = String(cb.dataset.seatId);
+                setHeldByOther(parseInt(id,10), heldOthers.has(id));
+            });
+        } catch (e) {}
+    }
+
+    function startPolling() {
+        if (pollTimer) return;
+        toast('warning', 'Real-time seat updates unavailable. Switching to refresh mode.');
+        pollStateOnce();
+        pollTimer = setInterval(pollStateOnce, 4000);
+    }
+
+    const wsOk = connectWs();
+    if (!wsOk) startPolling();
     recalcPrice();
 })();
 </script>

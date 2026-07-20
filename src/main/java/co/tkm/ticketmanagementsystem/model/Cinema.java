@@ -19,7 +19,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Cinema {
+public class Cinema extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
