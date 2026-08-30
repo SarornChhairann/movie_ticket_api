@@ -8,14 +8,18 @@ import co.tkm.ticketmanagementsystem.repository.ShowtimeRepository;
 import co.tkm.ticketmanagementsystem.service.BookingService;
 import co.tkm.ticketmanagementsystem.service.HallService;
 import co.tkm.ticketmanagementsystem.service.MovieService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -25,8 +29,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@Controller
+@RestController
 @RequiredArgsConstructor
+@Tag(name = "Movies", description = "Browse movies, filter listings, and view showtimes for a movie")
 public class MovieController {
 
     private final MovieService movieService;
@@ -34,8 +39,9 @@ public class MovieController {
     private final HallService hallService;
     private final BookingService bookingService;
 
-    @GetMapping("/movies")
-    public String list(
+    @GetMapping(value = "/movies", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "List movies, optionally filtered by tab/genre/language/format/rating/search/city")
+    public ResponseEntity<MovieListResponse> list(
             @RequestParam(value = "tab", required = false, defaultValue = "NOW_SHOWING") String tab,
             @RequestParam(value = "genre", required = false) String genre,
             @RequestParam(value = "language", required = false) String language,
@@ -43,8 +49,7 @@ public class MovieController {
             @RequestParam(value = "rating", required = false) String rating,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "city", required = false) String city,
-            Authentication authentication,
-            Model model) {
+            Authentication authentication) {
 
         MovieStatus status;
         try {
@@ -57,41 +62,37 @@ public class MovieController {
         List<Movie> comingSoon = movieService.findComingSoon();
         List<Hall> halls = hallService.findByCity(city);
         List<String> cities = hallService.findDistinctCities();
-        movieService.findFeaturedMovie().ifPresent(m -> model.addAttribute("featuredMovie", m));
+        Movie featuredMovie = movieService.findFeaturedMovie().orElse(null);
 
-        model.addAttribute("movies", movies);
-        model.addAttribute("comingSoon", comingSoon);
-        model.addAttribute("halls", halls);
-        model.addAttribute("cities", cities);
-        model.addAttribute("selectedCity", city);
-        model.addAttribute("tab", status.name());
-        model.addAttribute("genre", genre);
-        model.addAttribute("language", language);
-        model.addAttribute("format", format);
-        model.addAttribute("rating", rating);
-        model.addAttribute("search", search);
-        model.addAttribute("genres", movieService.findDistinctGenres());
-        model.addAttribute("languages", movieService.findDistinctLanguages());
-
+        Long userBookingCount = null;
         if (authentication != null && authentication.isAuthenticated()
                 && !"anonymousUser".equals(authentication.getPrincipal())) {
             boolean isAdmin = authentication.getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
             if (!isAdmin) {
-                model.addAttribute("userBookingCount", bookingService.countBookingsForUser(authentication.getName()));
+                userBookingCount = bookingService.countBookingsForUser(authentication.getName());
             }
         }
 
-        return "movies/list";
+        List<HallSummary> hallSummaries = halls.stream()
+                .map(h -> new HallSummary(h.getId(), h.getName(), h.getCity()))
+                .toList();
+
+        return ResponseEntity.ok(new MovieListResponse(
+                movies, comingSoon, hallSummaries, cities, city, status.name(),
+                genre, language, format, rating, search,
+                movieService.findDistinctGenres(), movieService.findDistinctLanguages(),
+                featuredMovie, userBookingCount));
     }
 
-    @GetMapping("/movies/{id}")
-    public String detail(@PathVariable Long id,
+    @GetMapping(value = "/movies/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Get movie detail with showtimes grouped by date, optionally filtered by city/cinema/date/hall")
+    @Transactional(readOnly = true)
+    public ResponseEntity<MovieDetailResponse> detail(@PathVariable Long id,
                          @RequestParam(value = "city", required = false) String city,
                          @RequestParam(value = "cinemaId", required = false) UUID cinemaId,
                          @RequestParam(value = "date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                         @RequestParam(value = "hallId", required = false) Long hallId,
-                         Model model) {
+                         @RequestParam(value = "hallId", required = false) Long hallId) {
         Movie movie = movieService.findById(id);
         List<Showtime> showtimes = showtimeRepository.findByMovieIdWithHall(id);
 
@@ -143,20 +144,64 @@ public class MovieController {
                     .collect(Collectors.toList());
         }
 
-        Map<LocalDate, List<Showtime>> grouped = filteredShowtimes.stream()
-                .collect(Collectors.groupingBy(Showtime::getShowDate, LinkedHashMap::new, Collectors.toList()));
+        Map<LocalDate, List<ShowtimeSummary>> grouped = filteredShowtimes.stream()
+                .collect(Collectors.groupingBy(Showtime::getShowDate, LinkedHashMap::new,
+                        Collectors.mapping(this::toShowtimeSummary, Collectors.toList())));
 
         List<String> cities = hallService.findDistinctCities();
+        List<HallSummary> hallSummaries = availableHalls.stream()
+                .map(h -> new HallSummary(h.getId(), h.getName(), h.getCity()))
+                .toList();
 
-        model.addAttribute("movie", movie);
-        model.addAttribute("showtimeByDate", grouped);
-        model.addAttribute("cities", cities);
-        model.addAttribute("selectedCity", city);
-        model.addAttribute("selectedCinemaId", cinemaId);
-        model.addAttribute("availableDates", availableDates);
-        model.addAttribute("selectedDate", selectedDate);
-        model.addAttribute("availableHalls", availableHalls);
-        model.addAttribute("selectedHallId", hallId);
-        return "movies/detail";
+        return ResponseEntity.ok(new MovieDetailResponse(
+                movie, grouped, cities, city, cinemaId,
+                availableDates, selectedDate, hallSummaries, hallId));
+    }
+
+    private ShowtimeSummary toShowtimeSummary(Showtime s) {
+        return new ShowtimeSummary(
+                s.getId(),
+                s.getShowTime() != null ? s.getShowTime().toString() : null,
+                s.getHall() != null ? s.getHall().getId() : null,
+                s.getHall() != null ? s.getHall().getName() : null,
+                s.getNormalPrice(),
+                s.getCouplePrice(),
+                s.isBlocked());
+    }
+
+    public record HallSummary(Long id, String name, String city) {
+    }
+
+    public record ShowtimeSummary(Long id, String showTime, Long hallId, String hallName,
+                                   java.math.BigDecimal normalPrice, java.math.BigDecimal couplePrice,
+                                   boolean blocked) {
+    }
+
+    public record MovieListResponse(List<Movie> movies,
+                                     List<Movie> comingSoon,
+                                     List<HallSummary> halls,
+                                     List<String> cities,
+                                     String selectedCity,
+                                     String tab,
+                                     String genre,
+                                     String language,
+                                     String format,
+                                     String rating,
+                                     String search,
+                                     List<String> genres,
+                                     List<String> languages,
+                                     Movie featuredMovie,
+                                     Long userBookingCount) {
+    }
+
+    public record MovieDetailResponse(Movie movie,
+                                       Map<LocalDate, List<ShowtimeSummary>> showtimesByDate,
+                                       List<String> cities,
+                                       String selectedCity,
+                                       UUID selectedCinemaId,
+                                       List<LocalDate> availableDates,
+                                       LocalDate selectedDate,
+                                       List<HallSummary> availableHalls,
+                                       Long selectedHallId) {
     }
 }

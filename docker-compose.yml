@@ -1,0 +1,55 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ticket-management-system:latest
+    container_name: ticket-management-system-app
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8010}:8010"
+    environment:
+      SERVER_PORT: 8010
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-spring_boot_ticket}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-myuser}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-MySecretPassword}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      APP_UPLOADS_MOVIES_DIR: /app/uploads/movies
+      APP_UPLOADS_FOOD_ITEMS_DIR: /app/uploads/food-items
+      APP_SECURITY_JWT_SECRET: ${APP_SECURITY_JWT_SECRET:-ChangeThisToASecureRandomKeyAtLeast32BytesLong123456}
+      APP_ADMIN_EMAIL: ${APP_ADMIN_EMAIL:-admin@gmail.com}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-admin123}
+      APP_ADMIN_NAME: ${APP_ADMIN_NAME:-System Admin}
+      APP_SEED_ENABLED: ${APP_SEED_ENABLED:-true}
+      APP_SEED_FORCE: ${APP_SEED_FORCE:-false}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-smtp.gmail.com}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+    volumes:
+      - app_uploads:/app/uploads
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: ticket-management-system-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-spring_boot_ticket}
+      POSTGRES_USER: ${POSTGRES_USER:-myuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-MySecretPassword}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  app_uploads:
+  postgres_data:

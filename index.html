@@ -1,0 +1,4530 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ticket Management System — API Payload Reference</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --panel: #161a21;
+        --panel2: #1c2129;
+        --line: #262d38;
+        --tx: #e6e9ef;
+        --tx2: #9aa4b2;
+        --tx3: #6b7684;
+        --acc: #5b8cff;
+        --get: #3fb950;
+        --post: #d29922;
+        --del: #f85149;
+        --code: #11151b;
+        --str: #a5d6ff;
+        --key: #7ee787;
+        --num: #f0883e;
+        --mono:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f6f7f9;
+          --panel: #fff;
+          --panel2: #f0f2f5;
+          --line: #dfe3e8;
+          --tx: #121820;
+          --tx2: #525f6d;
+          --tx3: #7a8593;
+          --acc: #2f5fe0;
+          --get: #1a7f37;
+          --post: #9a6700;
+          --del: #cf222e;
+          --code: #f4f6f8;
+          --str: #0a3069;
+          --key: #0550ae;
+          --num: #953800;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--tx);
+        font:
+          15px/1.6 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+      }
+      a {
+        color: var(--acc);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+
+      .wrap {
+        display: flex;
+        align-items: flex-start;
+        max-width: 1500px;
+        margin: 0 auto;
+      }
+      nav {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+        flex: 0 0 300px;
+        padding: 22px 14px 60px;
+        border-right: 1px solid var(--line);
+        background: var(--panel);
+      }
+      nav h1 {
+        font-size: 15px;
+        margin: 0 0 4px;
+        letter-spacing: 0.2px;
+      }
+      nav .sub {
+        font-size: 12px;
+        color: var(--tx3);
+        margin-bottom: 14px;
+      }
+      nav input {
+        width: 100%;
+        padding: 8px 10px;
+        margin-bottom: 14px;
+        border-radius: 7px;
+        border: 1px solid var(--line);
+        background: var(--panel2);
+        color: var(--tx);
+        font-size: 13px;
+      }
+      nav ul {
+        list-style: none;
+        margin: 0 0 14px;
+        padding: 0;
+      }
+      nav .grp {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        color: var(--tx3);
+        margin: 14px 0 6px;
+        font-weight: 700;
+      }
+      nav li a {
+        display: block;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12.5px;
+        color: var(--tx2);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      nav li a:hover {
+        background: var(--panel2);
+        color: var(--tx);
+        text-decoration: none;
+      }
+      nav li a .n {
+        color: var(--tx3);
+        font-family: var(--mono);
+        font-size: 11px;
+        margin-right: 6px;
+      }
+      nav li.sgrp {
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--tx3);
+        padding: 0 8px;
+        margin: 9px 0 3px;
+        font-weight: 600;
+      }
+
+      main {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 28px 34px 120px;
+      }
+      header.top {
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 20px;
+        margin-bottom: 26px;
+      }
+      header.top h1 {
+        margin: 0 0 8px;
+        font-size: 27px;
+        letter-spacing: -0.3px;
+      }
+      header.top p {
+        margin: 0;
+        color: var(--tx2);
+        max-width: 820px;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .chip {
+        font-family: var(--mono);
+        font-size: 12px;
+        background: var(--panel2);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 3px 11px;
+        color: var(--tx2);
+      }
+
+      section.part {
+        margin: 44px 0 0;
+        scroll-margin-top: 14px;
+      }
+      section.part > h2 {
+        font-size: 21px;
+        margin: 0 0 4px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--acc);
+        display: inline-block;
+      }
+      section.part > h2 .who {
+        color: var(--acc);
+      }
+      section.part > .owner {
+        color: var(--tx3);
+        font-size: 13px;
+        margin: 8px 0 20px;
+        max-width: 900px;
+      }
+      .presenter {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12.5px;
+        background: var(--panel);
+        border: 1px solid var(--acc);
+        border-radius: 999px;
+        padding: 3px 12px 3px 5px;
+        color: var(--tx);
+        margin-right: 9px;
+        vertical-align: middle;
+      }
+      .presenter .av {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--acc);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+      }
+      .presenter b {
+        font-weight: 600;
+      }
+
+      section.part > h3.grph {
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.1px;
+        color: var(--tx2);
+        margin: 26px 0 12px;
+        padding: 0 0 6px;
+        border-bottom: 1px solid var(--line);
+      }
+      section.part > h3.grph:first-of-type {
+        margin-top: 18px;
+      }
+
+      table.roster td.who {
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      table.roster td.sec {
+        font-family: var(--mono);
+        color: var(--tx3);
+        white-space: nowrap;
+      }
+
+      .ep {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        margin: 0 0 18px;
+        overflow: hidden;
+        scroll-margin-top: 14px;
+      }
+      .ep > .hd {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 12px 16px;
+        background: var(--panel2);
+        border-bottom: 1px solid var(--line);
+      }
+      .num {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--tx3);
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 2px 7px;
+      }
+      .verb {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        padding: 3px 9px;
+        border-radius: 5px;
+        color: #fff;
+      }
+      .GET {
+        background: var(--get);
+      }
+      .POST {
+        background: var(--post);
+      }
+      .DELETE {
+        background: var(--del);
+      }
+      .path {
+        font-family: var(--mono);
+        font-size: 14px;
+        font-weight: 600;
+        word-break: break-all;
+      }
+      .tag {
+        margin-left: auto;
+        font-size: 11px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 2px 9px;
+        color: var(--tx3);
+        background: var(--bg);
+      }
+      .tag.auth {
+        color: var(--post);
+        border-color: var(--post);
+      }
+      .tag.admin {
+        color: var(--del);
+        border-color: var(--del);
+      }
+      .ep > .bd {
+        padding: 14px 16px 18px;
+      }
+      .use {
+        margin: 0 0 14px;
+        color: var(--tx);
+      }
+      .use b {
+        color: var(--acc);
+      }
+
+      h4 {
+        margin: 16px 0 7px;
+        font-size: 11.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--tx3);
+      }
+      h4:first-child {
+        margin-top: 0;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+        margin: 0 0 4px;
+        display: block;
+        overflow-x: auto;
+      }
+      table thead th {
+        text-align: left;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--tx3);
+        padding: 6px 10px;
+        border-bottom: 1px solid var(--line);
+        white-space: nowrap;
+      }
+      table td {
+        padding: 6px 10px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      table tr:last-child td {
+        border-bottom: 0;
+      }
+      td.p {
+        font-family: var(--mono);
+        color: var(--acc);
+        white-space: nowrap;
+      }
+      td.t {
+        font-family: var(--mono);
+        color: var(--tx3);
+        font-size: 12.5px;
+        white-space: nowrap;
+      }
+      td.r {
+        white-space: nowrap;
+        font-size: 12px;
+        color: var(--post);
+      }
+      td.r.opt {
+        color: var(--tx3);
+      }
+
+      pre {
+        background: var(--code);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px 14px;
+        overflow-x: auto;
+        margin: 0 0 6px;
+        font-family: var(--mono);
+        font-size: 12.5px;
+        line-height: 1.55;
+        color: var(--tx);
+      }
+      code {
+        font-family: var(--mono);
+        font-size: 0.93em;
+        background: var(--panel2);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 1px 5px;
+      }
+      pre code {
+        background: none;
+        border: 0;
+        padding: 0;
+      }
+      .k {
+        color: var(--key);
+      }
+      .s {
+        color: var(--str);
+      }
+      .n {
+        color: var(--num);
+      }
+      .c {
+        color: var(--tx3);
+        font-style: italic;
+      }
+
+      .note {
+        border-left: 3px solid var(--acc);
+        background: var(--panel2);
+        padding: 9px 13px;
+        border-radius: 0 7px 7px 0;
+        font-size: 13.5px;
+        color: var(--tx2);
+        margin: 12px 0 0;
+      }
+      .note.warn {
+        border-left-color: var(--post);
+      }
+      .none {
+        color: var(--tx3);
+        font-style: italic;
+        font-size: 13.5px;
+      }
+
+      .cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      @media (max-width: 1150px) {
+        .cols {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 900px) {
+        nav {
+          display: none;
+        }
+        main {
+          padding: 20px 16px 80px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <nav>
+        <h1>TMS API Reference</h1>
+        <div class="sub">Group 6 · SU25 Mid-Term Java</div>
+        <input
+          id="q"
+          type="search"
+          placeholder="Filter endpoints…"
+          autocomplete="off"
+        />
+        <div id="navlist"></div>
+      </nav>
+
+      <main>
+        <header class="top">
+          <h1>Ticket Management System — API Payload Reference</h1>
+          <p>
+            Complete request/response payload documentation for every endpoint,
+            grouped by presenter section. Every controller in this project is a
+            <code>@RestController</code> — the API is pure JSON in / JSON out
+            (except the QR&nbsp;PNG, ticket&nbsp;PDF, CSV exports, and the
+            multipart upload endpoints).
+          </p>
+          <div class="meta">
+            <span class="chip">Base URL: http://localhost:8010</span>
+            <span class="chip">Spring Boot 3.5.9 · Java 17</span>
+            <span class="chip">Swagger UI: /swagger-ui.html</span>
+            <span class="chip">Auth: HTTP Basic + session cookie</span>
+            <span class="chip">CSRF: disabled</span>
+          </div>
+
+          <h4 style="margin-top: 22px">Standard error envelope</h4>
+          <p style="color: var(--tx2); margin: 0 0 8px; font-size: 13.5px">
+            All errors flow through <code>ApiExceptionHandler</code>. Any
+            endpoint below can return this shape:
+          </p>
+          <div class="cols">
+            <pre><span class="c">// 400 Bad Request  (IllegalArgumentException)</span>
+{
+  <span class="k">"error"</span>: <span class="s">"Please enter a ticket number."</span>,
+  <span class="k">"type"</span>:  <span class="s">"BAD_REQUEST"</span>
+}</pre>
+            <pre><span class="c">// 409 Conflict  (IllegalStateException)</span>
+{
+  <span class="k">"error"</span>: <span class="s">"Your seat hold expired. Please reselect seats."</span>,
+  <span class="k">"type"</span>:  <span class="s">"CONFLICT"</span>
+}</pre>
+          </div>
+          <div class="note">
+            Other codes: <b>401</b> unauthenticated on protected routes ·
+            <b>403</b> non-admin on <code>/admin/**</code> · <b>413</b>
+            <code>FILE_TOO_LARGE</code> on oversized uploads · <b>500</b>
+            <code>STORAGE_FAILED</code> on disk write failure.
+          </div>
+
+          <h4 style="margin-top: 22px">Presenters</h4>
+          <div class="note" style="margin: 8px 0 14px">
+            <b>Slide Title:</b> How Every Request Flows<br />
+            • A client sends an HTTP request to the application.<br />
+            • The request is handled by a controller using annotations such as
+            <code>@RestController</code>, <code>@RequestMapping</code>,
+            <code>@GetMapping</code>, and <code>@PostMapping</code>.<br />
+            • The controller passes the request to the service layer for
+            business logic processing.<br />
+            • The service layer communicates with the repository, which uses
+            Spring Data JPA to access the database.<br />
+            • Data is stored and retrieved from PostgreSQL, and the result is
+            returned back to the client.<br /><br />
+            <b>Controllers at a Glance</b><br />
+            • Public controllers handle movie browsing, showtimes, and booking
+            pages.<br />
+            • Auth and ticket controllers manage login, registration, and
+            ticket-related actions.<br />
+            • Booking and seat-hold controllers support seat selection and
+            reservation.<br />
+            • Admin controllers manage movies, halls, showtimes, bookings,
+            users, food, promos, reports, and settings.<br />
+            • All endpoints are documented through Swagger UI for easy testing
+            and review.<br /><br />
+            <b>Presenter:</b> Sarorn Chhairann
+          </div>
+          <table class="roster">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Presenter</th>
+                <th>Section</th>
+                <th>Endpoints</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="sec">2</td>
+                <td class="who">Ban Seyha</td>
+                <td><a href="#p2">Public Browsing APIs</a></td>
+                <td>6</td>
+              </tr>
+              <tr>
+                <td class="sec">3</td>
+                <td class="who">Hai Bunleap</td>
+                <td><a href="#p3">Authentication &amp; Tickets</a></td>
+                <td>7</td>
+              </tr>
+              <tr>
+                <td class="sec">4</td>
+                <td class="who">Chhun Sopheaktra</td>
+                <td><a href="#p4">Booking System</a></td>
+                <td>10</td>
+              </tr>
+              <tr>
+                <td class="sec">5</td>
+                <td class="who">Tang Sunheang</td>
+                <td><a href="#p5">User Profile &amp; Admin Introduction</a></td>
+                <td>4</td>
+              </tr>
+              <tr>
+                <td class="sec">6</td>
+                <td class="who">Sien Serey</td>
+                <td>
+                  <a href="#p6">Admin Dashboard &amp; Movie Management</a>
+                </td>
+                <td>11</td>
+              </tr>
+              <tr>
+                <td class="sec">7</td>
+                <td class="who">Chorn Chulay</td>
+                <td><a href="#p7">Showtime &amp; Booking Management</a></td>
+                <td>9</td>
+              </tr>
+              <tr>
+                <td class="sec">8</td>
+                <td class="who">Oeun Saranvatana</td>
+                <td><a href="#p8">Users, Check-In, Food &amp; Reports</a></td>
+                <td>16</td>
+              </tr>
+              <tr>
+                <td class="sec">9</td>
+                <td class="who">Chhorn Phearak</td>
+                <td><a href="#p9">Configuration &amp; Conclusion</a></td>
+                <td>6</td>
+              </tr>
+              <tr>
+                <td class="sec">1</td>
+                <td class="who">Sarorn Chhairann</td>
+                <td>Project Overview &amp; Summary</td>
+                <td>1</td>
+              </tr>
+            </tbody>
+          </table>
+        </header>
+
+        <!-- ══════════════════════════════ 2 ══════════════════════════════ -->
+        <section class="part" id="p2">
+          <h2>2. <span class="who">Ban Seyha</span> — Public Browsing APIs</h2>
+          <div class="owner">
+            <span class="presenter"
+              ><span class="av">BS</span><b>Ban Seyha</b></span
+            >
+            Anonymous, no login required. These power the landing page, the
+            movie listing page, and the AJAX widgets that swap movie cards and
+            showtime chips without a page reload.
+          </div>
+
+          <div class="ep" id="e2-1">
+            <div class="hd">
+              <span class="num">2.1</span><span class="verb GET">GET</span
+              ><span class="path">/</span><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> One single call that fills the
+                entire home page — the hero carousel, the “Now Showing” rail,
+                the “Coming Soon” rail, the cinema picker, and today's date
+                (Asia/Phnom_Penh) so the client and server agree on what “today”
+                means.
+              </p>
+              <h4>Request payload</h4>
+              <p class="none">
+                None — no path variables, no query parameters, no body.
+              </p>
+              <h4>Response 200 · <code>HomeResponse</code></h4>
+              <pre>{
+  <span class="k">"nowShowing"</span>: [ <span class="c">/* Movie[] — status = NOW_SHOWING */</span>
+    {
+      <span class="k">"id"</span>: <span class="n">1</span>,
+      <span class="k">"title"</span>: <span class="s">"Dune: Part Two"</span>,
+      <span class="k">"description"</span>: <span class="s">"Paul Atreides unites with the Fremen…"</span>,
+      <span class="k">"genre"</span>: <span class="s">"Sci-Fi"</span>,
+      <span class="k">"director"</span>: <span class="s">"Denis Villeneuve"</span>,
+      <span class="k">"language"</span>: <span class="s">"English"</span>,
+      <span class="k">"format"</span>: <span class="s">"IMAX"</span>,
+      <span class="k">"cast"</span>: <span class="s">"Timothée Chalamet, Zendaya"</span>,
+      <span class="k">"trailerUrl"</span>: <span class="s">"https://youtube.com/watch?v=…"</span>,
+      <span class="k">"rating"</span>: <span class="s">"PG-13"</span>,
+      <span class="k">"releaseDate"</span>: <span class="s">"2026-03-01"</span>,
+      <span class="k">"durationMinutes"</span>: <span class="n">166</span>,
+      <span class="k">"status"</span>: <span class="s">"NOW_SHOWING"</span>,
+      <span class="k">"imagePath"</span>: <span class="s">"/uploads/movies/dune2.jpg"</span>,
+      <span class="k">"bannerPath"</span>: <span class="s">"/uploads/movies/dune2-banner.jpg"</span>,
+      <span class="k">"createdAt"</span>: <span class="s">"2026-02-10T09:14:22"</span>,
+      <span class="k">"updatedAt"</span>: <span class="s">"2026-02-10T09:14:22"</span>,
+      <span class="k">"createdBy"</span>: <span class="s">"admin@tkm.co"</span>,
+      <span class="k">"updatedBy"</span>: <span class="s">"admin@tkm.co"</span>
+    }
+  ],
+  <span class="k">"comingSoon"</span>:  [ <span class="c">/* Movie[] — releaseDate in the future */</span> ],
+  <span class="k">"heroMovies"</span>:  [ <span class="c">/* Movie[] — max 5: featured first, then nowShowing, then comingSoon */</span> ],
+  <span class="k">"cinemas"</span>: [
+    {
+      <span class="k">"id"</span>: <span class="s">"7f3c1a9e-2b41-4d0c-9a55-1e8f6b2d3c44"</span>,
+      <span class="k">"name"</span>: <span class="s">"TKM Cinema Aeon Mall"</span>,
+      <span class="k">"address"</span>: <span class="s">"132 Sothearos Blvd, Phnom Penh"</span>,
+      <span class="k">"openingHours"</span>: <span class="s">"09:00 - 23:00"</span>,
+      <span class="k">"totalHalls"</span>: <span class="n">6</span>,
+      <span class="k">"latitude"</span>: <span class="n">11.5564</span>,
+      <span class="k">"longitude"</span>: <span class="n">104.9282</span>,
+      <span class="k">"createdAt"</span>: <span class="s">"2026-01-05T08:00:00"</span>, <span class="k">"updatedAt"</span>: <span class="s">"2026-01-05T08:00:00"</span>,
+      <span class="k">"createdBy"</span>: <span class="s">"system"</span>, <span class="k">"updatedBy"</span>: <span class="s">"system"</span>
+    }
+  ],
+  <span class="k">"today"</span>: <span class="s">"2026-07-28"</span>,
+  <span class="k">"featuredMovie"</span>: { <span class="c">/* a single Movie, or null */</span> }
+}</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e2-2">
+            <div class="hd">
+              <span class="num">2.2</span><span class="verb GET">GET</span
+              ><span class="path">/movies</span><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The movie listing / browse page. It
+                returns not only the filtered movie list but also everything
+                needed to <em>render the filter bar itself</em> (available
+                genres, languages, cities, halls) and echoes back the filters
+                that were applied so the UI can highlight the active chips.
+              </p>
+              <h4>Request payload — query parameters</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">tab</td>
+                    <td class="t">enum</td>
+                    <td class="r opt">optional</td>
+                    <td>
+                      <code>NOW_SHOWING</code> | <code>COMING_SOON</code> |
+                      <code>ARCHIVED</code>. Defaults to
+                      <code>NOW_SHOWING</code>; an unknown value silently falls
+                      back to it too.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="p">genre</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>e.g. <code>Action</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">language</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>e.g. <code>Khmer</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">format</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>e.g. <code>2D</code>, <code>IMAX</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">rating</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>e.g. <code>PG-13</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">search</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>Free-text title search</td>
+                  </tr>
+                  <tr>
+                    <td class="p">city</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>Filters the returned <code>halls</code> list only</td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">GET /movies?tab=NOW_SHOWING&amp;genre=Action&amp;language=English&amp;city=Phnom%20Penh</span></pre>
+              <h4>Response 200 · <code>MovieListResponse</code></h4>
+              <pre>{
+  <span class="k">"movies"</span>:     [ <span class="c">/* Movie[] matching the filters */</span> ],
+  <span class="k">"comingSoon"</span>: [ <span class="c">/* Movie[] */</span> ],
+  <span class="k">"halls"</span>: [
+    { <span class="k">"id"</span>: <span class="n">3</span>, <span class="k">"name"</span>: <span class="s">"Hall 3 - IMAX"</span>, <span class="k">"city"</span>: <span class="s">"Phnom Penh"</span> }
+  ],
+  <span class="k">"cities"</span>:       [ <span class="s">"Phnom Penh"</span>, <span class="s">"Siem Reap"</span>, <span class="s">"Battambang"</span> ],
+  <span class="k">"selectedCity"</span>: <span class="s">"Phnom Penh"</span>,   <span class="c">// echo of ?city</span>
+  <span class="k">"tab"</span>:          <span class="s">"NOW_SHOWING"</span>,   <span class="c">// resolved tab</span>
+  <span class="k">"genre"</span>:        <span class="s">"Action"</span>,
+  <span class="k">"language"</span>:     <span class="s">"English"</span>,
+  <span class="k">"format"</span>:       <span class="s">null</span>,
+  <span class="k">"rating"</span>:       <span class="s">null</span>,
+  <span class="k">"search"</span>:       <span class="s">null</span>,
+  <span class="k">"genres"</span>:    [ <span class="s">"Action"</span>, <span class="s">"Comedy"</span>, <span class="s">"Horror"</span> ],  <span class="c">// for the filter dropdown</span>
+  <span class="k">"languages"</span>: [ <span class="s">"English"</span>, <span class="s">"Khmer"</span> ],
+  <span class="k">"featuredMovie"</span>: { <span class="c">/* Movie or null */</span> },
+  <span class="k">"userBookingCount"</span>: <span class="n">4</span>   <span class="c">// null for guests AND for admins; only set for logged-in customers</span>
+}</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e2-3">
+            <div class="hd">
+              <span class="num">2.3</span><span class="verb GET">GET</span
+              ><span class="path">/movies/{id}</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The movie detail page. Returns the
+                movie plus its showtimes <em>already grouped by date</em> and
+                progressively narrowed by cinema → date → hall, so the UI can
+                render the date strip, the hall tabs, and the time chips
+                straight from the response without extra client logic.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Movie id</td>
+                  </tr>
+                  <tr>
+                    <td class="p">cinemaId</td>
+                    <td class="t">query</td>
+                    <td class="t">UUID</td>
+                    <td class="r opt">optional</td>
+                    <td>
+                      Filter showtimes to one cinema.
+                      <b>Takes priority over <code>city</code></b
+                      >.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="p">city</td>
+                    <td class="t">query</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>
+                      Case-insensitive; ignored if <code>cinemaId</code> is
+                      present
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="p">date</td>
+                    <td class="t">query</td>
+                    <td class="t">ISO date</td>
+                    <td class="r opt">optional</td>
+                    <td>
+                      <code>yyyy-MM-dd</code>. If omitted and the movie is
+                      NOW_SHOWING, the first available date is auto-selected.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="p">hallId</td>
+                    <td class="t">query</td>
+                    <td class="t">long</td>
+                    <td class="r opt">optional</td>
+                    <td>Narrows to one hall</td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">GET /movies/1?city=Phnom%20Penh&amp;date=2026-07-28&amp;hallId=3</span></pre>
+              <h4>Response 200 · <code>MovieDetailResponse</code></h4>
+              <pre>{
+  <span class="k">"movie"</span>: { <span class="c">/* full Movie object, see 2.1 */</span> },
+  <span class="k">"showtimesByDate"</span>: {
+    <span class="s">"2026-07-28"</span>: [
+      {
+        <span class="k">"id"</span>: <span class="n">101</span>,
+        <span class="k">"showTime"</span>:    <span class="s">"13:30"</span>,
+        <span class="k">"hallId"</span>:      <span class="n">3</span>,
+        <span class="k">"hallName"</span>:    <span class="s">"Hall 3 - IMAX"</span>,
+        <span class="k">"normalPrice"</span>: <span class="n">5.00</span>,
+        <span class="k">"couplePrice"</span>: <span class="n">12.00</span>,
+        <span class="k">"blocked"</span>:     <span class="s">false</span>
+      }
+    ]
+  },
+  <span class="k">"cities"</span>:           [ <span class="s">"Phnom Penh"</span>, <span class="s">"Siem Reap"</span> ],
+  <span class="k">"selectedCity"</span>:     <span class="s">"Phnom Penh"</span>,
+  <span class="k">"selectedCinemaId"</span>: <span class="s">null</span>,
+  <span class="k">"availableDates"</span>:   [ <span class="s">"2026-07-28"</span>, <span class="s">"2026-07-29"</span> ],
+  <span class="k">"selectedDate"</span>:     <span class="s">"2026-07-28"</span>,
+  <span class="k">"availableHalls"</span>:   [ { <span class="k">"id"</span>: <span class="n">3</span>, <span class="k">"name"</span>: <span class="s">"Hall 3 - IMAX"</span>, <span class="k">"city"</span>: <span class="s">"Phnom Penh"</span> } ],
+  <span class="k">"selectedHallId"</span>:   <span class="n">3</span>
+}</pre>
+              <div class="note">
+                The hall list is computed <em>after</em> the date filter but
+                <em>before</em> the hall filter — so switching halls never
+                empties the hall tabs.
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e2-4">
+            <div class="hd">
+              <span class="num">2.4</span><span class="verb GET">GET</span
+              ><span class="path">/api/movies</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The lightweight AJAX feed behind the
+                “Now Showing / Coming Soon” tab switcher. It returns a slim,
+                flattened card model (no audit fields, nulls collapsed to
+                <code>""</code>) with up to 4 showtime chips per movie.
+                Responses are memoised by <code>MovieBrowseCacheService</code>.
+              </p>
+              <h4>Request payload — query parameters</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">type</td>
+                    <td class="t">string</td>
+                    <td class="r">required</td>
+                    <td>
+                      <code>now_showing</code> or <code>coming_soon</code> (also
+                      accepts <code>now-showing</code> /
+                      <code>nowshowing</code> / <code>coming-soon</code> /
+                      <code>comingsoon</code>, any case)
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="p">date</td>
+                    <td class="t">ISO date</td>
+                    <td class="r">required for now_showing</td>
+                    <td><code>yyyy-MM-dd</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">month</td>
+                    <td class="t">YearMonth</td>
+                    <td class="r">required for coming_soon</td>
+                    <td><code>yyyy-MM</code>, e.g. <code>2026-08</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">cinemaId</td>
+                    <td class="t">UUID</td>
+                    <td class="r opt">optional</td>
+                    <td>Overrides <code>city</code> when present</td>
+                  </tr>
+                  <tr>
+                    <td class="p">city</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>Used only if <code>cinemaId</code> is absent</td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">GET /api/movies?type=now_showing&amp;date=2026-07-28&amp;city=Phnom%20Penh
+GET /api/movies?type=coming_soon&amp;month=2026-08</span></pre>
+              <h4>Response 200 · <code>MovieBrowseResponse[]</code></h4>
+              <pre>[
+  {
+    <span class="k">"id"</span>: <span class="n">1</span>,
+    <span class="k">"title"</span>:       <span class="s">"Dune: Part Two"</span>,
+    <span class="k">"posterPath"</span>:  <span class="s">"/uploads/movies/dune2.jpg"</span>,
+    <span class="k">"bannerPath"</span>:  <span class="s">"/uploads/movies/dune2-banner.jpg"</span>,
+    <span class="k">"trailerUrl"</span>:  <span class="s">"https://youtube.com/watch?v=…"</span>,
+    <span class="k">"rating"</span>:      <span class="s">"PG-13"</span>,
+    <span class="k">"language"</span>:    <span class="s">"English"</span>,
+    <span class="k">"format"</span>:      <span class="s">"IMAX"</span>,
+    <span class="k">"status"</span>:      <span class="s">"NOW_SHOWING"</span>,
+    <span class="k">"releaseDate"</span>: <span class="s">"2026-03-01"</span>,
+    <span class="k">"showtimes"</span>: [                      <span class="c">// max 4, sorted by time; always [] for coming_soon</span>
+      { <span class="k">"showtimeId"</span>: <span class="n">101</span>, <span class="k">"time"</span>: <span class="s">"13:30"</span> },
+      { <span class="k">"showtimeId"</span>: <span class="n">102</span>, <span class="k">"time"</span>: <span class="s">"16:45"</span> }
+    ]
+  }
+]</pre>
+              <div class="note warn">
+                <b>400 Bad Request</b> if <code>type</code> is unknown, or if
+                the parameter its branch requires (<code>date</code> /
+                <code>month</code>) is missing.
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e2-5">
+            <div class="hd">
+              <span class="num">2.5</span><span class="verb GET">GET</span
+              ><span class="path">/api/showtimes/search</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> When the user picks a movie + a
+                date, this fetches the exact screening list with hall, venue and
+                both price tiers — already stripped of blocked (unpublished)
+                showtimes, so anything returned here is safe to click through to
+                seat selection.
+              </p>
+              <h4>Request payload — query parameters</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">movieId</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Movie id</td>
+                  </tr>
+                  <tr>
+                    <td class="p">date</td>
+                    <td class="t">ISO date</td>
+                    <td class="r">required</td>
+                    <td><code>yyyy-MM-dd</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">cinemaId</td>
+                    <td class="t">UUID</td>
+                    <td class="r opt">optional</td>
+                    <td>Overrides <code>city</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">city</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>Blank = all cities</td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">GET /api/showtimes/search?movieId=1&amp;date=2026-07-28&amp;city=Phnom%20Penh</span></pre>
+              <h4>Response 200 · <code>ShowtimeSearchResponse[]</code></h4>
+              <pre>[
+  {
+    <span class="k">"id"</span>: <span class="n">101</span>,
+    <span class="k">"showTime"</span>:    <span class="s">"13:30"</span>,
+    <span class="k">"hallName"</span>:    <span class="s">"Hall 3 - IMAX"</span>,
+    <span class="k">"city"</span>:        <span class="s">"TKM Cinema Aeon Mall"</span>,  <span class="c">// cinema name, or the hall's city if unlinked</span>
+    <span class="k">"normalPrice"</span>: <span class="s">"5.00"</span>,                  <span class="c">// string (BigDecimal.toPlainString)</span>
+    <span class="k">"couplePrice"</span>: <span class="s">"12.00"</span>
+  }
+]</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e2-6">
+            <div class="hd">
+              <span class="num">2.6</span><span class="verb GET">GET</span
+              ><span class="path">/api/showtimes/available-movies</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> A tiny “which movies actually play
+                on this date?” probe. The UI calls it when the user scrubs the
+                date strip and uses the returned ids to grey out or hide movie
+                cards that have no screening — without downloading a single
+                movie record.
+              </p>
+              <h4>Request payload — query parameters</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">date</td>
+                    <td class="t">ISO date</td>
+                    <td class="r">required</td>
+                    <td><code>yyyy-MM-dd</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">cinemaId</td>
+                    <td class="t">UUID</td>
+                    <td class="r opt">optional</td>
+                    <td>Overrides <code>city</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">city</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>Blank = all cities</td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">GET /api/showtimes/available-movies?date=2026-07-28&amp;city=Phnom%20Penh</span></pre>
+              <h4>Response 200 · <code>Long[]</code></h4>
+              <pre>[ <span class="n">1</span>, <span class="n">4</span>, <span class="n">7</span>, <span class="n">12</span> ]   <span class="c">// movie ids only</span></pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══════════════════════════════ 3 ══════════════════════════════ -->
+        <section class="part" id="p3">
+          <h2>
+            3. <span class="who">Hai Bunleap</span> — Authentication &amp;
+            Tickets
+          </h2>
+          <div class="owner">
+            <span class="presenter"
+              ><span class="av">HB</span><b>Hai Bunleap</b></span
+            >
+            How a user gets identity into the system, and how an issued ticket
+            is looked up, displayed, scanned and printed.
+          </div>
+
+          <div class="ep" id="e3-1">
+            <div class="hd">
+              <span class="num">3.1</span><span class="verb POST">POST</span
+              ><span class="path">/login</span><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Authenticates email + password
+                through Spring Security's <code>AuthenticationManager</code>,
+                saves the <code>SecurityContext</code> into the HTTP session (so
+                a <code>JSESSIONID</code> cookie is set), <em>and</em> hands
+                back a JWT. It also tells the client where to go next based on
+                role.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>LoginRequest</code>
+              </h4>
+              <pre>{
+  <span class="k">"email"</span>:    <span class="s">"admin@tkm.co"</span>,   <span class="c">// @NotBlank</span>
+  <span class="k">"password"</span>: <span class="s">"Admin@123"</span>       <span class="c">// @NotBlank</span>
+}</pre>
+              <h4>Response 200 · <code>LoginResponse</code></h4>
+              <pre>{
+  <span class="k">"email"</span>:       <span class="s">"admin@tkm.co"</span>,
+  <span class="k">"role"</span>:        <span class="s">"ADMIN"</span>,             <span class="c">// "ADMIN" if ROLE_ADMIN is granted, else "CUSTOMER"</span>
+  <span class="k">"redirectUrl"</span>: <span class="s">"/admin/dashboard"</span>,  <span class="c">// "/movies" for customers</span>
+  <span class="k">"token"</span>:       <span class="s">"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkB0a20uY28i…"</span>
+}</pre>
+              <div class="note">
+                Two ways to stay authenticated afterwards: reuse the session
+                cookie, or send
+                <code>Authorization: Basic &lt;base64(email:password)&gt;</code>
+                on each request. <code>SUSPENDED</code> /
+                <code>BANNED</code> accounts are rejected by
+                <code>CustomUserDetailsService</code>.
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e3-2">
+            <div class="hd">
+              <span class="num">3.2</span><span class="verb POST">POST</span
+              ><span class="path">/register</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Self-service sign-up. Always creates
+                a <code>CUSTOMER</code>; the role can never be escalated from
+                this endpoint. The password is BCrypt-hashed before storage.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>RegisterForm</code> (bean-validated)
+              </h4>
+              <pre>{
+  <span class="k">"name"</span>:     <span class="s">"Sok Dara"</span>,          <span class="c">// @NotBlank</span>
+  <span class="k">"email"</span>:    <span class="s">"dara@example.com"</span>,  <span class="c">// @NotBlank @Email — must be unique</span>
+  <span class="k">"password"</span>: <span class="s">"secret123"</span>          <span class="c">// @NotBlank</span>
+}</pre>
+              <h4>Response 200</h4>
+              <pre>{ <span class="k">"success"</span>: <span class="s">true</span> }</pre>
+              <div class="note warn">
+                <b>400</b> if validation fails or the email is already
+                registered.
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e3-3">
+            <div class="hd">
+              <span class="num">3.3</span><span class="verb POST">POST</span
+              ><span class="path">/api/reminders</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The “Notify me when this releases”
+                button on a Coming Soon movie. Stores an email against a movie
+                so <code>MovieReminderService</code> can mail the person once
+                the film starts showing. No account needed.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>CreateReminderRequest</code>
+              </h4>
+              <pre>{
+  <span class="k">"movieId"</span>: <span class="n">12</span>,
+  <span class="k">"email"</span>:   <span class="s">"dara@example.com"</span>
+}</pre>
+              <h4>Response 200</h4>
+              <pre>{ <span class="k">"ok"</span>: <span class="s">true</span> }</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e3-4">
+            <div class="hd">
+              <span class="num">3.4</span><span class="verb GET">GET</span
+              ><span class="path">/tickets?ticketCode=</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The “Find my ticket” search box. A
+                guest who booked without an account types the code printed on
+                their confirmation and gets the full ticket back.
+              </p>
+              <div class="note warn">
+                The query parameter is named <code>ticketCode</code>, not
+                <code>code</code>. <code>@RequestParam("ticketCode")</code> is
+                mandatory — omitting it is a 400 from Spring itself.
+              </div>
+              <h4>Request payload — query parameter</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">ticketCode</td>
+                    <td class="t">string</td>
+                    <td class="r">required</td>
+                    <td>
+                      Trimmed server-side; an empty/whitespace value returns
+                      <code>400 "Please enter a ticket number."</code>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">GET /tickets?ticketCode=TKT-8F2A31C9</span></pre>
+              <h4>Response 200 · <code>TicketResponse</code></h4>
+              <pre>{
+  <span class="k">"id"</span>: <span class="n">551</span>,
+  <span class="k">"ticketCode"</span>: <span class="s">"TKT-8F2A31C9"</span>,
+  <span class="k">"status"</span>:     <span class="s">"ACTIVE"</span>,                 <span class="c">// ACTIVE | USED | CANCELLED</span>
+  <span class="k">"issuedAt"</span>:   <span class="s">"2026-07-27T20:11:04"</span>,
+  <span class="k">"scannedAt"</span>:  <span class="s">null</span>,                     <span class="c">// set once checked in</span>
+  <span class="k">"seatCode"</span>:   <span class="s">"F7"</span>,
+  <span class="k">"seatType"</span>:   <span class="s">"NORMAL"</span>,                  <span class="c">// NORMAL | COUPLE</span>
+  <span class="k">"bookingId"</span>:  <span class="n">204</span>,
+  <span class="k">"movieTitle"</span>: <span class="s">"Dune: Part Two"</span>,
+  <span class="k">"hallName"</span>:   <span class="s">"Hall 3 - IMAX"</span>,
+  <span class="k">"showDate"</span>:   <span class="s">"2026-07-28"</span>,
+  <span class="k">"showTime"</span>:   <span class="s">"13:30:00"</span>,
+  <span class="k">"holderName"</span>: <span class="s">"Sok Dara"</span>              <span class="c">// account name, or guestName for guest bookings</span>
+}</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e3-5">
+            <div class="hd">
+              <span class="num">3.5</span><span class="verb GET">GET</span
+              ><span class="path">/tickets/{ticketCode}</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The permalink form of 3.4 — the URL
+                a QR code resolves to, and the page a customer bookmarks.
+                Identical payload, code supplied in the path instead of the
+                query string.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">ticketCode</td>
+                    <td class="t">path</td>
+                    <td class="t">string</td>
+                    <td class="r">required</td>
+                    <td>e.g. <code>TKT-8F2A31C9</code></td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">GET /tickets/TKT-8F2A31C9</span></pre>
+              <h4>Response 200 · <code>TicketResponse</code></h4>
+              <p style="color: var(--tx2); font-size: 13.5px; margin: 0">
+                Exactly the same object as 3.4.
+              </p>
+            </div>
+          </div>
+
+          <div class="ep" id="e3-6">
+            <div class="hd">
+              <span class="num">3.6</span><span class="verb GET">GET</span
+              ><span class="path">/tickets/{ticketCode}/qr</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Renders the ticket's QR code as a
+                250×250 PNG (generated with zxing) so it can be dropped straight
+                into an <code>&lt;img src&gt;</code> or scanned at the cinema
+                door. The ticket is validated to exist first.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">ticketCode</td>
+                    <td class="t">path</td>
+                    <td class="t">string</td>
+                    <td class="r">required</td>
+                    <td>Encoded into the QR image</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 200 · <code>image/png</code></h4>
+              <pre><span class="c">Content-Type: image/png</span>
+&lt;raw PNG bytes — 250 × 250&gt;
+
+<span class="c">Usage:</span>  &lt;img src="/tickets/TKT-8F2A31C9/qr" alt="ticket QR"&gt;</pre>
+              <div class="note warn">
+                Not JSON. A missing ticket code produces the standard JSON error
+                envelope instead of an image.
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e3-7">
+            <div class="hd">
+              <span class="num">3.7</span><span class="verb GET">GET</span
+              ><span class="path">/tickets/{ticketCode}/pdf</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Produces the printable /
+                downloadable ticket via <code>PdfTicketService</code> (Apache
+                PDFBox) — movie, hall, seat, showtime and the embedded QR on one
+                page. Sent as a file attachment.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">ticketCode</td>
+                    <td class="t">path</td>
+                    <td class="t">string</td>
+                    <td class="r">required</td>
+                    <td>Ticket to render</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 200 · <code>application/pdf</code></h4>
+              <pre><span class="c">Content-Type: application/pdf
+Content-Disposition: attachment; filename="ticket-TKT-8F2A31C9.pdf"</span>
+&lt;raw PDF bytes&gt;</pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══════════════════════════════ 4 ══════════════════════════════ -->
+        <section class="part" id="p4">
+          <h2>4. <span class="who">Chhun Sopheaktra</span> — Booking System</h2>
+          <div class="owner">
+            <span class="presenter"
+              ><span class="av">CS</span><b>Chhun Sopheaktra</b></span
+            >
+            The checkout funnel end to end, plus the real-time seat-hold layer
+            that stops two people buying the same seat.
+          </div>
+
+          <div class="note" style="margin: 0 0 20px">
+            <b>The happy path:</b>
+            <code>GET seats</code> → <code>POST /api/seat-holds/hold</code> →
+            <code>GET checkout</code> (preview totals) →
+            <code>POST checkout</code> (confirm) →
+            <code>GET confirmation</code>. Holds are keyed by
+            <b>HTTP session id</b>, so the same cookie must be sent throughout.
+          </div>
+
+          <div class="ep" id="e4-1">
+            <div class="hd">
+              <span class="num">4.1</span><span class="verb GET">GET</span
+              ><span class="path">/bookings/seats/{showtimeId}</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Draws the seat map. Every seat comes
+                back with its permanent status (AVAILABLE/BOOKED) plus two live
+                sets — seats <em>you</em> currently hold and seats
+                <em>someone else</em> holds — so the UI can colour them
+                differently. It also returns the weekend/morning flags that
+                drive the price badges.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">showtimeId</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Showtime whose seat map is wanted</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p class="none">
+                No body. The HTTP session is read implicitly to work out which
+                holds are yours.
+              </p>
+              <h4>Response 200 · <code>SeatMapResponse</code></h4>
+              <pre>{
+  <span class="k">"showtimeId"</span>: <span class="n">101</span>,
+  <span class="k">"showtime"</span>: {
+    <span class="k">"id"</span>: <span class="n">101</span>,
+    <span class="k">"showDate"</span>:    <span class="s">"2026-07-28"</span>,
+    <span class="k">"showTime"</span>:    <span class="s">"13:30:00"</span>,
+    <span class="k">"normalPrice"</span>: <span class="n">5.00</span>,
+    <span class="k">"couplePrice"</span>: <span class="n">12.00</span>,
+    <span class="k">"blocked"</span>:     <span class="s">false</span>,
+    <span class="k">"movieTitle"</span>:  <span class="s">"Dune: Part Two"</span>,
+    <span class="k">"hallId"</span>:      <span class="n">3</span>,
+    <span class="k">"hallName"</span>:    <span class="s">"Hall 3 - IMAX"</span>,
+    <span class="k">"hallCity"</span>:    <span class="s">"Phnom Penh"</span>
+  },
+  <span class="k">"seats"</span>: [
+    { <span class="k">"id"</span>: <span class="n">9001</span>, <span class="k">"seatCode"</span>: <span class="s">"A1"</span>, <span class="k">"seatType"</span>: <span class="s">"NORMAL"</span>, <span class="k">"rowNumber"</span>: <span class="n">1</span>, <span class="k">"status"</span>: <span class="s">"AVAILABLE"</span> },
+    { <span class="k">"id"</span>: <span class="n">9002</span>, <span class="k">"seatCode"</span>: <span class="s">"A2"</span>, <span class="k">"seatType"</span>: <span class="s">"COUPLE"</span>, <span class="k">"rowNumber"</span>: <span class="n">1</span>, <span class="k">"status"</span>: <span class="s">"BOOKED"</span>   }
+  ],
+  <span class="k">"heldByOthers"</span>: [ <span class="n">9005</span>, <span class="n">9006</span> ],   <span class="c">// showtime-seat ids → render as locked</span>
+  <span class="k">"heldByMe"</span>:     [ <span class="n">9001</span> ],           <span class="c">// → render as selected</span>
+  <span class="k">"sessionId"</span>:    <span class="s">"3F2A1B…"</span>,        <span class="c">// echo, useful for the STOMP subscription</span>
+  <span class="k">"holdMinutes"</span>:  <span class="n">10</span>,               <span class="c">// countdown length</span>
+  <span class="k">"isWeekend"</span>:    <span class="s">false</span>,            <span class="c">// SAT/SUN → surcharge applies</span>
+  <span class="k">"isMorning"</span>:    <span class="s">false</span>             <span class="c">// showTime &lt; 12:00 → discount applies</span>
+}</pre>
+              <div class="note">
+                Live updates for this map arrive over STOMP: connect to
+                <code>/ws</code> (SockJS) and subscribe to <code>/topic</code>.
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e4-2">
+            <div class="hd">
+              <span class="num">4.2</span><span class="verb GET">GET</span
+              ><span class="path">/bookings/checkout/{showtimeId}</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The order-summary screen. It prices
+                the selected seats — base, morning discount, weekend surcharge,
+                service fee, tax, promo discount, grand total — returns the food
+                menu for upselling, and <b>as a side effect places a hold</b> on
+                those seats for <code>holdMinutes</code>.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">showtimeId</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Showtime being booked</td>
+                  </tr>
+                  <tr>
+                    <td class="p">seatIds</td>
+                    <td class="t">query</td>
+                    <td class="t">long[]</td>
+                    <td class="r">required</td>
+                    <td>
+                      Repeat or comma-separate:
+                      <code>?seatIds=9001&amp;seatIds=9002</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="p">promoCode</td>
+                    <td class="t">query</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>Applied to the preview total if valid</td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">GET /bookings/checkout/101?seatIds=9001&amp;seatIds=9002&amp;promoCode=WELCOME10</span></pre>
+              <h4>Response 200 · <code>CheckoutResponse</code></h4>
+              <pre>{
+  <span class="k">"user"</span>: {                          <span class="c">// null for guest checkout</span>
+    <span class="k">"id"</span>: <span class="n">7</span>, <span class="k">"name"</span>: <span class="s">"Sok Dara"</span>, <span class="k">"email"</span>: <span class="s">"dara@example.com"</span>, <span class="k">"phone"</span>: <span class="s">"012345678"</span>
+  },
+  <span class="k">"showtime"</span>: { <span class="c">/* ShowtimeInfo — same shape as in 4.1 */</span> },
+  <span class="k">"seats"</span>: [
+    { <span class="k">"id"</span>: <span class="n">9001</span>, <span class="k">"seatCode"</span>: <span class="s">"A1"</span>, <span class="k">"seatType"</span>: <span class="s">"NORMAL"</span>, <span class="k">"rowNumber"</span>: <span class="n">1</span>, <span class="k">"status"</span>: <span class="s">"AVAILABLE"</span> }
+  ],
+  <span class="k">"baseAmount"</span>:       <span class="n">10.00</span>,
+  <span class="k">"morningDiscount"</span>:  <span class="n">0.00</span>,
+  <span class="k">"weekendSurcharge"</span>: <span class="n">0.00</span>,
+  <span class="k">"serviceFee"</span>:       <span class="n">0.50</span>,
+  <span class="k">"taxAmount"</span>:        <span class="n">1.05</span>,
+  <span class="k">"discountAmount"</span>:   <span class="n">1.00</span>,
+  <span class="k">"totalAmount"</span>:      <span class="n">10.55</span>,
+  <span class="k">"promoCode"</span>:        <span class="s">"WELCOME10"</span>,
+  <span class="k">"availableFoodItems"</span>: [
+    { <span class="k">"id"</span>: <span class="n">1</span>, <span class="k">"name"</span>: <span class="s">"Large Popcorn"</span>, <span class="k">"description"</span>: <span class="s">"Salted"</span>, <span class="k">"price"</span>: <span class="n">3.50</span>,
+      <span class="k">"imageUrl"</span>: <span class="s">"/uploads/food-items/popcorn.png"</span>, <span class="k">"available"</span>: <span class="s">true</span>, <span class="k">"stockQuantity"</span>: <span class="n">0</span>,
+      <span class="k">"createdAt"</span>: <span class="s">"2026-01-05T08:00:00"</span>, <span class="k">"updatedAt"</span>: <span class="s">"2026-01-05T08:00:00"</span>,
+      <span class="k">"createdBy"</span>: <span class="s">"system"</span>, <span class="k">"updatedBy"</span>: <span class="s">"system"</span> }
+  ],
+  <span class="k">"seatIds"</span>:         [ <span class="n">9001</span>, <span class="n">9002</span> ],
+  <span class="k">"holdMinutes"</span>:     <span class="n">10</span>,
+  <span class="k">"isAuthenticated"</span>: <span class="s">true</span>       <span class="c">// false → the UI must collect guest name/phone/email</span>
+}</pre>
+              <div class="note warn">
+                <b>409 Conflict</b> —
+                <code
+                  >"Some seats are currently held by another user. Please
+                  reselect."</code
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e4-3">
+            <div class="hd">
+              <span class="num">4.3</span><span class="verb POST">POST</span
+              ><span class="path">/bookings/promo/validate</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Live validation of the promo box
+                before submitting the order — it returns the discount percentage
+                and a ready-to-display message. It never throws for a bad code;
+                the failure is expressed as <code>valid: false</code>.
+              </p>
+              <div class="note warn">
+                Despite being a POST, the code travels as a
+                <b>query parameter</b>, not a JSON body:
+                <code>@RequestParam("code")</code>.
+              </div>
+              <h4>Request payload — query parameter</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">code</td>
+                    <td class="t">string</td>
+                    <td class="r">required</td>
+                    <td>Promo code to test</td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">POST /bookings/promo/validate?code=WELCOME10</span>
+<span class="c">(no body)</span></pre>
+              <h4>Response 200 — valid</h4>
+              <pre>{
+  <span class="k">"valid"</span>: <span class="s">true</span>,
+  <span class="k">"discountPercent"</span>: <span class="n">10</span>,
+  <span class="k">"message"</span>: <span class="s">"10% discount applied!"</span>
+}</pre>
+              <h4>Response 200 — invalid (still HTTP 200)</h4>
+              <pre>{
+  <span class="k">"valid"</span>: <span class="s">false</span>,
+  <span class="k">"message"</span>: <span class="s">"Promo code has expired."</span>
+}</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e4-4">
+            <div class="hd">
+              <span class="num">4.4</span><span class="verb POST">POST</span
+              ><span class="path">/bookings/checkout/{showtimeId}</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Commits the purchase. It re-checks
+                that nobody stole the seats and that <em>your</em> hold is still
+                alive, creates the Booking + Tickets (+ food line items),
+                releases the hold, and broadcasts the seats as BOOKED to every
+                other client over WebSocket.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>CheckoutRequest</code>
+              </h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">seatIds</td>
+                    <td class="t">long[]</td>
+                    <td class="r">required</td>
+                    <td>Must exactly match the seats you hold</td>
+                  </tr>
+                  <tr>
+                    <td class="p">guestName</td>
+                    <td class="t">string</td>
+                    <td class="r opt">guest only</td>
+                    <td>Ignored when logged in</td>
+                  </tr>
+                  <tr>
+                    <td class="p">guestPhone</td>
+                    <td class="t">string</td>
+                    <td class="r opt">guest only</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td class="p">guestEmail</td>
+                    <td class="t">string</td>
+                    <td class="r opt">guest only</td>
+                    <td>Where the confirmation mail goes</td>
+                  </tr>
+                  <tr>
+                    <td class="p">promoCode</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>Re-validated server-side</td>
+                  </tr>
+                  <tr>
+                    <td class="p">paymentMethod</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>
+                      e.g. <code>CASH</code>, <code>ABA</code>,
+                      <code>CARD</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="p">foodItems</td>
+                    <td class="t">map&lt;long,int&gt;</td>
+                    <td class="r opt">optional</td>
+                    <td>
+                      foodItemId → quantity; omit or <code>{}</code> for none
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre>{
+  <span class="k">"seatIds"</span>: [ <span class="n">9001</span>, <span class="n">9002</span> ],
+  <span class="k">"guestName"</span>:  <span class="s">"Sok Dara"</span>,
+  <span class="k">"guestPhone"</span>: <span class="s">"012345678"</span>,
+  <span class="k">"guestEmail"</span>: <span class="s">"dara@example.com"</span>,
+  <span class="k">"promoCode"</span>:  <span class="s">"WELCOME10"</span>,
+  <span class="k">"paymentMethod"</span>: <span class="s">"ABA"</span>,
+  <span class="k">"foodItems"</span>: { <span class="s">"1"</span>: <span class="n">2</span>, <span class="s">"4"</span>: <span class="n">1</span> }   <span class="c">// 2× item#1, 1× item#4</span>
+}</pre>
+              <h4>Response 200</h4>
+              <pre>{ <span class="k">"bookingId"</span>: <span class="n">204</span> }   <span class="c">// follow with GET /bookings/confirmation/204</span></pre>
+              <div class="note warn">
+                <b>409 Conflict</b> —
+                <code
+                  >"Some seats were selected by another user. Please
+                  reselect."</code
+                >
+                or <code>"Your seat hold expired. Please reselect seats."</code>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e4-5">
+            <div class="hd">
+              <span class="num">4.5</span><span class="verb POST">POST</span
+              ><span class="path">/bookings/cancel/{bookingId}</span
+              ><span class="tag auth">Authenticated</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Lets a customer cancel their
+                <em>own</em> booking from “My Bookings”. Ownership is enforced
+                against the logged-in principal, and the cancellation-window
+                rule (<code>CANCELLATION_HOURS</code> system setting) is applied
+                in the service.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">bookingId</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Must belong to the caller</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p class="none">
+                No body. The caller's identity comes from the session cookie or
+                Basic auth header.
+              </p>
+              <h4>Response 200</h4>
+              <pre>{
+  <span class="k">"success"</span>: <span class="s">true</span>,
+  <span class="k">"message"</span>: <span class="s">"Booking #204 has been cancelled."</span>
+}</pre>
+              <div class="note warn">
+                <b>401</b> if not logged in · <b>400/409</b> if the booking
+                isn't yours, is already cancelled, or the cancellation window
+                has closed.
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e4-6">
+            <div class="hd">
+              <span class="num">4.6</span><span class="verb GET">GET</span
+              ><span class="path">/bookings/confirmation/{bookingId}</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The “thank you / here are your
+                tickets” screen shown right after 4.4. Returns the full price
+                breakdown plus every issued ticket code, and surfaces
+                <code>firstTicketCode</code> as a shortcut for the QR / PDF
+                links.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">bookingId</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Returned by 4.4</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 200 · <code>BookingDetailResponse</code></h4>
+              <pre>{
+  <span class="k">"id"</span>: <span class="n">204</span>,
+  <span class="k">"showtime"</span>: { <span class="c">/* ShowtimeInfo — see 4.1 */</span> },
+  <span class="k">"customerName"</span>:   <span class="s">"Sok Dara"</span>,
+  <span class="k">"customerEmail"</span>:  <span class="s">"dara@example.com"</span>,
+  <span class="k">"customerPhone"</span>:  <span class="s">"012345678"</span>,
+  <span class="k">"totalAmount"</span>:    <span class="n">10.55</span>,
+  <span class="k">"serviceFee"</span>:     <span class="n">0.50</span>,
+  <span class="k">"taxAmount"</span>:      <span class="n">1.05</span>,
+  <span class="k">"discountAmount"</span>: <span class="n">1.00</span>,
+  <span class="k">"promoCode"</span>:      <span class="s">"WELCOME10"</span>,
+  <span class="k">"paymentMethod"</span>:  <span class="s">"ABA"</span>,
+  <span class="k">"status"</span>:         <span class="s">"CONFIRMED"</span>,          <span class="c">// PENDING | CONFIRMED | CANCELLED</span>
+  <span class="k">"bookedAt"</span>:       <span class="s">"2026-07-27T20:11:04"</span>,
+  <span class="k">"tickets"</span>: [
+    { <span class="k">"id"</span>: <span class="n">551</span>, <span class="k">"ticketCode"</span>: <span class="s">"TKT-8F2A31C9"</span>, <span class="k">"status"</span>: <span class="s">"ACTIVE"</span>, <span class="k">"seatCode"</span>: <span class="s">"A1"</span>, <span class="k">"seatType"</span>: <span class="s">"NORMAL"</span> },
+    { <span class="k">"id"</span>: <span class="n">552</span>, <span class="k">"ticketCode"</span>: <span class="s">"TKT-4B90DD12"</span>, <span class="k">"status"</span>: <span class="s">"ACTIVE"</span>, <span class="k">"seatCode"</span>: <span class="s">"A2"</span>, <span class="k">"seatType"</span>: <span class="s">"NORMAL"</span> }
+  ],
+  <span class="k">"firstTicketCode"</span>: <span class="s">"TKT-8F2A31C9"</span>   <span class="c">// null if no tickets were issued</span>
+}</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e4-7">
+            <div class="hd">
+              <span class="num">4.7</span><span class="verb GET">GET</span
+              ><span class="path">/bookings/my-bookings</span
+              ><span class="tag auth">Authenticated</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The customer's booking history page
+                — every booking they've ever made, each with its tickets
+                attached, so the list can offer “view ticket”, “download PDF”
+                and “cancel” without any further round-trips.
+              </p>
+              <h4>Request payload</h4>
+              <p class="none">
+                None — the user is resolved from the authenticated principal.
+              </p>
+              <h4>Response 200 · <code>BookingDetailResponse[]</code></h4>
+              <pre>[
+  { <span class="c">/* exactly the object shown in 4.6 */</span> },
+  { <span class="c">/* … */</span> }
+]</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e4-8">
+            <div class="hd">
+              <span class="num">4.8</span><span class="verb POST">POST</span
+              ><span class="path">/api/seat-holds/hold</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Claims seats the moment the user
+                taps them, before any money is involved. Returns an absolute
+                expiry timestamp so the browser can run an accurate countdown
+                even if its clock drifts, and pushes the lock to other viewers
+                over WebSocket.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>HoldRequest</code>
+              </h4>
+              <pre>{
+  <span class="k">"showtimeId"</span>: <span class="n">101</span>,
+  <span class="k">"seatIds"</span>: [ <span class="n">9001</span>, <span class="n">9002</span> ]
+}</pre>
+              <h4>Response 200 · <code>HoldResponse</code></h4>
+              <pre>{
+  <span class="k">"showtimeId"</span>: <span class="n">101</span>,
+  <span class="k">"expiresAtEpochMs"</span>: <span class="n">1785312664000</span>,  <span class="c">// epoch ms, Asia/Phnom_Penh; 0 when no expiry</span>
+  <span class="k">"holdMinutes"</span>: <span class="n">10</span>
+}</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e4-9">
+            <div class="hd">
+              <span class="num">4.9</span><span class="verb POST">POST</span
+              ><span class="path">/api/seat-holds/release</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Gives seats back immediately when
+                the user deselects one or abandons checkout, instead of making
+                everyone wait for the hold to time out.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>ReleaseRequest</code>
+              </h4>
+              <pre>{
+  <span class="k">"showtimeId"</span>: <span class="n">101</span>,
+  <span class="k">"seatIds"</span>: [ <span class="n">9002</span> ]
+}</pre>
+              <h4>Response 200 · <code>ReleaseResponse</code></h4>
+              <pre>{ <span class="k">"ok"</span>: <span class="s">true</span> }</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e4-10">
+            <div class="hd">
+              <span class="num">4.10</span><span class="verb GET">GET</span
+              ><span class="path">/api/seat-holds/state</span
+              ><span class="tag">Public</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> A polling fallback (and a reconnect
+                resync) for the hold state — if the WebSocket drops, the client
+                calls this to find out which seats are locked by others and
+                which are still its own.
+              </p>
+              <h4>Request payload — query parameter</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">showtimeId</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Showtime being watched</td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">GET /api/seat-holds/state?showtimeId=101</span></pre>
+              <h4>Response 200 · <code>StateResponse</code></h4>
+              <pre>{
+  <span class="k">"heldByOthers"</span>: [ <span class="n">9005</span>, <span class="n">9006</span> ],
+  <span class="k">"heldByMe"</span>:     [ <span class="n">9001</span> ]
+}</pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══════════════════════════════ 5 ══════════════════════════════ -->
+        <section class="part" id="p5">
+          <h2>
+            5. <span class="who">Tang Sunheang</span> — User Profile &amp; Admin
+            Introduction
+          </h2>
+          <div class="owner">
+            <span class="presenter"
+              ><span class="av">TS</span><b>Tang Sunheang</b></span
+            >
+            The account-management endpoints every logged-in customer uses, then
+            the first look at the admin side.
+          </div>
+
+          <div class="ep" id="e5-1">
+            <div class="hd">
+              <span class="num">5.1</span><span class="verb GET">GET</span
+              ><span class="path">/profile</span
+              ><span class="tag auth">Authenticated</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Loads the “My Account” page for
+                whoever is logged in. Note the response is a purpose-built DTO,
+                not the <code>User</code> entity — the password hash is never
+                exposed.
+              </p>
+              <h4>Request payload</h4>
+              <p class="none">
+                None — the account is resolved from
+                <code>Authentication.getName()</code> (the email).
+              </p>
+              <h4>Response 200 · <code>UserResponse</code></h4>
+              <pre>{
+  <span class="k">"id"</span>: <span class="n">7</span>,
+  <span class="k">"name"</span>:   <span class="s">"Sok Dara"</span>,
+  <span class="k">"email"</span>:  <span class="s">"dara@example.com"</span>,
+  <span class="k">"phone"</span>:  <span class="s">"012345678"</span>,
+  <span class="k">"role"</span>:   <span class="s">"CUSTOMER"</span>,   <span class="c">// ADMIN | CUSTOMER</span>
+  <span class="k">"points"</span>: <span class="n">120</span>,          <span class="c">// loyalty points</span>
+  <span class="k">"status"</span>: <span class="s">"ACTIVE"</span>      <span class="c">// ACTIVE | SUSPENDED | BANNED</span>
+}</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e5-2">
+            <div class="hd">
+              <span class="num">5.2</span><span class="verb POST">POST</span
+              ><span class="path">/profile</span
+              ><span class="tag auth">Authenticated</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Saves the editable part of the
+                profile. Only <b>name</b> and <b>phone</b> can be changed here —
+                email is the login identity and role/points/status are
+                admin-controlled, so sending them has no effect.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>UpdateProfileRequest</code>
+              </h4>
+              <pre>{
+  <span class="k">"name"</span>:  <span class="s">"Sok Dara"</span>,
+  <span class="k">"phone"</span>: <span class="s">"012999888"</span>
+}</pre>
+              <h4>Response 200 · <code>UserResponse</code></h4>
+              <pre>{ <span class="c">/* the freshly re-read profile — same shape as 5.1 */</span> }</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e5-3">
+            <div class="hd">
+              <span class="num">5.3</span><span class="verb POST">POST</span
+              ><span class="path">/profile/change-password</span
+              ><span class="tag auth">Authenticated</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Password self-service. The
+                controller checks the confirmation match and the 6-character
+                minimum, then the service verifies the current password before
+                re-hashing.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>ChangePasswordRequest</code>
+              </h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">currentPassword</td>
+                    <td class="t">string</td>
+                    <td class="r">required</td>
+                    <td>Verified against the stored hash</td>
+                  </tr>
+                  <tr>
+                    <td class="p">newPassword</td>
+                    <td class="t">string</td>
+                    <td class="r">required</td>
+                    <td>Minimum 6 characters</td>
+                  </tr>
+                  <tr>
+                    <td class="p">confirmPassword</td>
+                    <td class="t">string</td>
+                    <td class="r">required</td>
+                    <td>Must equal <code>newPassword</code></td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre>{
+  <span class="k">"currentPassword"</span>: <span class="s">"secret123"</span>,
+  <span class="k">"newPassword"</span>:     <span class="s">"NewSecret456"</span>,
+  <span class="k">"confirmPassword"</span>: <span class="s">"NewSecret456"</span>
+}</pre>
+              <h4>Response 200</h4>
+              <pre><span class="c">200 OK — empty body</span></pre>
+              <div class="note warn">
+                <b>400</b> — <code>"New passwords do not match."</code> ·
+                <code>"Password must be at least 6 characters."</code> · or a
+                wrong current password.
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e5-4">
+            <div class="hd">
+              <span class="num">5.4</span><span class="verb GET">GET</span
+              ><span class="path">/admin/dashboard</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> First glimpse of the back office — a
+                single aggregate call that fills the whole admin landing screen:
+                entity counters, three revenue windows, today's bookings, a
+                top-5 movie table, a 14-day chart series, and the 5 newest
+                bookings.
+              </p>
+              <p class="use" style="color: var(--tx2); font-size: 13.5px">
+                Full payload documented in <a href="#e6-1">6.1</a> — it is the
+                same endpoint.
+              </p>
+              <h4>Request payload</h4>
+              <p class="none">None.</p>
+              <h4>Response 200 · <code>DashboardResponse</code> (abridged)</h4>
+              <pre>{
+  <span class="k">"movieCount"</span>: <span class="n">24</span>, <span class="k">"hallCount"</span>: <span class="n">8</span>, <span class="k">"showtimeCount"</span>: <span class="n">312</span>,
+  <span class="k">"bookingCount"</span>: <span class="n">1480</span>, <span class="k">"userCount"</span>: <span class="n">356</span>,
+  <span class="k">"revenueToday"</span>: <span class="n">412.50</span>, <span class="k">"revenueWeek"</span>: <span class="n">2980.00</span>, <span class="k">"revenueMonth"</span>: <span class="n">11240.75</span>,
+  <span class="k">"bookingsToday"</span>: <span class="n">38</span>,
+  <span class="k">"topMovies"</span>: [ … ], <span class="k">"dailyStats"</span>: [ … ], <span class="k">"recentBookings"</span>: [ … ]
+}</pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══════════════════════════════ 6 ══════════════════════════════ -->
+        <section class="part" id="p6">
+          <h2>
+            6. <span class="who">Sien Serey</span> — Admin Dashboard &amp; Movie
+            Management
+          </h2>
+          <div class="owner">
+            <span class="presenter"
+              ><span class="av">SS</span><b>Sien Serey</b></span
+            >
+            The back-office entry point: the operational dashboard, the movie
+            catalogue, and the venues those movies play in — cinemas and their
+            halls.
+            <b
+              >Every endpoint in this section requires
+              <code>ROLE_ADMIN</code>.</b
+            >
+          </div>
+
+          <h3 class="grph">Dashboard</h3>
+
+          <div class="ep" id="e6-1">
+            <div class="hd">
+              <span class="num">6.1</span><span class="verb GET">GET</span
+              ><span class="path">/admin/dashboard</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The operational overview. One
+                request, one render — counters, revenue, ranked movies, a
+                two-week trend series for the chart, and the latest booking
+                activity.
+              </p>
+              <h4>Request payload</h4>
+              <p class="none">None.</p>
+              <h4>Response 200 · <code>DashboardResponse</code></h4>
+              <pre>{
+  <span class="k">"movieCount"</span>:    <span class="n">24</span>,
+  <span class="k">"hallCount"</span>:     <span class="n">8</span>,
+  <span class="k">"showtimeCount"</span>: <span class="n">312</span>,
+  <span class="k">"bookingCount"</span>:  <span class="n">1480</span>,
+  <span class="k">"userCount"</span>:     <span class="n">356</span>,
+  <span class="k">"revenueToday"</span>:  <span class="n">412.50</span>,
+  <span class="k">"revenueWeek"</span>:   <span class="n">2980.00</span>,
+  <span class="k">"revenueMonth"</span>:  <span class="n">11240.75</span>,
+  <span class="k">"bookingsToday"</span>: <span class="n">38</span>,
+  <span class="k">"topMovies"</span>: [                          <span class="c">// top 5 by tickets sold</span>
+    { <span class="k">"title"</span>: <span class="s">"Dune: Part Two"</span>, <span class="k">"tickets"</span>: <span class="n">420</span>, <span class="k">"revenue"</span>: <span class="n">2100</span> }
+  ],
+  <span class="k">"dailyStats"</span>: [                         <span class="c">// last 14 days, zero-filled</span>
+    { <span class="k">"date"</span>: <span class="s">"2026-07-28"</span>, <span class="k">"count"</span>: <span class="n">38</span>, <span class="k">"revenue"</span>: <span class="n">412</span> }
+  ],
+  <span class="k">"recentBookings"</span>: [                     <span class="c">// 5 newest — BookingSummary</span>
+    {
+      <span class="k">"id"</span>: <span class="n">204</span>,
+      <span class="k">"movieTitle"</span>:   <span class="s">"Dune: Part Two"</span>,
+      <span class="k">"hallName"</span>:     <span class="s">"Hall 3 - IMAX"</span>,
+      <span class="k">"showDate"</span>:     <span class="s">"2026-07-28"</span>,
+      <span class="k">"showTime"</span>:     <span class="s">"13:30:00"</span>,
+      <span class="k">"customerName"</span>: <span class="s">"Sok Dara"</span>,
+      <span class="k">"totalAmount"</span>:  <span class="n">10.55</span>,
+      <span class="k">"status"</span>:       <span class="s">"CONFIRMED"</span>,
+      <span class="k">"bookedAt"</span>:     <span class="s">"2026-07-27T20:11:04"</span>
+    }
+  ]
+}</pre>
+            </div>
+          </div>
+
+          <h3 class="grph">Movie Management</h3>
+
+          <div class="ep" id="e6-2">
+            <div class="hd">
+              <span class="num">6.2</span><span class="verb GET">GET</span
+              ><span class="path">/admin/movies</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The movie management table. Unlike
+                the public feeds, this returns the raw
+                <code>Movie</code> entities including audit columns, and it is
+                <em>not</em> filtered by status — archived and coming-soon
+                titles are all here.
+              </p>
+              <h4>Request payload</h4>
+              <p class="none">None.</p>
+              <h4>Response 200 · <code>Movie[]</code></h4>
+              <pre>[ { <span class="c">/* full Movie object with createdAt/updatedAt/createdBy/updatedBy — see 2.1 */</span> } ]</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e6-3">
+            <div class="hd">
+              <span class="num">6.3</span><span class="verb GET">GET</span
+              ><span class="path">/admin/movies/{id}</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Pre-fills the edit form with a
+                single movie's current values.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Movie id</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 200 · <code>Movie</code></h4>
+              <pre>{ <span class="c">/* single full Movie object */</span> }</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e6-4">
+            <div class="hd">
+              <span class="num">6.4</span><span class="verb POST">POST</span
+              ><span class="path">/admin/movies</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Create <em>and</em> update in one
+                endpoint — omit <code>id</code> to insert, send it to overwrite.
+                Poster and banner images upload in the same request.
+              </p>
+              <div class="note warn">
+                This is <b>multipart/form-data</b>, not JSON. The movie fields
+                are bound with <code>@ModelAttribute</code>, so they are
+                ordinary form fields — one of only two non-JSON write endpoints
+                in the whole API (the other is 7.10).
+              </div>
+              <h4>Request payload · <code>multipart/form-data</code></h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Part</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">long</td>
+                    <td class="r opt">optional</td>
+                    <td>Present = update, absent = create</td>
+                  </tr>
+                  <tr>
+                    <td class="p">title</td>
+                    <td class="t">text</td>
+                    <td class="r">required</td>
+                    <td>Max 200 chars, <code>@NotBlank</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">description</td>
+                    <td class="t">text</td>
+                    <td class="r opt">optional</td>
+                    <td>Long synopsis</td>
+                  </tr>
+                  <tr>
+                    <td class="p">genre</td>
+                    <td class="t">text</td>
+                    <td class="r">required</td>
+                    <td>Max 100 chars, <code>@NotBlank</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">director</td>
+                    <td class="t">text</td>
+                    <td class="r opt">optional</td>
+                    <td>Max 120</td>
+                  </tr>
+                  <tr>
+                    <td class="p">language</td>
+                    <td class="t">text</td>
+                    <td class="r opt">optional</td>
+                    <td>Max 60</td>
+                  </tr>
+                  <tr>
+                    <td class="p">format</td>
+                    <td class="t">text</td>
+                    <td class="r opt">optional</td>
+                    <td>
+                      <code>2D</code> / <code>3D</code> / <code>IMAX</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="p">cast</td>
+                    <td class="t">text</td>
+                    <td class="r opt">optional</td>
+                    <td>Comma-separated names</td>
+                  </tr>
+                  <tr>
+                    <td class="p">trailerUrl</td>
+                    <td class="t">text</td>
+                    <td class="r opt">optional</td>
+                    <td>Max 500</td>
+                  </tr>
+                  <tr>
+                    <td class="p">rating</td>
+                    <td class="t">text</td>
+                    <td class="r opt">optional</td>
+                    <td>Max 10, e.g. <code>PG-13</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">releaseDate</td>
+                    <td class="t">date</td>
+                    <td class="r opt">optional</td>
+                    <td><code>yyyy-MM-dd</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">durationMinutes</td>
+                    <td class="t">int</td>
+                    <td class="r">required</td>
+                    <td><code>@Min(1)</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">status</td>
+                    <td class="t">enum</td>
+                    <td class="r">required</td>
+                    <td>
+                      <code>NOW_SHOWING</code> | <code>COMING_SOON</code> |
+                      <code>ARCHIVED</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="p">imageFile</td>
+                    <td class="t">file</td>
+                    <td class="r opt">optional</td>
+                    <td>
+                      Poster → saved to <code>uploads/movies</code>, sets
+                      <code>imagePath</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="p">bannerFile</td>
+                    <td class="t">file</td>
+                    <td class="r opt">optional</td>
+                    <td>Wide banner, sets <code>bannerPath</code></td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">POST /admin/movies
+Content-Type: multipart/form-data; boundary=----X</span>
+
+------X
+Content-Disposition: form-data; name="title"
+
+Dune: Part Two
+------X
+Content-Disposition: form-data; name="genre"
+
+Sci-Fi
+------X
+Content-Disposition: form-data; name="durationMinutes"
+
+166
+------X
+Content-Disposition: form-data; name="status"
+
+NOW_SHOWING
+------X
+Content-Disposition: form-data; name="imageFile"; filename="dune2.jpg"
+Content-Type: image/jpeg
+
+&lt;binary&gt;
+------X--</pre>
+              <pre><span class="c">// curl equivalent</span>
+curl -u admin@tkm.co:Admin@123 -X POST http://localhost:8010/admin/movies \
+  -F <span class="s">"title=Dune: Part Two"</span> -F <span class="s">"genre=Sci-Fi"</span> \
+  -F <span class="s">"durationMinutes=166"</span> -F <span class="s">"status=NOW_SHOWING"</span> \
+  -F <span class="s">"imageFile=@dune2.jpg"</span> -F <span class="s">"bannerFile=@dune2-banner.jpg"</span></pre>
+              <h4>Response 200 · <code>Movie</code></h4>
+              <pre>{ <span class="c">/* the saved Movie, with imagePath / bannerPath now populated */</span> }</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e6-5">
+            <div class="hd">
+              <span class="num">6.5</span><span class="verb DELETE">DELETE</span
+              ><span class="path">/admin/movies/{id}</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Removes a movie from the catalogue.
+                Prefer setting <code>status = ARCHIVED</code> for a film that
+                already has bookings — deletion is for mistakes.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Movie id</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 204</h4>
+              <pre><span class="c">204 No Content — empty body</span></pre>
+            </div>
+          </div>
+
+          <h3 class="grph">Cinema &amp; Hall Management</h3>
+
+          <div class="ep" id="e6-6">
+            <div class="hd">
+              <span class="num">6.6</span><span class="verb GET">GET</span
+              ><span class="path">/admin/halls</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Lists every screening room with its
+                amenities and its parent cinema flattened in — the raw entity is
+                <em>not</em> returned because <code>Hall.cinema</code> is lazy
+                and would blow up during serialization.
+              </p>
+              <h4>Request payload</h4>
+              <p class="none">None.</p>
+              <h4>Response 200 · <code>HallResponse[]</code></h4>
+              <pre>[
+  {
+    <span class="k">"id"</span>: <span class="n">3</span>,
+    <span class="k">"name"</span>:          <span class="s">"Hall 3 - IMAX"</span>,
+    <span class="k">"totalSeats"</span>:    <span class="n">180</span>,
+    <span class="k">"city"</span>:          <span class="s">"Phnom Penh"</span>,
+    <span class="k">"address"</span>:       <span class="s">"132 Sothearos Blvd"</span>,
+    <span class="k">"type"</span>:          <span class="s">"IMAX"</span>,
+    <span class="k">"capacity"</span>:      <span class="n">180</span>,
+    <span class="k">"hasDolbyAtmos"</span>: <span class="s">true</span>,
+    <span class="k">"hasScreenX"</span>:    <span class="s">false</span>,
+    <span class="k">"amenities"</span>:     <span class="s">"Recliner seats, Dolby Atmos"</span>,
+    <span class="k">"cinemaId"</span>:      <span class="s">"7f3c1a9e-2b41-4d0c-9a55-1e8f6b2d3c44"</span>,
+    <span class="k">"cinemaName"</span>:    <span class="s">"TKM Cinema Aeon Mall"</span>
+  }
+]</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e6-7">
+            <div class="hd">
+              <span class="num">6.7</span><span class="verb POST">POST</span
+              ><span class="path">/admin/halls</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Creates a hall or updates an
+                existing one — send <code>id</code>
+                to update. The hall is attached to a cinema by UUID; seat rows
+                are generated from
+                <code>totalSeats</code> by the service.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>HallRequest</code>
+              </h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">long</td>
+                    <td class="r opt">optional</td>
+                    <td><code>null</code> → create, set → update</td>
+                  </tr>
+                  <tr>
+                    <td class="p">name</td>
+                    <td class="t">string</td>
+                    <td class="r">required</td>
+                    <td>Display name</td>
+                  </tr>
+                  <tr>
+                    <td class="p">cinemaId</td>
+                    <td class="t">UUID</td>
+                    <td class="r">required</td>
+                    <td>Owning cinema</td>
+                  </tr>
+                  <tr>
+                    <td class="p">city</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>Used by city filters</td>
+                  </tr>
+                  <tr>
+                    <td class="p">address</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td class="p">type</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>
+                      <code>STANDARD</code> / <code>IMAX</code> /
+                      <code>VIP</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="p">totalSeats</td>
+                    <td class="t">int</td>
+                    <td class="r opt">optional</td>
+                    <td>Drives seat generation</td>
+                  </tr>
+                  <tr>
+                    <td class="p">capacity</td>
+                    <td class="t">int</td>
+                    <td class="r opt">optional</td>
+                    <td>Legal occupancy</td>
+                  </tr>
+                  <tr>
+                    <td class="p">hasDolbyAtmos</td>
+                    <td class="t">boolean</td>
+                    <td class="r opt">optional</td>
+                    <td>Defaults <code>false</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">hasScreenX</td>
+                    <td class="t">boolean</td>
+                    <td class="r opt">optional</td>
+                    <td>Defaults <code>false</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">amenities</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>Free text</td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre>{
+  <span class="k">"id"</span>: <span class="s">null</span>,
+  <span class="k">"name"</span>:     <span class="s">"Hall 3 - IMAX"</span>,
+  <span class="k">"cinemaId"</span>: <span class="s">"7f3c1a9e-2b41-4d0c-9a55-1e8f6b2d3c44"</span>,
+  <span class="k">"city"</span>:     <span class="s">"Phnom Penh"</span>,
+  <span class="k">"address"</span>:  <span class="s">"132 Sothearos Blvd"</span>,
+  <span class="k">"type"</span>:     <span class="s">"IMAX"</span>,
+  <span class="k">"totalSeats"</span>: <span class="n">180</span>,
+  <span class="k">"capacity"</span>:   <span class="n">180</span>,
+  <span class="k">"hasDolbyAtmos"</span>: <span class="s">true</span>,
+  <span class="k">"hasScreenX"</span>:    <span class="s">false</span>,
+  <span class="k">"amenities"</span>: <span class="s">"Recliner seats, Dolby Atmos"</span>
+}</pre>
+              <h4>Response 200 · <code>HallResponse</code></h4>
+              <pre>{ <span class="c">/* the saved hall — same shape as 6.6 */</span> }</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e6-8">
+            <div class="hd">
+              <span class="num">6.8</span><span class="verb DELETE">DELETE</span
+              ><span class="path">/admin/halls/{id}</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Decommissions a screening room.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Hall id</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 204</h4>
+              <pre><span class="c">204 No Content — empty body</span></pre>
+              <div class="note warn">
+                <b>409</b> if showtimes still reference the hall.
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e6-9">
+            <div class="hd">
+              <span class="num">6.9</span><span class="verb GET">GET</span
+              ><span class="path">/admin/cinemas</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Lists the physical venues (a cinema
+                is the building; halls are the rooms inside it).
+                <code>Cinema</code> is a flat entity with no lazy relations, so
+                it is returned directly.
+              </p>
+              <h4>Request payload</h4>
+              <p class="none">None.</p>
+              <h4>Response 200 · <code>Cinema[]</code></h4>
+              <pre>[
+  {
+    <span class="k">"id"</span>: <span class="s">"7f3c1a9e-2b41-4d0c-9a55-1e8f6b2d3c44"</span>,
+    <span class="k">"name"</span>:         <span class="s">"TKM Cinema Aeon Mall"</span>,
+    <span class="k">"address"</span>:      <span class="s">"132 Sothearos Blvd, Phnom Penh"</span>,
+    <span class="k">"openingHours"</span>: <span class="s">"09:00 - 23:00"</span>,
+    <span class="k">"totalHalls"</span>:   <span class="n">6</span>,
+    <span class="k">"latitude"</span>:     <span class="n">11.5564</span>,
+    <span class="k">"longitude"</span>:    <span class="n">104.9282</span>,
+    <span class="k">"createdAt"</span>: <span class="s">"2026-01-05T08:00:00"</span>, <span class="k">"updatedAt"</span>: <span class="s">"2026-01-05T08:00:00"</span>,
+    <span class="k">"createdBy"</span>: <span class="s">"system"</span>, <span class="k">"updatedBy"</span>: <span class="s">"system"</span>
+  }
+]</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e6-10">
+            <div class="hd">
+              <span class="num">6.10</span><span class="verb POST">POST</span
+              ><span class="path">/admin/cinemas</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Adds a new venue or edits one. The
+                body is the <code>Cinema</code> entity itself — include
+                <code>id</code> (UUID) to update, omit it and the database
+                generates one. Latitude/longitude feed the “find a cinema near
+                me” map.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>Cinema</code>
+              </h4>
+              <pre>{
+  <span class="k">"id"</span>: <span class="s">null</span>,                       <span class="c">// UUID string to update</span>
+  <span class="k">"name"</span>:         <span class="s">"TKM Cinema Aeon Mall"</span>,   <span class="c">// required, max 140</span>
+  <span class="k">"address"</span>:      <span class="s">"132 Sothearos Blvd, Phnom Penh"</span>,
+  <span class="k">"openingHours"</span>: <span class="s">"09:00 - 23:00"</span>,
+  <span class="k">"totalHalls"</span>:   <span class="n">6</span>,
+  <span class="k">"latitude"</span>:     <span class="n">11.5564</span>,
+  <span class="k">"longitude"</span>:    <span class="n">104.9282</span>
+}</pre>
+              <h4>Response 200 · <code>Cinema</code></h4>
+              <pre>{ <span class="c">/* the saved cinema, id populated */</span> }</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e6-11">
+            <div class="hd">
+              <span class="num">6.11</span
+              ><span class="verb DELETE">DELETE</span
+              ><span class="path">/admin/cinemas/{id}</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Removes a venue — but only an empty
+                one. The controller counts its halls first and refuses if any
+                remain, which protects every showtime and booking hanging off
+                them.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">path</td>
+                    <td class="t">UUID</td>
+                    <td class="r">required</td>
+                    <td>Cinema id</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 200</h4>
+              <pre>{
+  <span class="k">"success"</span>: <span class="s">true</span>,
+  <span class="k">"message"</span>: <span class="s">"Cinema deleted."</span>
+}</pre>
+              <div class="note warn">
+                <b>409 Conflict</b> —
+                <code
+                  >"Cannot delete cinema: it has 6 hall(s). Delete or move halls
+                  first."</code
+                >
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══════════════════════════════ 7 ══════════════════════════════ -->
+        <section class="part" id="p7">
+          <h2>
+            7. <span class="who">Chorn Chulay</span> — Showtime &amp; Booking
+            Management
+          </h2>
+          <div class="owner">
+            <span class="presenter"
+              ><span class="av">CC</span><b>Chorn Chulay</b></span
+            >
+            Scheduling the screenings and then managing what customers buy
+            against them: the showtime grid, publishing and blocking,
+            week-to-week copying, plus the booking register, admin cancellations
+            and the CSV export.
+            <b>All require <code>ROLE_ADMIN</code>.</b>
+          </div>
+
+          <h3 class="grph">Showtime Management</h3>
+
+          <div class="ep" id="e7-1">
+            <div class="hd">
+              <span class="num">7.1</span><span class="verb GET">GET</span
+              ><span class="path">/admin/showtimes</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The scheduling grid. Each row
+                carries a total booking count, an
+                <em>active</em> (non-cancelled) count, and an
+                <code>editLocked</code> flag computed from the
+                <code>CANCELLATION_HOURS</code> setting — so the UI can grey out
+                screenings that are too close to starting.
+              </p>
+              <h4>Request payload</h4>
+              <p class="none">None.</p>
+              <h4>Response 200 · <code>ShowtimeListResponse</code></h4>
+              <pre>{
+  <span class="k">"showtimes"</span>: [
+    {
+      <span class="k">"id"</span>: <span class="n">101</span>,
+      <span class="k">"movieId"</span>:    <span class="n">1</span>,
+      <span class="k">"movieTitle"</span>: <span class="s">"Dune: Part Two"</span>,
+      <span class="k">"hallId"</span>:     <span class="n">3</span>,
+      <span class="k">"hallName"</span>:   <span class="s">"Hall 3 - IMAX"</span>,
+      <span class="k">"showDate"</span>:    <span class="s">"2026-07-28"</span>,
+      <span class="k">"showTime"</span>:    <span class="s">"13:30:00"</span>,
+      <span class="k">"normalPrice"</span>: <span class="n">5.00</span>,
+      <span class="k">"couplePrice"</span>: <span class="n">12.00</span>,
+      <span class="k">"blocked"</span>:            <span class="s">false</span>,   <span class="c">// true = unpublished / hidden from customers</span>
+      <span class="k">"bookingCount"</span>:       <span class="n">42</span>,
+      <span class="k">"activeBookingCount"</span>: <span class="n">40</span>,     <span class="c">// excludes CANCELLED</span>
+      <span class="k">"editLocked"</span>:         <span class="s">false</span>
+    }
+  ],
+  <span class="k">"editLockHours"</span>: <span class="n">2</span>            <span class="c">// from the CANCELLATION_HOURS system setting</span>
+}</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e7-2">
+            <div class="hd">
+              <span class="num">7.2</span><span class="verb GET">GET</span
+              ><span class="path">/admin/showtimes/{id}</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Loads one screening into the edit
+                form.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Showtime id</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 200 · <code>ShowtimeResponse</code></h4>
+              <pre>{
+  <span class="k">"id"</span>: <span class="n">101</span>, <span class="k">"movieId"</span>: <span class="n">1</span>, <span class="k">"movieTitle"</span>: <span class="s">"Dune: Part Two"</span>,
+  <span class="k">"hallId"</span>: <span class="n">3</span>, <span class="k">"hallName"</span>: <span class="s">"Hall 3 - IMAX"</span>,
+  <span class="k">"showDate"</span>: <span class="s">"2026-07-28"</span>, <span class="k">"showTime"</span>: <span class="s">"13:30:00"</span>,
+  <span class="k">"normalPrice"</span>: <span class="n">5.00</span>, <span class="k">"couplePrice"</span>: <span class="n">12.00</span>, <span class="k">"blocked"</span>: <span class="s">false</span>,
+  <span class="k">"bookingCount"</span>: <span class="s">null</span>, <span class="k">"activeBookingCount"</span>: <span class="s">null</span>, <span class="k">"editLocked"</span>: <span class="s">false</span>
+}</pre>
+              <div class="note">
+                The three list-only fields come back <code>null</code>/<code
+                  >false</code
+                >
+                on the single-item endpoints — they are only computed for 6.12.
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e7-3">
+            <div class="hd">
+              <span class="num">7.3</span><span class="verb POST">POST</span
+              ><span class="path">/admin/showtimes</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Schedules a screening (or edits
+                one). Two flags make this more than a plain save:
+                <code>publishNow</code> is the inverse of <code>blocked</code>,
+                and <code>sendNotification</code> fires a broadcast to all users
+                — but only when the showtime is actually published.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>ShowtimeRequest</code>
+              </h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">long</td>
+                    <td class="r opt">optional</td>
+                    <td><code>null</code> → create, set → update</td>
+                  </tr>
+                  <tr>
+                    <td class="p">movieId</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Film being screened</td>
+                  </tr>
+                  <tr>
+                    <td class="p">hallId</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Room</td>
+                  </tr>
+                  <tr>
+                    <td class="p">showDate</td>
+                    <td class="t">ISO date</td>
+                    <td class="r">required</td>
+                    <td><code>yyyy-MM-dd</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">showTime</td>
+                    <td class="t">ISO time</td>
+                    <td class="r">required</td>
+                    <td><code>HH:mm:ss</code> or <code>HH:mm</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">normalPrice</td>
+                    <td class="t">decimal</td>
+                    <td class="r">required</td>
+                    <td>Standard seat price</td>
+                  </tr>
+                  <tr>
+                    <td class="p">couplePrice</td>
+                    <td class="t">decimal</td>
+                    <td class="r">required</td>
+                    <td>Couple seat price</td>
+                  </tr>
+                  <tr>
+                    <td class="p">publishNow</td>
+                    <td class="t">boolean</td>
+                    <td class="r">required</td>
+                    <td>
+                      <code>true</code> → visible to customers (<code
+                        >blocked = false</code
+                      >)
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="p">sendNotification</td>
+                    <td class="t">boolean</td>
+                    <td class="r">required</td>
+                    <td>
+                      Broadcast “New movie available!” — only acts when
+                      <code>publishNow</code> is also true
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre>{
+  <span class="k">"id"</span>: <span class="s">null</span>,
+  <span class="k">"movieId"</span>: <span class="n">1</span>,
+  <span class="k">"hallId"</span>:  <span class="n">3</span>,
+  <span class="k">"showDate"</span>: <span class="s">"2026-07-28"</span>,
+  <span class="k">"showTime"</span>: <span class="s">"13:30:00"</span>,
+  <span class="k">"normalPrice"</span>: <span class="n">5.00</span>,
+  <span class="k">"couplePrice"</span>: <span class="n">12.00</span>,
+  <span class="k">"publishNow"</span>:       <span class="s">true</span>,
+  <span class="k">"sendNotification"</span>: <span class="s">true</span>
+}</pre>
+              <h4>Response 200 · <code>ShowtimeResponse</code></h4>
+              <pre>{ <span class="c">/* the saved showtime — same shape as 7.2 */</span> }</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e7-4">
+            <div class="hd">
+              <span class="num">7.4</span><span class="verb DELETE">DELETE</span
+              ><span class="path">/admin/showtimes/{id}</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Deletes a screening. The service
+                only permits it while the showtime is <b>blocked</b> and has
+                <b>no bookings</b> — otherwise customers would lose seats they
+                paid for.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Showtime id</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 204</h4>
+              <pre><span class="c">204 No Content — empty body</span></pre>
+              <div class="note warn">
+                <b>409</b> if the showtime is published or has bookings.
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e7-5">
+            <div class="hd">
+              <span class="num">7.5</span><span class="verb POST">POST</span
+              ><span class="path">/admin/showtimes/{id}/block</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> A one-click publish/unpublish
+                <em>toggle</em>. Blocking hides the screening from all public
+                browsing endpoints without deleting it — the fast way to pull a
+                session when a projector breaks.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Showtime to toggle</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p class="none">
+                No body — the new state is always the opposite of the current
+                one.
+              </p>
+              <h4>Response 200 · <code>ShowtimeResponse</code></h4>
+              <pre>{ <span class="c">/* … */</span> <span class="k">"blocked"</span>: <span class="s">true</span> <span class="c">/* flipped */</span> }</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e7-6">
+            <div class="hd">
+              <span class="num">7.6</span><span class="verb POST">POST</span
+              ><span class="path">/admin/showtimes/{id}/copy-next-week</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The scheduling shortcut — duplicates
+                a screening to the same weekday and time <b>+7 days</b>, copying
+                movie, hall and both prices. Building a repeating weekly
+                programme becomes one click per slot instead of a full form.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Showtime to clone</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p class="none">No body.</p>
+              <h4>Response 200 · <code>ShowtimeResponse</code></h4>
+              <pre>{
+  <span class="k">"id"</span>: <span class="n">220</span>,                <span class="c">// the NEW showtime</span>
+  <span class="k">"movieId"</span>: <span class="n">1</span>, <span class="k">"movieTitle"</span>: <span class="s">"Dune: Part Two"</span>,
+  <span class="k">"hallId"</span>: <span class="n">3</span>,  <span class="k">"hallName"</span>: <span class="s">"Hall 3 - IMAX"</span>,
+  <span class="k">"showDate"</span>: <span class="s">"2026-08-04"</span>,   <span class="c">// original date + 7 days</span>
+  <span class="k">"showTime"</span>: <span class="s">"13:30:00"</span>,
+  <span class="k">"normalPrice"</span>: <span class="n">5.00</span>, <span class="k">"couplePrice"</span>: <span class="n">12.00</span>, <span class="k">"blocked"</span>: <span class="s">false</span>,
+  <span class="k">"bookingCount"</span>: <span class="s">null</span>, <span class="k">"activeBookingCount"</span>: <span class="s">null</span>, <span class="k">"editLocked"</span>: <span class="s">false</span>
+}</pre>
+            </div>
+          </div>
+
+          <h3 class="grph">Booking Management</h3>
+
+          <div class="ep" id="e7-7">
+            <div class="hd">
+              <span class="num">7.7</span><span class="verb GET">GET</span
+              ><span class="path">/admin/bookings</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The booking register — every
+                reservation in the system, with an optional free-text search so
+                staff can find an order from a customer name, email or booking
+                id at the counter.
+              </p>
+              <h4>Request payload — query parameter</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">q</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>
+                      Blank/absent → all bookings; otherwise a search across
+                      customer name, email and booking reference
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">GET /admin/bookings?q=dara</span></pre>
+              <h4>Response 200 · <code>BookingSummary[]</code></h4>
+              <pre>[
+  {
+    <span class="k">"id"</span>: <span class="n">204</span>,
+    <span class="k">"movieTitle"</span>:   <span class="s">"Dune: Part Two"</span>,
+    <span class="k">"hallName"</span>:     <span class="s">"Hall 3 - IMAX"</span>,
+    <span class="k">"showDate"</span>:     <span class="s">"2026-07-28"</span>,
+    <span class="k">"showTime"</span>:     <span class="s">"13:30:00"</span>,
+    <span class="k">"customerName"</span>: <span class="s">"Sok Dara"</span>,     <span class="c">// account name, or guestName</span>
+    <span class="k">"totalAmount"</span>:  <span class="n">10.55</span>,
+    <span class="k">"status"</span>:       <span class="s">"CONFIRMED"</span>,
+    <span class="k">"bookedAt"</span>:     <span class="s">"2026-07-27T20:11:04"</span>
+  }
+]</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e7-8">
+            <div class="hd">
+              <span class="num">7.8</span><span class="verb POST">POST</span
+              ><span class="path">/admin/bookings/{id}/cancel</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Staff-side cancellation — used for
+                refunds, no-shows and cancelled screenings. Unlike the customer
+                route (4.5) there is no ownership check and no
+                cancellation-window limit; it also frees the seats back to the
+                pool.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Booking id</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p class="none">No body.</p>
+              <h4>Response 200</h4>
+              <pre>{
+  <span class="k">"success"</span>: <span class="s">true</span>,
+  <span class="k">"message"</span>: <span class="s">"Booking #204 cancelled."</span>
+}</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e7-9">
+            <div class="hd">
+              <span class="num">7.9</span><span class="verb GET">GET</span
+              ><span class="path">/admin/bookings/export</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Downloads the booking register as a
+                CSV for Excel / accounting. The same <code>q</code> filter as
+                7.7 applies, so “export exactly what I'm looking at” works.
+              </p>
+              <h4>Request payload — query parameter</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">q</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>Same search filter as 7.7</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 200 · <code>text/csv</code></h4>
+              <pre><span class="c">Content-Type: text/csv
+Content-Disposition: attachment; filename="bookings.csv"</span>
+
+ID,Movie,Date,Time,Hall,Customer,Email,Total,Status,PaymentMethod,BookedAt
+"204","Dune: Part Two",2026-07-28,13:30,"Hall 3 - IMAX","Sok Dara","dara@example.com",10.55,CONFIRMED,ABA,2026-07-27T20:11:04</pre>
+              <div class="note">
+                Values are quote-escaped (<code>"</code> → <code>""</code>).
+                Guests without a name appear as <code>Guest</code> with an empty
+                email.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══════════════════════════════ 8 ══════════════════════════════ -->
+        <section class="part" id="p8">
+          <h2>
+            8. <span class="who">Oeun Saranvatana</span> — Users, Check-In, Food
+            &amp; Reports
+          </h2>
+          <div class="owner">
+            <span class="presenter"
+              ><span class="av">OS</span><b>Oeun Saranvatana</b></span
+            >
+            The day-to-day running of the cinema: customer accounts and
+            moderation, door check-in, concessions and their images, promotions,
+            and the revenue reports. <b>All require <code>ROLE_ADMIN</code>.</b>
+          </div>
+
+          <h3 class="grph">User Management</h3>
+
+          <div class="ep" id="e8-1">
+            <div class="hd">
+              <span class="num">8.1</span><span class="verb GET">GET</span
+              ><span class="path">/admin/users</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The customer directory, with
+                optional search. The password hash is never included — the
+                response is a hand-built summary, not the entity.
+              </p>
+              <h4>Request payload — query parameter</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">q</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>
+                      Blank/absent → all users; otherwise searches name and
+                      email
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">GET /admin/users?q=dara</span></pre>
+              <h4>Response 200 · <code>UserSummary[]</code></h4>
+              <pre>[
+  {
+    <span class="k">"id"</span>: <span class="n">7</span>,
+    <span class="k">"name"</span>:   <span class="s">"Sok Dara"</span>,
+    <span class="k">"email"</span>:  <span class="s">"dara@example.com"</span>,
+    <span class="k">"phone"</span>:  <span class="s">"012345678"</span>,
+    <span class="k">"role"</span>:   <span class="s">"CUSTOMER"</span>,
+    <span class="k">"points"</span>: <span class="n">120</span>,
+    <span class="k">"status"</span>: <span class="s">"ACTIVE"</span>
+  }
+]</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e8-2">
+            <div class="hd">
+              <span class="num">8.2</span><span class="verb GET">GET</span
+              ><span class="path">/admin/users/{id}</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The customer detail screen —
+                profile, full booking history, and the list of valid status
+                values so the UI can build the status dropdown without
+                hard-coding the enum.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>User id</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 200 · <code>UserDetailResponse</code></h4>
+              <pre>{
+  <span class="k">"user"</span>: {
+    <span class="k">"id"</span>: <span class="n">7</span>, <span class="k">"name"</span>: <span class="s">"Sok Dara"</span>, <span class="k">"email"</span>: <span class="s">"dara@example.com"</span>,
+    <span class="k">"phone"</span>: <span class="s">"012345678"</span>, <span class="k">"role"</span>: <span class="s">"CUSTOMER"</span>, <span class="k">"points"</span>: <span class="n">120</span>, <span class="k">"status"</span>: <span class="s">"ACTIVE"</span>
+  },
+  <span class="k">"bookings"</span>: [
+    { <span class="c">/* BookingSummary — see 7.7 */</span> }
+  ],
+  <span class="k">"statuses"</span>: [ <span class="s">"ACTIVE"</span>, <span class="s">"SUSPENDED"</span>, <span class="s">"BANNED"</span> ]
+}</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e8-3">
+            <div class="hd">
+              <span class="num">8.3</span><span class="verb POST">POST</span
+              ><span class="path">/admin/users/{id}/status</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Moderation. Setting a user to
+                <code>SUSPENDED</code> or <code>BANNED</code> makes
+                <code>CustomUserDetailsService</code> reject their next login
+                attempt outright.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>StatusRequest</code>
+              </h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">status</td>
+                    <td class="t">enum</td>
+                    <td class="r">required</td>
+                    <td>
+                      <code>ACTIVE</code> | <code>SUSPENDED</code> |
+                      <code>BANNED</code>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre>{ <span class="k">"status"</span>: <span class="s">"SUSPENDED"</span> }</pre>
+              <h4>Response 200 · <code>UserSummary</code></h4>
+              <pre>{ <span class="c">/* the user re-read after the change — see 8.1 */</span> }</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e8-4">
+            <div class="hd">
+              <span class="num">8.4</span><span class="verb POST">POST</span
+              ><span class="path">/admin/users/{id}/points</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Manual loyalty-point adjustment —
+                goodwill credits, corrections, or clawbacks. The value is a
+                <b>delta</b>, not a new balance, so concurrent adjustments don't
+                overwrite each other.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>PointsRequest</code>
+              </h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">delta</td>
+                    <td class="t">int</td>
+                    <td class="r">required</td>
+                    <td>Positive to add, negative to deduct</td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre>{ <span class="k">"delta"</span>: <span class="n">50</span> }     <span class="c">// award 50 points</span>
+{ <span class="k">"delta"</span>: <span class="n">-20</span> }    <span class="c">// deduct 20 points</span></pre>
+              <h4>Response 200 · <code>UserSummary</code></h4>
+              <pre>{ <span class="c">/* … */</span> <span class="k">"points"</span>: <span class="n">170</span> <span class="c">/* new balance */</span> }</pre>
+            </div>
+          </div>
+
+          <h3 class="grph">Check-In</h3>
+
+          <div class="ep" id="e8-5">
+            <div class="hd">
+              <span class="num">8.5</span><span class="verb POST">POST</span
+              ><span class="path">/admin/checkin</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Door validation. Staff scan the QR
+                (or type the code) and this flips the ticket from
+                <code>ACTIVE</code> to <code>USED</code>, stamping
+                <code>scannedAt</code> — which is what stops the same ticket
+                being reused.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>CheckInRequest</code>
+              </h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">ticketCode</td>
+                    <td class="t">string</td>
+                    <td class="r">required</td>
+                    <td>
+                      Trimmed server-side; empty →
+                      <code>400 "Please enter a ticket code."</code>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre>{ <span class="k">"ticketCode"</span>: <span class="s">"TKT-8F2A31C9"</span> }</pre>
+              <h4>Response 200 · <code>CheckInResponse</code></h4>
+              <pre>{
+  <span class="k">"ticketCode"</span>: <span class="s">"TKT-8F2A31C9"</span>,
+  <span class="k">"status"</span>:     <span class="s">"USED"</span>,
+  <span class="k">"scannedAt"</span>:  <span class="s">"2026-07-28T13:12:40"</span>,
+  <span class="k">"message"</span>:    <span class="s">"Check-in successful!"</span>
+}</pre>
+              <div class="note warn">
+                <b>400</b> unknown code · <b>409</b> the ticket is already
+                <code>USED</code> or was <code>CANCELLED</code>.
+              </div>
+            </div>
+          </div>
+
+          <h3 class="grph">Food Management</h3>
+
+          <div class="ep" id="e8-6">
+            <div class="hd">
+              <span class="num">8.6</span><span class="verb GET">GET</span
+              ><span class="path">/admin/food-items</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The concession catalogue behind the
+                counter and behind the checkout upsell.
+                <code>stockQuantity = 0</code> is the convention for
+                “unlimited”.
+              </p>
+              <h4>Request payload</h4>
+              <p class="none">None.</p>
+              <h4>Response 200 · <code>FoodItem[]</code></h4>
+              <pre>[
+  {
+    <span class="k">"id"</span>: <span class="n">1</span>,
+    <span class="k">"name"</span>:        <span class="s">"Large Popcorn"</span>,
+    <span class="k">"description"</span>: <span class="s">"Salted, 170g"</span>,
+    <span class="k">"price"</span>:       <span class="n">3.50</span>,
+    <span class="k">"imageUrl"</span>:    <span class="s">"/uploads/food-items/popcorn.png"</span>,
+    <span class="k">"available"</span>:     <span class="s">true</span>,
+    <span class="k">"stockQuantity"</span>: <span class="n">0</span>,     <span class="c">// 0 = unlimited</span>
+    <span class="k">"createdAt"</span>: <span class="s">"2026-01-05T08:00:00"</span>, <span class="k">"updatedAt"</span>: <span class="s">"2026-01-05T08:00:00"</span>,
+    <span class="k">"createdBy"</span>: <span class="s">"system"</span>, <span class="k">"updatedBy"</span>: <span class="s">"system"</span>
+  }
+]</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e8-7">
+            <div class="hd">
+              <span class="num">8.7</span><span class="verb POST">POST</span
+              ><span class="path">/admin/food-items</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Adds or edits a concession item
+                together with its photo in a single submission — send
+                <code>id</code> to update.
+              </p>
+              <div class="note warn">
+                <b>multipart/form-data</b>, bound with
+                <code>@ModelAttribute</code> — the second of the two non-JSON
+                write endpoints. Size is capped by
+                <code>app.uploads.food-items.max-bytes</code> and
+                <code>spring.servlet.multipart.max-file-size</code>.
+              </div>
+              <h4>Request payload · <code>multipart/form-data</code></h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Part</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">long</td>
+                    <td class="r opt">optional</td>
+                    <td>Present = update</td>
+                  </tr>
+                  <tr>
+                    <td class="p">name</td>
+                    <td class="t">text</td>
+                    <td class="r">required</td>
+                    <td><code>@NotBlank</code>, max 100</td>
+                  </tr>
+                  <tr>
+                    <td class="p">description</td>
+                    <td class="t">text</td>
+                    <td class="r opt">optional</td>
+                    <td>Max 300</td>
+                  </tr>
+                  <tr>
+                    <td class="p">price</td>
+                    <td class="t">decimal</td>
+                    <td class="r">required</td>
+                    <td><code>@DecimalMin("0.0")</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">available</td>
+                    <td class="t">boolean</td>
+                    <td class="r opt">optional</td>
+                    <td>Defaults <code>true</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">stockQuantity</td>
+                    <td class="t">int</td>
+                    <td class="r opt">optional</td>
+                    <td><code>0</code> = unlimited</td>
+                  </tr>
+                  <tr>
+                    <td class="p">imageUrl</td>
+                    <td class="t">text</td>
+                    <td class="r opt">optional</td>
+                    <td>Reuse an already-uploaded path (see 8.10)</td>
+                  </tr>
+                  <tr>
+                    <td class="p">imageFile</td>
+                    <td class="t">file</td>
+                    <td class="r opt">optional</td>
+                    <td>
+                      New photo → stored under <code>uploads/food-items</code>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre>curl -u admin@tkm.co:Admin@123 -X POST http://localhost:8010/admin/food-items \
+  -F <span class="s">"name=Large Popcorn"</span> \
+  -F <span class="s">"description=Salted, 170g"</span> \
+  -F <span class="s">"price=3.50"</span> \
+  -F <span class="s">"available=true"</span> \
+  -F <span class="s">"stockQuantity=0"</span> \
+  -F <span class="s">"imageFile=@popcorn.png"</span></pre>
+              <h4>Response 200 · <code>FoodItem</code></h4>
+              <pre>{ <span class="c">/* the saved item, imageUrl populated */</span> }</pre>
+              <div class="note warn">
+                <b>400</b> <code>INVALID_FORMAT</code> /
+                <code>INVALID_PATH</code> · <b>413</b>
+                <code>FILE_TOO_LARGE</code> · <b>500</b>
+                <code>STORAGE_FAILED</code>.
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e8-8">
+            <div class="hd">
+              <span class="num">8.8</span><span class="verb DELETE">DELETE</span
+              ><span class="path">/admin/food-items/{id}</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Removes an item from the menu.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Food item id</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 204</h4>
+              <pre><span class="c">204 No Content — empty body</span></pre>
+              <div class="note">
+                To hide an item that already appears on past orders, set
+                <code>available: false</code> via 7.10 instead of deleting it.
+              </div>
+            </div>
+          </div>
+
+          <div class="ep" id="e8-9">
+            <div class="hd">
+              <span class="num">8.9</span><span class="verb GET">GET</span
+              ><span class="path">/admin/food-orders</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The concession prep list — every
+                food line item attached to a booking for a given
+                <em>showtime date</em>, so the kitchen knows what to make and
+                for which screening.
+              </p>
+              <h4>Request payload — query parameter</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">date</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>
+                      <code>yyyy-MM-dd</code>. Blank/absent defaults to
+                      <b>today</b>.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">GET /admin/food-orders?date=2026-07-28</span></pre>
+              <h4>Response 200 · <code>FoodOrderResponse[]</code></h4>
+              <pre>[
+  {
+    <span class="k">"id"</span>: <span class="n">88</span>,
+    <span class="k">"bookingId"</span>:    <span class="n">204</span>,
+    <span class="k">"customerName"</span>: <span class="s">"Sok Dara"</span>,
+    <span class="k">"movieTitle"</span>:   <span class="s">"Dune: Part Two"</span>,
+    <span class="k">"showDate"</span>:     <span class="s">"2026-07-28"</span>,
+    <span class="k">"showTime"</span>:     <span class="s">"13:30:00"</span>,
+    <span class="k">"foodItemName"</span>: <span class="s">"Large Popcorn"</span>,
+    <span class="k">"quantity"</span>:     <span class="n">2</span>,
+    <span class="k">"unitPrice"</span>:    <span class="n">3.50</span>
+  }
+]</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e8-10">
+            <div class="hd">
+              <span class="num">8.10</span><span class="verb POST">POST</span
+              ><span class="path">/admin/api/food-items/images</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Standalone image upload, decoupled
+                from saving the item. The admin UI uses it to show an instant
+                preview: upload first, get a URL back, then submit that URL as
+                <code>imageUrl</code> in 8.7.
+              </p>
+              <h4>Request payload · <code>multipart/form-data</code></h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Part</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">file</td>
+                    <td class="t">file</td>
+                    <td class="r">required</td>
+                    <td>
+                      Image; format and size validated by
+                      <code>FoodItemImageStorageService</code>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre>curl -u admin@tkm.co:Admin@123 \
+  -X POST http://localhost:8010/admin/api/food-items/images \
+  -F <span class="s">"file=@popcorn.png"</span></pre>
+              <h4>Response 201 · <code>ImageUploadResponse</code></h4>
+              <pre><span class="c">HTTP/1.1 201 Created
+Location: /uploads/food-items/6f21c0e4-popcorn.png</span>
+
+{ <span class="k">"imageUrl"</span>: <span class="s">"/uploads/food-items/6f21c0e4-popcorn.png"</span> }</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e8-11">
+            <div class="hd">
+              <span class="num">8.11</span
+              ><span class="verb DELETE">DELETE</span
+              ><span class="path">/admin/api/food-items/images</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Deletes an uploaded image file from
+                disk — used when the admin removes a preview before saving, so
+                orphaned files don't accumulate. Only paths the service itself
+                manages are touched; anything outside the managed directory is
+                ignored.
+              </p>
+              <h4>Request payload — query parameter</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">imageUrl</td>
+                    <td class="t">string</td>
+                    <td class="r">required</td>
+                    <td>The URL returned by 8.10</td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre><span class="c">DELETE /admin/api/food-items/images?imageUrl=/uploads/food-items/6f21c0e4-popcorn.png</span></pre>
+              <h4>Response 204</h4>
+              <pre><span class="c">204 No Content — empty body</span></pre>
+              <div class="note warn">
+                <b>400</b> <code>INVALID_PATH</code> if the URL tries to escape
+                the managed directory.
+              </div>
+            </div>
+          </div>
+
+          <h3 class="grph">Promo &amp; Reports</h3>
+
+          <div class="ep" id="e8-12">
+            <div class="hd">
+              <span class="num">8.12</span><span class="verb GET">GET</span
+              ><span class="path">/admin/promo-codes</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Lists every discount code with its
+                live usage counter — the marketing view of which campaigns are
+                being redeemed.
+              </p>
+              <h4>Request payload</h4>
+              <p class="none">None.</p>
+              <h4>Response 200 · <code>PromoCode[]</code></h4>
+              <pre>[
+  {
+    <span class="k">"id"</span>: <span class="n">2</span>,
+    <span class="k">"code"</span>:            <span class="s">"WELCOME10"</span>,
+    <span class="k">"discountType"</span>:    <span class="s">"PERCENT"</span>,      <span class="c">// PERCENT | FIXED</span>
+    <span class="k">"discountPercent"</span>: <span class="n">10</span>,             <span class="c">// 1..100</span>
+    <span class="k">"minPurchase"</span>:     <span class="n">5.00</span>,
+    <span class="k">"validUntil"</span>:      <span class="s">"2026-12-31"</span>,
+    <span class="k">"maxUses"</span>:         <span class="n">100</span>,            <span class="c">// 0 = unlimited</span>
+    <span class="k">"usedCount"</span>:       <span class="n">37</span>,
+    <span class="k">"active"</span>:          <span class="s">true</span>,
+    <span class="k">"createdAt"</span>: <span class="s">"2026-01-05T08:00:00"</span>, <span class="k">"updatedAt"</span>: <span class="s">"2026-07-20T11:02:31"</span>,
+    <span class="k">"createdBy"</span>: <span class="s">"admin@tkm.co"</span>, <span class="k">"updatedBy"</span>: <span class="s">"admin@tkm.co"</span>
+  }
+]</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e8-13">
+            <div class="hd">
+              <span class="num">8.13</span><span class="verb POST">POST</span
+              ><span class="path">/admin/promo-codes</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Creates or edits a campaign code.
+                These are exactly the codes that customers redeem through 4.3
+                and 4.4. Send <code>id</code> to update, omit it to create.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>PromoCode</code>
+              </h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">long</td>
+                    <td class="r opt">optional</td>
+                    <td>Present = update</td>
+                  </tr>
+                  <tr>
+                    <td class="p">code</td>
+                    <td class="t">string</td>
+                    <td class="r">required</td>
+                    <td><code>@NotBlank</code>, unique, max 50</td>
+                  </tr>
+                  <tr>
+                    <td class="p">discountType</td>
+                    <td class="t">enum</td>
+                    <td class="r">required</td>
+                    <td><code>PERCENT</code> (default) | <code>FIXED</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">discountPercent</td>
+                    <td class="t">int</td>
+                    <td class="r">required</td>
+                    <td><code>@Min(1) @Max(100)</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">minPurchase</td>
+                    <td class="t">decimal</td>
+                    <td class="r opt">optional</td>
+                    <td>Minimum spend to qualify</td>
+                  </tr>
+                  <tr>
+                    <td class="p">validUntil</td>
+                    <td class="t">ISO date</td>
+                    <td class="r opt">optional</td>
+                    <td><code>null</code> = never expires</td>
+                  </tr>
+                  <tr>
+                    <td class="p">maxUses</td>
+                    <td class="t">int</td>
+                    <td class="r opt">optional</td>
+                    <td><code>0</code> = unlimited</td>
+                  </tr>
+                  <tr>
+                    <td class="p">usedCount</td>
+                    <td class="t">int</td>
+                    <td class="r opt">optional</td>
+                    <td>Maintained by the system; leave at <code>0</code></td>
+                  </tr>
+                  <tr>
+                    <td class="p">active</td>
+                    <td class="t">boolean</td>
+                    <td class="r opt">optional</td>
+                    <td>Defaults <code>true</code>; the kill switch</td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre>{
+  <span class="k">"code"</span>:            <span class="s">"WELCOME10"</span>,
+  <span class="k">"discountType"</span>:    <span class="s">"PERCENT"</span>,
+  <span class="k">"discountPercent"</span>: <span class="n">10</span>,
+  <span class="k">"minPurchase"</span>:     <span class="n">5.00</span>,
+  <span class="k">"validUntil"</span>:      <span class="s">"2026-12-31"</span>,
+  <span class="k">"maxUses"</span>:         <span class="n">100</span>,
+  <span class="k">"active"</span>:          <span class="s">true</span>
+}</pre>
+              <h4>Response 200 · <code>PromoCode</code></h4>
+              <pre>{ <span class="c">/* the saved promo code — see 8.12 */</span> }</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e8-14">
+            <div class="hd">
+              <span class="num">8.14</span
+              ><span class="verb DELETE">DELETE</span
+              ><span class="path">/admin/promo-codes/{id}</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Deletes a campaign code permanently.
+                To end a campaign while keeping its redemption history, set
+                <code>active: false</code> via 7.16 instead.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Promo code id</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 204</h4>
+              <pre><span class="c">204 No Content — empty body</span></pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e8-15">
+            <div class="hd">
+              <span class="num">8.15</span><span class="verb GET">GET</span
+              ><span class="path">/admin/reports</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The analytics page. Same underlying
+                service as the dashboard but with wider windows — top
+                <b>10</b> movies and a <b>30-day</b> series instead of 5 and 14.
+              </p>
+              <h4>Request payload</h4>
+              <p class="none">None.</p>
+              <h4>Response 200 · <code>ReportResponse</code></h4>
+              <pre>{
+  <span class="k">"revenueToday"</span>: <span class="n">412.50</span>,
+  <span class="k">"revenueWeek"</span>:  <span class="n">2980.00</span>,
+  <span class="k">"revenueMonth"</span>: <span class="n">11240.75</span>,
+  <span class="k">"topMovies"</span>: [                       <span class="c">// top 10</span>
+    { <span class="k">"title"</span>: <span class="s">"Dune: Part Two"</span>, <span class="k">"tickets"</span>: <span class="n">420</span>, <span class="k">"revenue"</span>: <span class="n">2100</span> }
+  ],
+  <span class="k">"dailyStats"</span>: [                      <span class="c">// last 30 days, zero-filled</span>
+    { <span class="k">"date"</span>: <span class="s">"2026-07-28"</span>, <span class="k">"count"</span>: <span class="n">38</span>, <span class="k">"revenue"</span>: <span class="n">412</span> }
+  ]
+}</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e8-16">
+            <div class="hd">
+              <span class="num">8.16</span><span class="verb GET">GET</span
+              ><span class="path">/admin/reports/export</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Downloads the report as CSV for
+                finance. Same generator as 7.9 — only the filename differs
+                (<code>report.csv</code> vs <code>bookings.csv</code>).
+              </p>
+              <h4>Request payload — query parameter</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">q</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>Optional search filter</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 200 · <code>text/csv</code></h4>
+              <pre><span class="c">Content-Type: text/csv
+Content-Disposition: attachment; filename="report.csv"</span>
+
+ID,Movie,Date,Time,Hall,Customer,Email,Total,Status,PaymentMethod,BookedAt
+"204","Dune: Part Two",2026-07-28,13:30,"Hall 3 - IMAX","Sok Dara","dara@example.com",10.55,CONFIRMED,ABA,2026-07-27T20:11:04</pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══════════════════════════════ 9 ══════════════════════════════ -->
+        <section class="part" id="p9">
+          <h2>
+            9. <span class="who">Chhorn Phearak</span> — Configuration &amp;
+            Conclusion
+          </h2>
+          <div class="owner">
+            <span class="presenter"
+              ><span class="av">CP</span><b>Chhorn Phearak</b></span
+            >
+            System-wide configuration and messaging, closing with a worked
+            controller example.
+            <b>All require <code>ROLE_ADMIN</code>.</b>
+          </div>
+
+          <div class="ep" id="e9-1">
+            <div class="hd">
+              <span class="num">9.1</span><span class="verb GET">GET</span
+              ><span class="path">/admin/notifications</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The outbox — every announcement that
+                has been broadcast, with how many recipients it reached.
+                Includes messages fired automatically by 7.3 when a showtime is
+                published.
+              </p>
+              <h4>Request payload</h4>
+              <p class="none">None.</p>
+              <h4>Response 200 · <code>Notification[]</code></h4>
+              <pre>[
+  {
+    <span class="k">"id"</span>: <span class="n">14</span>,
+    <span class="k">"title"</span>:      <span class="s">"New movie available!"</span>,
+    <span class="k">"message"</span>:    <span class="s">"Dune: Part Two is now available. Showtime: 2026-07-28 13:30 at Hall 3 - IMAX."</span>,
+    <span class="k">"targetType"</span>: <span class="s">"ALL"</span>,        <span class="c">// ALL | MOVIE</span>
+    <span class="k">"targetRef"</span>:  <span class="s">null</span>,         <span class="c">// movie id when targetType = MOVIE</span>
+    <span class="k">"sentAt"</span>:     <span class="s">"2026-07-20T11:02:31"</span>,
+    <span class="k">"sentCount"</span>:  <span class="n">356</span>,        <span class="c">// recipients reached</span>
+    <span class="k">"createdAt"</span>: <span class="s">"2026-07-20T11:02:31"</span>, <span class="k">"updatedAt"</span>: <span class="s">"2026-07-20T11:02:31"</span>,
+    <span class="k">"createdBy"</span>: <span class="s">"admin@tkm.co"</span>, <span class="k">"updatedBy"</span>: <span class="s">"admin@tkm.co"</span>
+  }
+]</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e9-2">
+            <div class="hd">
+              <span class="num">9.2</span><span class="verb POST">POST</span
+              ><span class="path">/admin/notifications/send</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Broadcasts an announcement to every
+                user — new releases, maintenance windows, promotions. This is
+                the same service call 7.3 makes internally.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>NotificationRequest</code>
+              </h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">title</td>
+                    <td class="t">string</td>
+                    <td class="r">required</td>
+                    <td>Headline, max 200</td>
+                  </tr>
+                  <tr>
+                    <td class="p">message</td>
+                    <td class="t">string</td>
+                    <td class="r opt">optional</td>
+                    <td>Body text (unbounded)</td>
+                  </tr>
+                </tbody>
+              </table>
+              <pre>{
+  <span class="k">"title"</span>:   <span class="s">"Holiday schedule"</span>,
+  <span class="k">"message"</span>: <span class="s">"All halls open until 01:00 during Pchum Ben."</span>
+}</pre>
+              <h4>Response 200 · <code>Notification</code></h4>
+              <pre>{ <span class="c">/* the persisted notification with sentAt and sentCount filled in — see 9.1 */</span> }</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e9-3">
+            <div class="hd">
+              <span class="num">9.3</span><span class="verb DELETE">DELETE</span
+              ><span class="path">/admin/notifications/{id}</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Clears an announcement out of the
+                outbox history.
+              </p>
+              <h4>Request payload</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Param</th>
+                    <th>In</th>
+                    <th>Type</th>
+                    <th>Req.</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="p">id</td>
+                    <td class="t">path</td>
+                    <td class="t">long</td>
+                    <td class="r">required</td>
+                    <td>Notification id</td>
+                  </tr>
+                </tbody>
+              </table>
+              <h4>Response 204</h4>
+              <pre><span class="c">204 No Content — empty body</span></pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e9-4">
+            <div class="hd">
+              <span class="num">9.4</span><span class="verb GET">GET</span
+              ><span class="path">/admin/settings</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Reads the runtime configuration
+                table — the knobs that change behaviour without a redeploy.
+                <code>CANCELLATION_HOURS</code>, for instance, drives both the
+                customer cancellation window (4.5) and the admin edit lock
+                (7.1).
+              </p>
+              <h4>Request payload</h4>
+              <p class="none">None.</p>
+              <h4>Response 200 · <code>SystemSetting[]</code></h4>
+              <pre>[
+  {
+    <span class="k">"key"</span>:         <span class="s">"CANCELLATION_HOURS"</span>,
+    <span class="k">"value"</span>:       <span class="s">"2"</span>,
+    <span class="k">"description"</span>: <span class="s">"Hours before showtime that cancellation/edit is locked"</span>,
+    <span class="k">"createdAt"</span>: <span class="s">"2026-01-05T08:00:00"</span>, <span class="k">"updatedAt"</span>: <span class="s">"2026-06-11T09:41:00"</span>,
+    <span class="k">"createdBy"</span>: <span class="s">"system"</span>, <span class="k">"updatedBy"</span>: <span class="s">"admin@tkm.co"</span>
+  },
+  { <span class="k">"key"</span>: <span class="s">"SERVICE_FEE"</span>, <span class="k">"value"</span>: <span class="s">"0.50"</span>, <span class="k">"description"</span>: <span class="s">"Per-booking service fee"</span>, <span class="c">…</span> },
+  { <span class="k">"key"</span>: <span class="s">"TAX_PERCENT"</span>, <span class="k">"value"</span>: <span class="s">"10"</span>,   <span class="k">"description"</span>: <span class="s">"VAT percentage"</span>, <span class="c">…</span> }
+]</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e9-5">
+            <div class="hd">
+              <span class="num">9.5</span><span class="verb POST">POST</span
+              ><span class="path">/admin/settings</span
+              ><span class="tag admin">ROLE_ADMIN</span>
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> Bulk-saves settings. The body is a
+                plain key → value map, so the settings form can post every field
+                it renders in one request; each pair is upserted and the
+                complete, updated table is returned.
+              </p>
+              <h4>
+                Request payload · <code>application/json</code> —
+                <code>Map&lt;String, String&gt;</code>
+              </h4>
+              <div class="note">
+                Not a fixed DTO — any key/value pairs are accepted, and
+                <b>all values are strings</b>, including numeric ones.
+              </div>
+              <pre>{
+  <span class="k">"CANCELLATION_HOURS"</span>: <span class="s">"3"</span>,
+  <span class="k">"SERVICE_FEE"</span>:        <span class="s">"0.75"</span>,
+  <span class="k">"TAX_PERCENT"</span>:        <span class="s">"10"</span>
+}</pre>
+              <h4>Response 200 · <code>SystemSetting[]</code></h4>
+              <pre>[ <span class="c">/* the full settings table after the update — see 9.4 */</span> ]</pre>
+            </div>
+          </div>
+
+          <div class="ep" id="e9-6">
+            <div class="hd">
+              <span class="num">9.6</span><span class="verb GET">GET</span
+              ><span class="path"
+                >Controller Example — /admin/movies (CRUD walkthrough)</span
+              >
+            </div>
+            <div class="bd">
+              <p class="use">
+                <b>What it is used for:</b> The closing demo.
+                <code>AdminMovieController</code> is the clearest illustration
+                of the project's conventions: a thin
+                <code>@RestController</code> that only delegates, a
+                create-or-update POST keyed on the presence of <code>id</code>,
+                springdoc annotations for Swagger, and errors thrown as
+                exceptions rather than hand-built payloads.
+              </p>
+
+              <h4>The four operations at a glance</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Method</th>
+                    <th>Request payload</th>
+                    <th>Response</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="t">6.2</td>
+                    <td class="p">GET /admin/movies</td>
+                    <td>none</td>
+                    <td><code>Movie[]</code> · 200</td>
+                  </tr>
+                  <tr>
+                    <td class="t">6.3</td>
+                    <td class="p">GET /admin/movies/{id}</td>
+                    <td>path <code>id</code></td>
+                    <td><code>Movie</code> · 200</td>
+                  </tr>
+                  <tr>
+                    <td class="t">6.4</td>
+                    <td class="p">POST /admin/movies</td>
+                    <td>
+                      <code>multipart/form-data</code> — movie fields +
+                      <code>imageFile</code> / <code>bannerFile</code>
+                    </td>
+                    <td><code>Movie</code> · 200</td>
+                  </tr>
+                  <tr>
+                    <td class="t">6.5</td>
+                    <td class="p">DELETE /admin/movies/{id}</td>
+                    <td>path <code>id</code></td>
+                    <td>empty · 204</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <h4>The controller</h4>
+              <pre><span class="k">@RestController</span>
+<span class="k">@RequestMapping</span>(<span class="s">"/admin/movies"</span>)
+<span class="k">@RequiredArgsConstructor</span>
+<span class="k">@Tag</span>(name = <span class="s">"Admin: Movies"</span>, description = <span class="s">"Back-office movie management"</span>)
+<span class="k">public class</span> AdminMovieController {
+
+    <span class="k">private final</span> MovieService movieService;   <span class="c">// constructor-injected by Lombok</span>
+
+    <span class="k">@GetMapping</span>(produces = APPLICATION_JSON_VALUE)
+    <span class="k">public</span> ResponseEntity&lt;List&lt;Movie&gt;&gt; movies() {
+        <span class="k">return</span> ResponseEntity.ok(movieService.findAll());
+    }
+
+    <span class="k">@GetMapping</span>(value = <span class="s">"/{id}"</span>, produces = APPLICATION_JSON_VALUE)
+    <span class="k">public</span> ResponseEntity&lt;Movie&gt; movie(<span class="k">@PathVariable</span> Long id) {
+        <span class="k">return</span> ResponseEntity.ok(movieService.findById(id));
+    }
+
+    <span class="k">@PostMapping</span>(consumes = MULTIPART_FORM_DATA_VALUE, produces = APPLICATION_JSON_VALUE)
+    <span class="k">public</span> ResponseEntity&lt;Movie&gt; saveMovie(
+            <span class="k">@ModelAttribute</span> Movie movie,                                <span class="c">// form fields → entity</span>
+            <span class="k">@RequestPart</span>(value = <span class="s">"imageFile"</span>,  required = <span class="k">false</span>) MultipartFile imageFile,
+            <span class="k">@RequestPart</span>(value = <span class="s">"bannerFile"</span>, required = <span class="k">false</span>) MultipartFile bannerFile) {
+        <span class="k">return</span> ResponseEntity.ok(movieService.saveWithImages(movie, imageFile, bannerFile));
+    }
+
+    <span class="k">@DeleteMapping</span>(<span class="s">"/{id}"</span>)
+    <span class="k">public</span> ResponseEntity&lt;Void&gt; deleteMovie(<span class="k">@PathVariable</span> Long id) {
+        movieService.delete(id);
+        <span class="k">return</span> ResponseEntity.noContent().build();
+    }
+}</pre>
+
+              <h4>Conventions this project follows</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rule</th>
+                    <th>Why</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      Controllers stay thin — all logic lives in
+                      <code>service/</code>
+                    </td>
+                    <td>
+                      Keeps HTTP concerns separate from business rules and makes
+                      the service unit-testable
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      Endpoint-local DTOs are <code>record</code>s nested in the
+                      controller
+                    </td>
+                    <td>
+                      Request/response shapes live next to the endpoint that
+                      owns them, instead of a sprawling
+                      <code>dto/</code> package
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      Never serialize an entity with uninitialized lazy
+                      relations
+                    </td>
+                    <td>
+                      <code>spring.jpa.open-in-view=false</code>, so Jackson
+                      would hit <code>LazyInitializationException</code>. Flat
+                      entities (Movie, Cinema, FoodItem, PromoCode,
+                      Notification, SystemSetting) are safe to return directly;
+                      anything that walks a relation is mapped to a record
+                      inside a
+                      <code>@Transactional(readOnly = true)</code> method
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      Throw <code>IllegalArgumentException</code> /
+                      <code>IllegalStateException</code>
+                    </td>
+                    <td>
+                      <code>ApiExceptionHandler</code> turns them into 400 / 409
+                      with a consistent envelope — no error payloads assembled
+                      by hand
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      Annotate with <code>@Tag</code> / <code>@Operation</code>
+                    </td>
+                    <td>
+                      Endpoints appear grouped and described in Swagger UI at
+                      <code>/swagger-ui.html</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      One POST for create <em>and</em> update, keyed on
+                      <code>id</code>
+                    </td>
+                    <td>
+                      Halves the endpoint count and lets a single admin form
+                      serve both cases
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      (function () {
+        // Build the sidebar from the document itself.
+        var out = "";
+        document.querySelectorAll("section.part").forEach(function (sec) {
+          var h2 = sec.querySelector("h2");
+          out += '<div class="grp">' + h2.textContent + "</div><ul>";
+          // Walk direct children so the "Movie Management" style sub-group headings
+          // show up in the sidebar in the same order as the page.
+          Array.prototype.forEach.call(sec.children, function (node) {
+            if (node.tagName === "H3") {
+              out += '<li class="sgrp">' + node.textContent + "</li>";
+              return;
+            }
+            if (!node.classList || !node.classList.contains("ep")) return;
+            var ep = node;
+            var hd = ep.querySelector(".hd");
+            var num = hd.querySelector(".num")
+              ? hd.querySelector(".num").textContent
+              : "";
+            var verbEl = hd.querySelector(".verb");
+            var verb = verbEl ? verbEl.textContent : "";
+            var path = hd.querySelector(".path").textContent;
+            out +=
+              '<li><a href="#' +
+              ep.id +
+              '"><span class="n">' +
+              num +
+              "</span>" +
+              (verb ? verb + " " : "") +
+              path +
+              "</a></li>";
+          });
+          out += "</ul>";
+        });
+        document.getElementById("navlist").innerHTML = out;
+
+        // Filter both the sidebar and the main content.
+        var q = document.getElementById("q");
+        q.addEventListener("input", function () {
+          var term = q.value.trim().toLowerCase();
+          document.querySelectorAll("#navlist li").forEach(function (li) {
+            li.style.display =
+              !term || li.textContent.toLowerCase().indexOf(term) > -1
+                ? ""
+                : "none";
+          });
+          document.querySelectorAll(".ep").forEach(function (ep) {
+            ep.style.display =
+              !term || ep.textContent.toLowerCase().indexOf(term) > -1
+                ? ""
+                : "none";
+          });
+          document.querySelectorAll("section.part").forEach(function (sec) {
+            var any = Array.prototype.some.call(
+              sec.querySelectorAll(".ep"),
+              function (ep) {
+                return ep.style.display !== "none";
+              },
+            );
+            sec.style.display = any ? "" : "none";
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

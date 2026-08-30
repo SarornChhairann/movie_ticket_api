@@ -227,6 +227,7 @@ public class BookingService {
     @Transactional(readOnly = true)
     public List<Booking> getAllBookingsForAdmin() {
         List<Booking> bookings = bookingRepository.findAll();
+        
         bookings.forEach(booking -> {
             booking.getShowtime().getShowDate();
             booking.getShowtime().getShowTime();
