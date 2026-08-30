@@ -18,7 +18,11 @@ mvnw.cmd test -Dtest=BookingServiceTest#someMethodName   # single test method
 mvnw.cmd spring-boot:run         # run the app locally (port 8010 by default)
 ```
 
-Tests run against H2 in Postgres-compatibility mode (`src/test/resources/application.properties`), so they don't need a real Postgres instance. The dev datasource (`src/main/resources/application.properties`) points at `jdbc:postgresql://localhost:5433/spring_boot_ticket` — a local Postgres must be listening on port 5433 to run the app itself.
+```
+docker compose up -d db keycloak    # Postgres on 5433 + Keycloak on 8080, both needed to run the app
+```
+
+Configuration is YAML: `src/main/resources/application.yml` (dev) and `src/test/resources/application.yml` (tests). Tests run against H2 in Postgres-compatibility mode and need neither Postgres nor Keycloak. The dev datasource points at `jdbc:postgresql://localhost:5433/spring_boot_ticket`, and auth needs a Keycloak at `http://localhost:8080` serving the `ticket-realm` — both are in `docker-compose.yml`. Note `app.seed.force=true` in the dev config: every start wipes and reseeds the demo data.
 
 Swagger UI is available at `/swagger-ui.html` (`/v3/api-docs` for the raw OpenAPI doc) once the app is running.
 
@@ -44,14 +48,21 @@ Every controller returns JSON. Two important patterns to preserve:
 
 Errors are handled centrally by `ApiExceptionHandler` (`@RestControllerAdvice`): `IllegalArgumentException` → 400, `IllegalStateException` → 409, `FoodItemImageStorageException`/multipart size issues → 400/413. Throw those from controllers/services instead of returning error payloads by hand. (`GlobalExceptionHandler` still exists but is vestigial now that there are no views.)
 
-### Security
+### Security (Keycloak)
 
-`SecurityConfig` is stateless-ish JSON auth: **HTTP Basic** plus a session cookie established by `POST /login` (see `AuthController`, which authenticates via `AuthenticationManager` and saves the `SecurityContext` to the session). `POST /register` creates a customer. `CustomUserDetailsService` loads users and rejects `SUSPENDED`/`BANNED` accounts. Public routes: `/`, `/movies/**`, booking browsing/checkout/confirmation, `/tickets/**`, `POST /login`, `POST /register`, static assets, `/uploads/**`, `/api/**`, `/ws/**`, and the Swagger paths. `/bookings/my-bookings`, `/bookings/cancel/**`, and `/profile/**` require authentication; `/admin/**` requires `ROLE_ADMIN`. **CSRF is disabled globally** — the app has no HTML forms, and cross-origin JSON is gated by the CORS allow-list in `WebConfig`. Note the residual consideration: the multipart admin upload endpoints (`POST /admin/movies`, `POST /admin/food-items`) are the one non-JSON-body vector if this API is ever exposed to untrusted origins.
+Authentication is **Keycloak**, not this app — see [KEYCLOAK.md](KEYCLOAK.md) for the full picture. `SecurityConfig` makes the app an **OAuth2 resource server**: stateless, no session, no HTTP Basic, no local password hash. Clients call `POST /login` (also `/api/auth/login`), which runs Keycloak's password grant behind the scenes and returns `access_token`/`refresh_token`; every other request carries `Authorization: Bearer <access_token>`. `POST /register` creates the account through Keycloak's Admin REST API. Also available: `POST /api/auth/refresh` and `POST /logout` (revokes the refresh token).
+
+- **Roles.** Keycloak realm roles are upper-cased into authorities, so realm `admin` → `ROLE_ADMIN` and realm `customer` → `ROLE_CUSTOMER`; `hasRole("ADMIN")` rules are unchanged. The realm lives in `keycloak/realm-export.json` and is imported by the `keycloak` service in `docker-compose.yml`.
+- **The principal name is the user's email**, on purpose: every controller/service resolves the current user with `authentication.getName()` against `users.email`, so that could not change.
+- **`users` is a mirror of the realm.** `KeycloakUserSyncFilter` runs right after token validation and creates/realigns the local row (so an account made straight in the Keycloak console works), and rejects `SUSPENDED`/`BANNED` accounts — the check that used to live in `CustomUserDetailsService`. `points` and `status` are the only user columns this app still owns; `password` holds a placeholder and is never read.
+- **Keycloak is only reached from `KeycloakAdminClient`**; `AuthService` holds the flows (login, register, refresh, change password, admin bootstrap) and mirrors the result locally. Both turn Keycloak failures into `ResponseStatusException`, which `ApiExceptionHandler` renders in the usual `{error, type}` shape.
+- Public routes: `/`, `/movies/**`, booking browsing/checkout/confirmation, `/tickets/**`, `POST /login|/register|/logout`, `/api/auth/**`, static assets, `/uploads/**`, `/api/**`, `/ws/**`, and the Swagger paths. `/bookings/my-bookings`, `/bookings/cancel/**`, and `/profile/**` require authentication; `/admin/**` requires `ROLE_ADMIN`.
+- **CSRF is disabled globally** — a bearer-token request carries no ambient credential to forge, the app has no HTML forms, and cross-origin JSON is gated by the CORS allow-list in `WebConfig`. Spring Security's default `LogoutFilter` is disabled too, or it would answer `POST /logout` before `AuthController` does.
 
 ### Data seeding & schema
 
-Three cooperating pieces run at startup, controlled by `app.seed.*` properties in `application.properties`:
-- `AdminSeeder` — ensures the admin user (`APP_ADMIN_EMAIL`/`APP_ADMIN_PASSWORD`) exists.
+Three cooperating pieces run at startup, controlled by `app.seed.*` properties in `application.yml`:
+- `AdminSeeder` — ensures the admin account (`APP_ADMIN_EMAIL`/`APP_ADMIN_PASSWORD`) exists in **Keycloak** (realigning its password and `admin` role) and mirrors it into `users`. The Keycloak half is skipped when `keycloak.bootstrap-admin=false` and is non-fatal if Keycloak is unreachable.
 - `DemoDataSeeder` / `DatabaseSeederService` — generate demo movies, halls, showtimes, and customers (via `javafaker`) when `app.seed.enabled=true`; `app.seed.force=true` reseeds even if data exists. Seed volume/shape is tunable via `app.seed.halls`, `app.seed.days`, `app.seed.showtimesPerHallPerDay`, `app.seed.customers`, `app.seed.randomSeed`.
 - `SchemaMigrationRunner` — hand-rolled startup migration logic (Hibernate `ddl-auto=update` handles additive schema changes; this covers the rest).
 

@@ -8,6 +8,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      keycloak:
+        condition: service_healthy
     ports:
       - "${APP_PORT:-8010}:8010"
     environment:
@@ -18,7 +20,20 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       APP_UPLOADS_MOVIES_DIR: /app/uploads/movies
       APP_UPLOADS_FOOD_ITEMS_DIR: /app/uploads/food-items
-      APP_SECURITY_JWT_SECRET: ${APP_SECURITY_JWT_SECRET:-ChangeThisToASecureRandomKeyAtLeast32BytesLong123456}
+      # --- Keycloak -----------------------------------------------------------
+      # Tokens are issued with KC_HOSTNAME in their "iss" claim (localhost, so the
+      # same tokens work for Postman/Swagger on the host), while this container
+      # reaches Keycloak over the compose network as http://keycloak:8080 - hence
+      # the split between the issuer it validates and the two URLs it calls.
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8080/realms/ticket-realm}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/ticket-realm/protocol/openid-connect/certs
+      KEYCLOAK_SERVER_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-ticket-realm}
+      KEYCLOAK_LOGIN_CLIENT_ID: ${KEYCLOAK_LOGIN_CLIENT_ID:-ticket-app}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-ticket-backend}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-ticket-backend-secret}
+      KEYCLOAK_BOOTSTRAP_ADMIN: ${KEYCLOAK_BOOTSTRAP_ADMIN:-true}
+      # ------------------------------------------------------------------------
       APP_ADMIN_EMAIL: ${APP_ADMIN_EMAIL:-admin@gmail.com}
       APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-admin123}
       APP_ADMIN_NAME: ${APP_ADMIN_NAME:-System Admin}
@@ -30,6 +45,40 @@ services:
       SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
     volumes:
       - app_uploads:/app/uploads
+    networks:
+      - ticket-net
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7
+    container_name: ticket-management-system-keycloak
+    # --import-realm loads keycloak/realm-export.json on a fresh container: the
+    # ticket-realm, its customer/admin roles, both clients, and the demo accounts.
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      # Fixes the hostname Keycloak puts in tokens and URLs, so "iss" is the same
+      # whether the request came from another container or from the host.
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8080}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "${KEYCLOAK_PORT:-8080}:8080"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      # The whole data dir, not just data/h2: an empty named volume takes its
+      # ownership from the directory it shadows, and only /opt/keycloak/data
+      # exists in the image already owned by the (non-root) keycloak user.
+      - keycloak_data:/opt/keycloak/data
+    networks:
+      - ticket-net
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep 'UP' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
     restart: unless-stopped
 
   db:
@@ -43,6 +92,8 @@ services:
       - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ticket-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
@@ -50,6 +101,12 @@ services:
       retries: 5
     restart: unless-stopped
 
+networks:
+  ticket-net:
+    name: ticket-management-net
+    driver: bridge
+
 volumes:
   app_uploads:
   postgres_data:
+  keycloak_data:

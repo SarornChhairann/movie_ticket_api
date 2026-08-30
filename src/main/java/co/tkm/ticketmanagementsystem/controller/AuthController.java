@@ -1,70 +1,114 @@
 package co.tkm.ticketmanagementsystem.controller;
 
 import co.tkm.ticketmanagementsystem.dto.RegisterForm;
-import co.tkm.ticketmanagementsystem.service.JwtService;
-import co.tkm.ticketmanagementsystem.service.UserService;
+import co.tkm.ticketmanagementsystem.enums.Role;
+import co.tkm.ticketmanagementsystem.model.User;
+import co.tkm.ticketmanagementsystem.service.AuthService;
+import co.tkm.ticketmanagementsystem.service.KeycloakAdminClient.TokenResponse;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
-
+/**
+ * Registration and login for clients that only know about this app, not about
+ * Keycloak: they post an email and password here and get back the same tokens
+ * Keycloak would have issued them directly.
+ *
+ * Every other endpoint in the app then expects {@code Authorization: Bearer
+ * <access_token>}; nothing here establishes a session.
+ *
+ * Each route is exposed twice - at its original path and under {@code /api/auth/**},
+ * the layout the rest of the Keycloak tooling (Postman collection, docs) uses.
+ */
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "Auth", description = "Login and registration (session-cookie based)")
+@Tag(name = "Auth", description = "Registration and login, backed by Keycloak (bearer tokens)")
 public class AuthController {
 
-    private final UserService userService;
-    private final AuthenticationManager authenticationManager;
-    private final JwtService jwtService;
-    private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
+    private final AuthService authService;
 
-    @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Log in with email and password; establishes an authenticated session cookie")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest req,
-                                                HttpServletRequest request,
-                                                HttpServletResponse response) {
-        Authentication authRequest = new UsernamePasswordAuthenticationToken(req.email(), req.password());
-        Authentication authResult = authenticationManager.authenticate(authRequest);
-
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(authResult);
-        SecurityContextHolder.setContext(context);
-        securityContextRepository.saveContext(context, request, response);
-
-        boolean isAdmin = authResult.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-        String token = jwtService.generateToken(authResult);
-        return ResponseEntity.ok(new LoginResponse(
-                authResult.getName(), isAdmin ? "ADMIN" : "CUSTOMER", isAdmin ? "/admin/dashboard" : "/movies", token));
+    @PostMapping(value = {"/login", "/api/auth/login"},
+            consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Exchange an email and password for a Keycloak access token")
+    public LoginResponse login(@Valid @RequestBody LoginRequest req) {
+        AuthService.Session session = authService.login(req.email(), req.password());
+        return LoginResponse.of(session);
     }
 
-    @PostMapping(value = "/register", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Register a new customer account")
-    public ResponseEntity<Map<String, Object>> register(@Valid @RequestBody RegisterForm registerForm) {
-        userService.registerCustomer(registerForm.getName(), registerForm.getEmail(), registerForm.getPassword());
-        return ResponseEntity.ok(Map.of("success", true));
+    @PostMapping(value = {"/register", "/api/auth/register"},
+            consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Register a new customer account in Keycloak")
+    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterForm registerForm) {
+        User user = authService.register(registerForm.getName(), registerForm.getEmail(), registerForm.getPassword());
+        return ResponseEntity.status(HttpStatus.CREATED).body(RegisterResponse.of(user));
+    }
+
+    @PostMapping(value = "/api/auth/refresh",
+            consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Trade a refresh token for a fresh access token")
+    public LoginResponse refresh(@Valid @RequestBody RefreshRequest req) {
+        return LoginResponse.of(authService.refresh(req.refreshToken()));
+    }
+
+    @PostMapping(value = {"/logout", "/api/auth/logout"}, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "End the Keycloak session behind a refresh token")
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshRequest req) {
+        authService.logout(req.refreshToken());
+        return ResponseEntity.noContent().build();
     }
 
     public record LoginRequest(@NotBlank String email, @NotBlank String password) {
     }
 
-    public record LoginResponse(String email, String role, String redirectUrl, String token) {
+    public record RefreshRequest(@NotBlank @JsonProperty("refresh_token") String refreshToken) {
+    }
+
+    /**
+     * The Keycloak token fields stay at the top level under their OAuth2 names, so a
+     * client can read {@code access_token} the same way it would from Keycloak itself,
+     * alongside the bits of the local account the UI needs to route the user.
+     */
+    public record LoginResponse(
+            String message,
+            String email,
+            String name,
+            String role,
+            String redirectUrl,
+            @JsonProperty("access_token") String accessToken,
+            @JsonProperty("refresh_token") String refreshToken,
+            @JsonProperty("expires_in") long expiresIn,
+            @JsonProperty("token_type") String tokenType
+    ) {
+        static LoginResponse of(AuthService.Session session) {
+            User user = session.user();
+            TokenResponse token = session.token();
+            boolean isAdmin = user.getRole() == Role.ADMIN;
+            return new LoginResponse(
+                    "Login successful for " + user.getEmail(),
+                    user.getEmail(),
+                    user.getName(),
+                    user.getRole().name(),
+                    isAdmin ? "/admin/dashboard" : "/movies",
+                    token.accessToken(), token.refreshToken(), token.expiresIn(), token.tokenType());
+        }
+    }
+
+    public record RegisterResponse(String message, RegisteredUser user) {
+        static RegisterResponse of(User user) {
+            return new RegisterResponse("User " + user.getEmail() + " registered successfully",
+                    new RegisteredUser(user.getId(), user.getName(), user.getEmail(), user.getRole().name()));
+        }
+    }
+
+    public record RegisteredUser(Long id, String name, String email, String role) {
     }
 }

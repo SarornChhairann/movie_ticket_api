@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: "jdbc:h2:mem:mtms_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1"
+    driverClassName: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+    open-in-view: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # No Keycloak runs during tests. Setting jwk-set-uri as well as issuer-uri
+          # keeps the context from doing any key discovery while it boots - the keys
+          # would only be fetched if a token were actually presented.
+          issuer-uri: http://localhost:8080/realms/ticket-realm
+          jwk-set-uri: http://localhost:8080/realms/ticket-realm/protocol/openid-connect/certs
+
+keycloak:
+  server-url: http://localhost:8080
+  realm: ticket-realm
+  login-client-id: ticket-app
+  admin-client-id: ticket-backend
+  admin-client-secret: test-secret
+  # Nothing to bootstrap against, so AdminSeeder only writes the local mirror row.
+  bootstrap-admin: false

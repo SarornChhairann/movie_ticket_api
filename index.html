@@ -498,7 +498,7 @@
             <span class="chip">Base URL: http://localhost:8010</span>
             <span class="chip">Spring Boot 3.5.9 · Java 17</span>
             <span class="chip">Swagger UI: /swagger-ui.html</span>
-            <span class="chip">Auth: HTTP Basic + session cookie</span>
+            <span class="chip">Auth: Keycloak (Bearer JWT)</span>
             <span class="chip">CSRF: disabled</span>
           </div>
 
@@ -1130,12 +1130,12 @@ GET /api/movies?type=coming_soon&amp;month=2026-08</span></pre>
             </div>
             <div class="bd">
               <p class="use">
-                <b>What it is used for:</b> Authenticates email + password
-                through Spring Security's <code>AuthenticationManager</code>,
-                saves the <code>SecurityContext</code> into the HTTP session (so
-                a <code>JSESSIONID</code> cookie is set), <em>and</em> hands
-                back a JWT. It also tells the client where to go next based on
-                role.
+                <b>What it is used for:</b> Exchanges email + password for a
+                Keycloak access token, using the realm's password grant, so a
+                client never has to talk to Keycloak itself. No session and no
+                cookie is created. It also tells the client where to go next
+                based on role. Same endpoint at
+                <code>POST /api/auth/login</code>.
               </p>
               <h4>
                 Request payload · <code>application/json</code> —
@@ -1147,18 +1147,31 @@ GET /api/movies?type=coming_soon&amp;month=2026-08</span></pre>
 }</pre>
               <h4>Response 200 · <code>LoginResponse</code></h4>
               <pre>{
-  <span class="k">"email"</span>:       <span class="s">"admin@tkm.co"</span>,
-  <span class="k">"role"</span>:        <span class="s">"ADMIN"</span>,             <span class="c">// "ADMIN" if ROLE_ADMIN is granted, else "CUSTOMER"</span>
-  <span class="k">"redirectUrl"</span>: <span class="s">"/admin/dashboard"</span>,  <span class="c">// "/movies" for customers</span>
-  <span class="k">"token"</span>:       <span class="s">"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkB0a20uY28i…"</span>
+  <span class="k">"message"</span>:       <span class="s">"Login successful for admin@tkm.co"</span>,
+  <span class="k">"email"</span>:         <span class="s">"admin@tkm.co"</span>,
+  <span class="k">"name"</span>:          <span class="s">"System Admin"</span>,
+  <span class="k">"role"</span>:          <span class="s">"ADMIN"</span>,             <span class="c">// "ADMIN" if the realm role admin is granted, else "CUSTOMER"</span>
+  <span class="k">"redirectUrl"</span>:   <span class="s">"/admin/dashboard"</span>,  <span class="c">// "/movies" for customers</span>
+  <span class="k">"access_token"</span>:  <span class="s">"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9…"</span>,  <span class="c">// send as Bearer; ~5 min</span>
+  <span class="k">"refresh_token"</span>: <span class="s">"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9…"</span>,
+  <span class="k">"expires_in"</span>:    <span class="num">300</span>,
+  <span class="k">"token_type"</span>:    <span class="s">"Bearer"</span>
 }</pre>
               <div class="note">
-                Two ways to stay authenticated afterwards: reuse the session
-                cookie, or send
-                <code>Authorization: Basic &lt;base64(email:password)&gt;</code>
-                on each request. <code>SUSPENDED</code> /
-                <code>BANNED</code> accounts are rejected by
-                <code>CustomUserDetailsService</code>.
+                Every later request carries
+                <code>Authorization: Bearer &lt;access_token&gt;</code>. There is
+                no session cookie and no HTTP Basic. When the access token
+                expires, <code>POST /api/auth/refresh</code> issues a new one
+                from the <code>refresh_token</code>;
+                <code>POST /logout</code> revokes it.
+                <code>SUSPENDED</code> / <code>BANNED</code> accounts are
+                disabled in Keycloak and rejected by
+                <code>KeycloakUserSyncFilter</code>.
+              </div>
+              <div class="note warn">
+                <b>401</b> if the email or password is wrong · <b>403</b> if the
+                account is suspended or banned · <b>502</b> if Keycloak is
+                unreachable.
               </div>
             </div>
           </div>
@@ -1171,9 +1184,13 @@ GET /api/movies?type=coming_soon&amp;month=2026-08</span></pre>
             </div>
             <div class="bd">
               <p class="use">
-                <b>What it is used for:</b> Self-service sign-up. Always creates
-                a <code>CUSTOMER</code>; the role can never be escalated from
-                this endpoint. The password is BCrypt-hashed before storage.
+                <b>What it is used for:</b> Self-service sign-up. Creates the
+                account in Keycloak through its Admin REST API with the realm
+                role <code>customer</code> — the role can never be escalated
+                from this endpoint — and mirrors it into the
+                <code>users</code> table. The password is only ever stored by
+                Keycloak. Same endpoint at
+                <code>POST /api/auth/register</code>.
               </p>
               <h4>
                 Request payload · <code>application/json</code> —
@@ -1184,11 +1201,19 @@ GET /api/movies?type=coming_soon&amp;month=2026-08</span></pre>
   <span class="k">"email"</span>:    <span class="s">"dara@example.com"</span>,  <span class="c">// @NotBlank @Email — must be unique</span>
   <span class="k">"password"</span>: <span class="s">"secret123"</span>          <span class="c">// @NotBlank</span>
 }</pre>
-              <h4>Response 200</h4>
-              <pre>{ <span class="k">"success"</span>: <span class="s">true</span> }</pre>
+              <h4>Response 201 · <code>RegisterResponse</code></h4>
+              <pre>{
+  <span class="k">"message"</span>: <span class="s">"User dara@example.com registered successfully"</span>,
+  <span class="k">"user"</span>: {
+    <span class="k">"id"</span>:    <span class="num">103</span>,
+    <span class="k">"name"</span>:  <span class="s">"Sok Dara"</span>,
+    <span class="k">"email"</span>: <span class="s">"dara@example.com"</span>,
+    <span class="k">"role"</span>:  <span class="s">"CUSTOMER"</span>
+  }
+}</pre>
               <div class="note warn">
-                <b>400</b> if validation fails or the email is already
-                registered.
+                <b>400</b> if validation fails · <b>409</b> if the email is
+                already registered · <b>502</b> if Keycloak is unreachable.
               </div>
             </div>
           </div>
@@ -1779,8 +1804,8 @@ Content-Disposition: attachment; filename="ticket-TKT-8F2A31C9.pdf"</span>
                 </tbody>
               </table>
               <p class="none">
-                No body. The caller's identity comes from the session cookie or
-                Basic auth header.
+                No body. The caller's identity is the email inside the bearer
+                token.
               </p>
               <h4>Response 200</h4>
               <pre>{
@@ -3400,9 +3425,10 @@ ID,Movie,Date,Time,Hall,Customer,Email,Total,Status,PaymentMethod,BookedAt
             <div class="bd">
               <p class="use">
                 <b>What it is used for:</b> Moderation. Setting a user to
-                <code>SUSPENDED</code> or <code>BANNED</code> makes
-                <code>CustomUserDetailsService</code> reject their next login
-                attempt outright.
+                <code>SUSPENDED</code> or <code>BANNED</code> disables the
+                account in Keycloak, so it stops being issued tokens, and
+                <code>KeycloakUserSyncFilter</code> turns away any token it
+                already holds.
               </p>
               <h4>
                 Request payload · <code>application/json</code> —

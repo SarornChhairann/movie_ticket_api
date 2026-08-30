@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.github.javafaker.Faker;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +38,6 @@ public class DatabaseSeederService {
     private final PaymentRepository paymentRepository;
     private final TicketRepository ticketRepository;
     private final SystemSettingRepository systemSettingRepository;
-    private final PasswordEncoder passwordEncoder;
 
     @Value("${app.seed.counts.users:50}")
     private int userCount;
@@ -109,13 +107,13 @@ public class DatabaseSeederService {
 
     private List<User> seedUsers() {
         List<User> users = new ArrayList<>();
-        String encodedPassword = passwordEncoder.encode("password123");
         for (int i = 0; i < userCount; i++) {
             User user = new User();
             user.setName(faker.name().fullName());
             user.setEmail(UUID.randomUUID().toString().substring(0, 8) + "_" + faker.internet().emailAddress());
             user.setPhone(faker.phoneNumber().cellPhone());
-            user.setPassword(encodedPassword);
+            // Demo rows only mirror the shape of a real account; Keycloak holds credentials.
+            user.setPassword(User.KEYCLOAK_MANAGED_PASSWORD);
             user.setRole(Role.CUSTOMER);
             user.setStatus(UserStatus.ACTIVE);
             user.setPoints(faker.number().numberBetween(0, 1000));

@@ -1,0 +1,94 @@
+server:
+  port: ${SERVER_PORT:8010}
+
+spring:
+  application:
+    name: TicketManagementSystem
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/spring_boot_ticket
+    username: myuser
+    password: MySecretPassword
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        order_inserts: true
+        order_updates: true
+        jdbc:
+          batch_size: 50
+          batch_versioned_data: true
+
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+  thymeleaf:
+    check-template-location: false
+
+  # Mail - set MAIL_HOST/USER/PASS env vars to enable real email delivery
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ""
+    password: ""
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # The app is an OAuth2 resource server: Keycloak issues tokens, this only
+          # verifies them. Spring uses this to discover the realm's public keys via
+          # {issuer-uri}/.well-known/openid-configuration, and it must match the "iss"
+          # claim inside every token exactly.
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/ticket-realm}
+          # docker-compose additionally sets
+          # SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI, for when the app
+          # reaches Keycloak on a different host than the one named in the token's issuer.
+
+# Used by AuthService/KeycloakAdminClient to call Keycloak directly for login,
+# registration and user administration, separately from the resourceserver config
+# above (which only ever verifies tokens, never issues them or creates users).
+keycloak:
+  server-url: ${KEYCLOAK_SERVER_URL:http://localhost:8080}
+  realm: ${KEYCLOAK_REALM:ticket-realm}
+  # Public client used to exchange an email/password for a token (login).
+  login-client-id: ${KEYCLOAK_LOGIN_CLIENT_ID:ticket-app}
+  # Confidential client whose service account holds realm-management: manage-users,
+  # used to create and maintain users through Keycloak's Admin REST API.
+  admin-client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:ticket-backend}
+  admin-client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:ticket-backend-secret}
+  # Push the APP_ADMIN_* account into the realm at startup (non-fatal if Keycloak is down).
+  bootstrap-admin: ${KEYCLOAK_BOOTSTRAP_ADMIN:true}
+
+app:
+  uploads:
+    movies-dir: uploads/movies
+    food-items-dir: uploads/food-items
+    food-items:
+      max-bytes: 5242880
+  seed:
+    enabled: true
+    force: true
+    halls: 3
+    days: 14
+    showtimesPerHallPerDay: 3
+    customers: 25
+    randomSeed: 20260503
+
+# The admin account this app makes sure exists, both in Keycloak and in the users table.
+APP_ADMIN_EMAIL: admin@gmail.com
+APP_ADMIN_PASSWORD: admin123
+APP_ADMIN_NAME: System Admin

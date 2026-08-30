@@ -4,6 +4,7 @@ import co.tkm.ticketmanagementsystem.model.Cinema;
 import co.tkm.ticketmanagementsystem.model.Hall;
 import co.tkm.ticketmanagementsystem.repository.CinemaRepository;
 import co.tkm.ticketmanagementsystem.repository.HallRepository;
+import co.tkm.ticketmanagementsystem.service.AuthService;
 import co.tkm.ticketmanagementsystem.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +26,8 @@ public class AdminSeeder implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(AdminSeeder.class);
 
     private final UserService userService;
+    private final AuthService authService;
+    private final KeycloakProperties keycloakProperties;
     private final HallRepository hallRepository;
     private final CinemaRepository cinemaRepository;
 
@@ -40,8 +43,29 @@ public class AdminSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
         log.info("Ensuring admin user exists: {}", adminEmail);
-        userService.createAdminIfMissing(adminName, adminEmail, adminPassword);
+        ensureKeycloakAdmin();
+        userService.createAdminIfMissing(adminName, adminEmail.trim().toLowerCase());
         backfillCinemasFromHalls();
+    }
+
+    /**
+     * Keycloak, not this app, decides whether the APP_ADMIN_* credentials work, so the
+     * account is pushed there as well as mirrored locally. It is deliberately not fatal:
+     * the realm import already ships an admin, and a Keycloak that is still starting up
+     * (or switched off, as in tests) should not stop the app from booting.
+     */
+    private void ensureKeycloakAdmin() {
+        if (!keycloakProperties.bootstrapAdmin()) {
+            log.info("keycloak.bootstrap-admin is off; leaving the Keycloak realm untouched.");
+            return;
+        }
+        try {
+            authService.ensureAdminAccount(adminName, adminEmail, adminPassword);
+            log.info("Keycloak admin account is in place: {}", adminEmail);
+        } catch (RuntimeException e) {
+            log.warn("Could not bootstrap the Keycloak admin account ({}). "
+                    + "Log in with an account that already exists in the realm.", e.getMessage());
+        }
     }
 
     private void backfillCinemasFromHalls() {

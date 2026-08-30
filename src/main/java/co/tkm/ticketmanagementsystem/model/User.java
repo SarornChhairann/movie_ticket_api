@@ -25,6 +25,14 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class User extends AuditableEntity {
+
+    /**
+     * Placeholder stored in the (non-null) password column. Keycloak holds every real
+     * credential now, so nothing in this app ever reads or verifies this value - it
+     * only keeps the column honest for rows mirrored from the realm.
+     */
+    public static final String KEYCLOAK_MANAGED_PASSWORD = "managed-by-keycloak";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

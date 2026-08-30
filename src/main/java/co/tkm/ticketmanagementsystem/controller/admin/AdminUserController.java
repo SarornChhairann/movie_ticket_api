@@ -2,6 +2,7 @@ package co.tkm.ticketmanagementsystem.controller.admin;
 
 import co.tkm.ticketmanagementsystem.enums.UserStatus;
 import co.tkm.ticketmanagementsystem.model.User;
+import co.tkm.ticketmanagementsystem.service.AuthService;
 import co.tkm.ticketmanagementsystem.service.BookingService;
 import co.tkm.ticketmanagementsystem.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,6 +29,7 @@ public class AdminUserController {
 
     private final UserService userService;
     private final BookingService bookingService;
+    private final AuthService authService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "List users, optionally filtered by a search query")
@@ -51,7 +53,11 @@ public class AdminUserController {
     @Operation(summary = "Set a user's account status")
     public ResponseEntity<UserSummary> setUserStatus(@PathVariable Long id, @RequestBody StatusRequest req) {
         userService.setStatus(id, req.status());
-        return ResponseEntity.ok(toUserSummary(userService.findById(id)));
+        User user = userService.findById(id);
+        // Disable the account in Keycloak too, so a suspended user stops being issued
+        // tokens rather than only being turned away at this app's door.
+        authService.syncStatus(user.getEmail(), req.status());
+        return ResponseEntity.ok(toUserSummary(user));
     }
 
     @PostMapping(value = "/{id}/points", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)

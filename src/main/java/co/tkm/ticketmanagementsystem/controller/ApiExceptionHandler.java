@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,6 +25,20 @@ public class ApiExceptionHandler {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("error", ex.getMessage());
         body.put("type", ex.getType().name());
+        return ResponseEntity.status(status).body(body);
+    }
+
+    /**
+     * Everything the Keycloak layer throws deliberately: 401 on a bad credential, 409 on
+     * a duplicate account, 502 when Keycloak is unreachable or misconfigured. Handling it
+     * here writes the response directly instead of letting Spring Boot forward to /error.
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException ex) {
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", ex.getReason() != null ? ex.getReason() : status.getReasonPhrase());
+        body.put("type", status.name());
         return ResponseEntity.status(status).body(body);
     }
 
