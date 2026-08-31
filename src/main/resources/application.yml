@@ -5,15 +5,22 @@ spring:
   application:
     name: TicketManagementSystem
 
+  config:
+    # Every value below comes from .env in the project root. "optional:" so the app
+    # still starts without it (the defaults after each ":" are the same values), and
+    # real environment variables still win over the file - which is how the container
+    # in docker-compose.yml overrides the localhost addresses with db:/keycloak:.
+    import: optional:file:./.env[.properties]
+
   datasource:
-    url: jdbc:postgresql://localhost:5433/spring_boot_ticket
-    username: myuser
-    password: MySecretPassword
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5433}/${POSTGRES_DB:spring_boot_ticket}
+    username: ${POSTGRES_USER:myuser}
+    password: ${POSTGRES_PASSWORD:MySecretPassword}
 
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    show-sql: ${SPRING_JPA_SHOW_SQL:true}
     open-in-view: false
     properties:
       hibernate:
@@ -24,20 +31,21 @@ spring:
           batch_size: 50
           batch_versioned_data: true
 
+  # Logging - set SPRING_LOGGING_LEVEL_ROOT in .env to override the default INFO level.        
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 5MB
+      max-file-size: ${SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE:5MB}
+      max-request-size: ${SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE:5MB}
 
   thymeleaf:
     check-template-location: false
 
-  # Mail - set MAIL_HOST/USER/PASS env vars to enable real email delivery
+  # Mail - set SPRING_MAIL_USERNAME/PASSWORD in .env to enable real email delivery.
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ""
-    password: ""
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -74,21 +82,34 @@ keycloak:
   bootstrap-admin: ${KEYCLOAK_BOOTSTRAP_ADMIN:true}
 
 app:
+  cors:
+    # Origins allowed to call this API from a browser (the React dev server).
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:8081}
   uploads:
-    movies-dir: uploads/movies
-    food-items-dir: uploads/food-items
+    movies-dir: ${APP_UPLOADS_MOVIES_DIR:uploads/movies}
+    food-items-dir: ${APP_UPLOADS_FOOD_ITEMS_DIR:uploads/food-items}
     food-items:
-      max-bytes: 5242880
+      max-bytes: ${APP_UPLOADS_FOOD_ITEMS_MAX_BYTES:5242880}
   seed:
-    enabled: true
-    force: true
-    halls: 3
-    days: 14
-    showtimesPerHallPerDay: 3
-    customers: 25
-    randomSeed: 20260503
+    enabled: ${APP_SEED_ENABLED:true}
+    force: ${APP_SEED_FORCE:true}
+    halls: ${APP_SEED_HALLS:3}
+    days: ${APP_SEED_DAYS:14}
+    showtimesPerHallPerDay: ${APP_SEED_SHOWTIMES_PER_HALL_PER_DAY:3}
+    customers: ${APP_SEED_CUSTOMERS:25}
+    randomSeed: ${APP_SEED_RANDOM_SEED:20260503}
+    counts:
+      users: ${APP_SEED_COUNTS_USERS:50}
+      cinemas: ${APP_SEED_COUNTS_CINEMAS:3}
+      hallsPerCinema: ${APP_SEED_COUNTS_HALLS_PER_CINEMA:3}
+      movies: ${APP_SEED_COUNTS_MOVIES:15}
+      showtimesPerMovie: ${APP_SEED_COUNTS_SHOWTIMES_PER_MOVIE:5}
+      foodItems: ${APP_SEED_COUNTS_FOOD_ITEMS:10}
+      promoCodes: ${APP_SEED_COUNTS_PROMO_CODES:5}
+      bookings: ${APP_SEED_COUNTS_BOOKINGS:20}
 
-# The admin account this app makes sure exists, both in Keycloak and in the users table.
-APP_ADMIN_EMAIL: admin@gmail.com
-APP_ADMIN_PASSWORD: admin123
-APP_ADMIN_NAME: System Admin
+# The admin account this app makes sure exists (in Keycloak and in the users table)
+# is APP_ADMIN_NAME / APP_ADMIN_EMAIL / APP_ADMIN_PASSWORD, and it now lives only in
+# .env - repeating those keys here would be a circular placeholder reference, since
+# the key and the placeholder would have the same name. AdminSeeder carries the same
+# values as its @Value defaults, for a checkout with no .env file.

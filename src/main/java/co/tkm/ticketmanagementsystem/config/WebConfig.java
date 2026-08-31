@@ -16,6 +16,10 @@ import java.nio.file.Paths;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+    /** Origins allowed to call this API from a browser; comma-separated in .env. */
+    @Value("${app.cors.allowed-origins:http://localhost:8081}")
+    private String[] allowedOrigins;
+
     @Value("${app.uploads.movies-dir:uploads/movies}")
     private String uploadsMoviesDir;
 
@@ -48,7 +52,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:8081")
+                .allowedOrigins(allowedOrigins)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);

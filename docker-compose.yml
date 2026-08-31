@@ -12,14 +12,24 @@ services:
         condition: service_healthy
     ports:
       - "${APP_PORT:-8010}:8010"
+    # Everything here comes from .env. The app reads that same file directly when it
+    # runs outside Docker (application.yml imports it); the few values that differ in
+    # a container - the database host, and the URL Keycloak is reached on - are the
+    # ones spelled out literally below.
     environment:
       SERVER_PORT: 8010
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-spring_boot_ticket}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-myuser}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-MySecretPassword}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
+      SPRING_JPA_SHOW_SQL: ${SPRING_JPA_SHOW_SQL:-true}
+      # Fixed paths: they name the app_uploads volume mounted at /app/uploads below.
       APP_UPLOADS_MOVIES_DIR: /app/uploads/movies
       APP_UPLOADS_FOOD_ITEMS_DIR: /app/uploads/food-items
+      APP_UPLOADS_FOOD_ITEMS_MAX_BYTES: ${APP_UPLOADS_FOOD_ITEMS_MAX_BYTES:-5242880}
+      SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: ${SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE:-5MB}
+      SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: ${SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE:-5MB}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:8081}
       # --- Keycloak -----------------------------------------------------------
       # Tokens are issued with KC_HOSTNAME in their "iss" claim (localhost, so the
       # same tokens work for Postman/Swagger on the host), while this container
@@ -39,6 +49,19 @@ services:
       APP_ADMIN_NAME: ${APP_ADMIN_NAME:-System Admin}
       APP_SEED_ENABLED: ${APP_SEED_ENABLED:-true}
       APP_SEED_FORCE: ${APP_SEED_FORCE:-false}
+      APP_SEED_HALLS: ${APP_SEED_HALLS:-3}
+      APP_SEED_DAYS: ${APP_SEED_DAYS:-14}
+      APP_SEED_SHOWTIMES_PER_HALL_PER_DAY: ${APP_SEED_SHOWTIMES_PER_HALL_PER_DAY:-3}
+      APP_SEED_CUSTOMERS: ${APP_SEED_CUSTOMERS:-25}
+      APP_SEED_RANDOM_SEED: ${APP_SEED_RANDOM_SEED:-20260503}
+      APP_SEED_COUNTS_USERS: ${APP_SEED_COUNTS_USERS:-50}
+      APP_SEED_COUNTS_CINEMAS: ${APP_SEED_COUNTS_CINEMAS:-3}
+      APP_SEED_COUNTS_HALLS_PER_CINEMA: ${APP_SEED_COUNTS_HALLS_PER_CINEMA:-3}
+      APP_SEED_COUNTS_MOVIES: ${APP_SEED_COUNTS_MOVIES:-15}
+      APP_SEED_COUNTS_SHOWTIMES_PER_MOVIE: ${APP_SEED_COUNTS_SHOWTIMES_PER_MOVIE:-5}
+      APP_SEED_COUNTS_FOOD_ITEMS: ${APP_SEED_COUNTS_FOOD_ITEMS:-10}
+      APP_SEED_COUNTS_PROMO_CODES: ${APP_SEED_COUNTS_PROMO_CODES:-5}
+      APP_SEED_COUNTS_BOOKINGS: ${APP_SEED_COUNTS_BOOKINGS:-20}
       SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-smtp.gmail.com}
       SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
       SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}

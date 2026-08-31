@@ -1,0 +1,827 @@
+{
+  "info": {
+    "_postman_id": "b7c1e2f4-4a3d-4f7e-9c21-3a5d8e0f1a20",
+    "name": "Ticket API — Auth (Keycloak)",
+    "description": "Auth endpoint tests for the Ticket Management System.\n\nRun top to bottom (Collection Runner or one by one): the login requests store the tokens that every later request uses.\n\nNeeds Keycloak on :8080 and the app on :8010, with the demo accounts from keycloak/realm-export.json.\n\nEvery failure in this API answers with the same body shape: {\"error\": \"...\", \"type\": \"...\"}.\n\nNote: the Register folder creates a real account in Keycloak on every run (the email is timestamped, so runs never collide).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8010" },
+    { "key": "admin_email", "value": "admin@gmail.com" },
+    { "key": "admin_password", "value": "admin123" },
+    { "key": "customer_email", "value": "customer@gmail.com" },
+    { "key": "customer_password", "value": "customer123" },
+    { "key": "admin_token", "value": "" },
+    { "key": "customer_token", "value": "" },
+    { "key": "customer_refresh_token", "value": "" },
+    { "key": "new_email", "value": "" },
+    { "key": "new_password", "value": "secret123" }
+  ],
+  "item": [
+    {
+      "name": "1. Login",
+      "item": [
+        {
+          "name": "Login as admin → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('returns a Keycloak token set', () => {",
+                  "    pm.expect(body).to.have.property('access_token').that.is.a('string');",
+                  "    pm.expect(body).to.have.property('refresh_token').that.is.a('string');",
+                  "    pm.expect(body.token_type).to.eql('Bearer');",
+                  "    pm.expect(body.expires_in).to.be.above(0);",
+                  "});",
+                  "pm.test('role is ADMIN', () => pm.expect(body.role).to.eql('ADMIN'));",
+                  "pm.test('admin is routed to the dashboard', () => pm.expect(body.redirectUrl).to.eql('/admin/dashboard'));",
+                  "",
+                  "// The token is a real JWT: header.payload.signature, issued by the realm.",
+                  "const claims = JSON.parse(atob(body.access_token.split('.')[1]));",
+                  "pm.test('token carries the admin realm role', () => pm.expect(claims.realm_access.roles).to.include('admin'));",
+                  "pm.test('token carries the email claim the app identifies users by', () => pm.expect(claims.email).to.eql(pm.collectionVariables.get('admin_email')));",
+                  "",
+                  "pm.collectionVariables.set('admin_token', body.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
+            "description": "POST /login runs Keycloak's password grant behind the scenes and returns the tokens Keycloak issued. The client never talks to Keycloak itself."
+          }
+        },
+        {
+          "name": "Login as customer → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('role is CUSTOMER', () => pm.expect(body.role).to.eql('CUSTOMER'));",
+                  "pm.test('customer is routed to /movies', () => pm.expect(body.redirectUrl).to.eql('/movies'));",
+                  "",
+                  "const claims = JSON.parse(atob(body.access_token.split('.')[1]));",
+                  "pm.test('token has customer but not admin', () => {",
+                  "    pm.expect(claims.realm_access.roles).to.include('customer');",
+                  "    pm.expect(claims.realm_access.roles).to.not.include('admin');",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('customer_token', body.access_token);",
+                  "pm.collectionVariables.set('customer_refresh_token', body.refresh_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customer_email}}\",\n  \"password\": \"{{customer_password}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] }
+          }
+        },
+        {
+          "name": "Login with wrong password → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('standard error shape', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.type).to.eql('UNAUTHORIZED');",
+                  "    pm.expect(body.error).to.eql('Invalid email or password');",
+                  "});",
+                  "pm.test('no token is handed out', () => pm.expect(pm.response.text()).to.not.include('access_token'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customer_email}}\",\n  \"password\": \"definitely-not-the-password\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
+            "description": "Keycloak's token endpoint answers a rejected credential with 400 invalid_grant as often as 401; KeycloakAdminClient folds both into a single 401 here."
+          }
+        },
+        {
+          "name": "Login with unknown email → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('same message as a wrong password (no account enumeration)', () => {",
+                  "    pm.expect(pm.response.json().error).to.eql('Invalid email or password');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nobody.here@example.com\",\n  \"password\": \"whatever123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] }
+          }
+        },
+        {
+          "name": "Login via /api/auth/login → 200 (same endpoint)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('the alias returns a token too', () => pm.expect(pm.response.json()).to.have.property('access_token'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customer_email}}\",\n  \"password\": \"{{customer_password}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "AuthController maps every route twice: at its plain path and under /api/auth/**."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Register",
+      "item": [
+        {
+          "name": "Register a new customer → 201",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A fresh address each run, so re-running never trips the duplicate check.",
+                  "pm.collectionVariables.set('new_email', `test.user.${Date.now()}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('mirrored into the local users table with an id', () => {",
+                  "    pm.expect(body.user).to.have.property('id').that.is.a('number');",
+                  "    pm.expect(body.user.email).to.eql(pm.collectionVariables.get('new_email'));",
+                  "});",
+                  "pm.test('self-registration always grants CUSTOMER', () => pm.expect(body.user.role).to.eql('CUSTOMER'));",
+                  "pm.test('no password or token is echoed back', () => {",
+                  "    pm.expect(pm.response.text()).to.not.include(pm.collectionVariables.get('new_password'));",
+                  "    pm.expect(body).to.not.have.property('access_token');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test User\",\n  \"email\": \"{{new_email}}\",\n  \"password\": \"{{new_password}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/register", "host": ["{{base_url}}"], "path": ["register"] },
+            "description": "Creates the account through Keycloak's Admin REST API, then mirrors it into users. Keycloak goes first because it is the system of record; if the local insert fails, the half-created Keycloak account is deleted again."
+          }
+        },
+        {
+          "name": "Log in as the account just registered → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('the new account really exists in Keycloak', () => {",
+                  "    pm.expect(pm.response.json()).to.have.property('access_token');",
+                  "});",
+                  "pm.test('and it is a CUSTOMER', () => pm.expect(pm.response.json().role).to.eql('CUSTOMER'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{new_email}}\",\n  \"password\": \"{{new_password}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
+            "description": "Proves registration wrote a usable credential into the realm, not just a row in the database."
+          }
+        },
+        {
+          "name": "Register the same email again → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('says the email is taken', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.type).to.eql('CONFLICT');",
+                  "    pm.expect(body.error).to.eql('Email is already in use.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test User\",\n  \"email\": \"{{new_email}}\",\n  \"password\": \"{{new_password}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/register", "host": ["{{base_url}}"], "path": ["register"] },
+            "description": "Whether an email is taken is Keycloak's call, not the mirror's — a stale users row must not block an address forever."
+          }
+        },
+        {
+          "name": "Register with a malformed email → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "// @Email/@NotBlank on RegisterForm reject this before Keycloak is ever called,",
+                  "// so this one comes back in Spring's default validation shape, not {error,type}.",
+                  "pm.test('nothing was created', () => pm.expect(pm.response.text()).to.not.include('registered successfully'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Broken Email\",\n  \"email\": \"not-an-email\",\n  \"password\": \"secret123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/register", "host": ["{{base_url}}"], "path": ["register"] }
+          }
+        },
+        {
+          "name": "Register with a blank name → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('400 Bad Request', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"email\": \"blank.name@example.com\",\n  \"password\": \"secret123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/register", "host": ["{{base_url}}"], "path": ["register"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Token lifecycle",
+      "item": [
+        {
+          "name": "Refresh the customer token → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('hands back a new access token', () => pm.expect(body.access_token).to.be.a('string'));",
+                  "pm.test('still the same user and role', () => {",
+                  "    pm.expect(body.email).to.eql(pm.collectionVariables.get('customer_email'));",
+                  "    pm.expect(body.role).to.eql('CUSTOMER');",
+                  "});",
+                  "",
+                  "// Keycloak rotates the refresh token, so keep the new one for the logout test.",
+                  "pm.collectionVariables.set('customer_token', body.access_token);",
+                  "pm.collectionVariables.set('customer_refresh_token', body.refresh_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{customer_refresh_token}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "refresh"]
+            },
+            "description": "Access tokens live ~5 minutes; this trades the refresh token for a fresh one without asking for the password again."
+          }
+        },
+        {
+          "name": "Refresh with a junk token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('explains why', () => {",
+                  "    pm.expect(pm.response.json().error).to.eql('Refresh token is missing, expired, or already used');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"this-is-not-a-refresh-token\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "refresh"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Authorization — the role decides",
+      "item": [
+        {
+          "name": "GET /admin/users with no token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('rejected by the filter, still in the API error shape', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.type).to.eql('UNAUTHORIZED');",
+                  "    pm.expect(body.error).to.include('No bearer token');",
+                  "});",
+                  "pm.test('RFC 6750 challenge header is set', () => {",
+                  "    pm.expect(pm.response.headers.get('WWW-Authenticate')).to.include('Bearer');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users"]
+            }
+          }
+        },
+        {
+          "name": "GET /admin/users with a customer token → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));",
+                  "pm.test('valid token, wrong role', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.type).to.eql('FORBIDDEN');",
+                  "    pm.expect(body.error).to.include('requires a role you do not have');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customer_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users"]
+            },
+            "description": "The realm role customer maps to ROLE_CUSTOMER, and /admin/** is hasRole('ADMIN'). Nothing in this app decides that beyond reading the token."
+          }
+        },
+        {
+          "name": "GET /admin/users with the admin token → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('returns the user list', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('the seeded admin is in it', () => {",
+                  "    const emails = pm.response.json().map(u => u.email);",
+                  "    pm.expect(emails).to.include(pm.collectionVariables.get('admin_email'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users"]
+            }
+          }
+        },
+        {
+          "name": "GET /admin/users with a mangled token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('the signature check is what fails', () => {",
+                  "    pm.expect(pm.response.json().error).to.include('malformed, expired, or not signed by Keycloak');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}tampered" }],
+            "url": {
+              "raw": "{{base_url}}/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users"]
+            },
+            "description": "The app verifies every token against the realm's public keys, so an edited token is worthless even though the claims inside it still read as 'admin'."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Profile (authenticated user)",
+      "item": [
+        {
+          "name": "GET /profile with no token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('standard error shape', () => pm.expect(pm.response.json().type).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/profile", "host": ["{{base_url}}"], "path": ["profile"] }
+          }
+        },
+        {
+          "name": "GET /profile with the customer token → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('resolved from the token, by email', () => {",
+                  "    pm.expect(body.email).to.eql(pm.collectionVariables.get('customer_email'));",
+                  "});",
+                  "pm.test('shows the columns this app still owns', () => {",
+                  "    pm.expect(body).to.have.property('points');",
+                  "    pm.expect(body.status).to.eql('ACTIVE');",
+                  "});",
+                  "pm.test('never returns a password', () => pm.expect(body).to.not.have.property('password'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customer_token}}" }],
+            "url": { "raw": "{{base_url}}/profile", "host": ["{{base_url}}"], "path": ["profile"] },
+            "description": "The controller calls authentication.getName() — which SecurityConfig set to the token's email claim — and looks the mirror row up by it."
+          }
+        },
+        {
+          "name": "POST /profile — update name and phone → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('the new name comes back', () => {",
+                  "    pm.expect(pm.response.json().name).to.eql('Demo Customer');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"phone\": \"012345678\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/profile", "host": ["{{base_url}}"], "path": ["profile"] },
+            "description": "Writes the mirror row and pushes the name onto the Keycloak account too, so the next token does not carry the old one back."
+          }
+        },
+        {
+          "name": "Change password with the wrong current one → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('the old password is checked by logging in with it', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.type).to.eql('BAD_REQUEST');",
+                  "    pm.expect(body.error).to.eql('Current password is incorrect.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"wrong-old-password\",\n  \"newPassword\": \"newsecret123\",\n  \"confirmPassword\": \"newsecret123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/profile/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["profile", "change-password"]
+            },
+            "description": "There is no password hash in this app to compare against, so AuthService verifies the current password by running a password grant with it."
+          }
+        },
+        {
+          "name": "Change password, new ones do not match → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('caught before Keycloak is called', () => {",
+                  "    pm.expect(pm.response.json().error).to.eql('New passwords do not match.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{customer_password}}\",\n  \"newPassword\": \"newsecret123\",\n  \"confirmPassword\": \"different456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/profile/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["profile", "change-password"]
+            }
+          }
+        },
+        {
+          "name": "Change password, too short → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('minimum length is enforced', () => {",
+                  "    pm.expect(pm.response.json().error).to.eql('Password must be at least 6 characters.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customer_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{customer_password}}\",\n  \"newPassword\": \"abc\",\n  \"confirmPassword\": \"abc\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/profile/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["profile", "change-password"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Logout (run last)",
+      "item": [
+        {
+          "name": "Logout the customer session → 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));",
+                  "pm.test('empty body', () => pm.expect(pm.response.text()).to.be.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{customer_refresh_token}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/logout", "host": ["{{base_url}}"], "path": ["logout"] },
+            "description": "Ends the Keycloak session behind the refresh token. Spring Security's own LogoutFilter is disabled, or it would answer this before AuthController ever ran."
+          }
+        },
+        {
+          "name": "Refresh after logout → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('the session is really gone', () => {",
+                  "    pm.expect(pm.response.json().error).to.eql('Refresh token is missing, expired, or already used');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{customer_refresh_token}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "The access token still works until it expires → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "// Inherent to stateless JWT auth: logout kills the session, not the token",
+                  "// already issued. That is why clients must drop their copy of it too.",
+                  "pm.test('profile still readable with the pre-logout token', () => {",
+                  "    pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get('customer_email'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customer_token}}" }],
+            "url": { "raw": "{{base_url}}/profile", "host": ["{{base_url}}"], "path": ["profile"] },
+            "description": "Not a bug — a deliberate property of bearer tokens, and a good question to be ready for in the demo."
+          }
+        }
+      ]
+    }
+  ]
+}

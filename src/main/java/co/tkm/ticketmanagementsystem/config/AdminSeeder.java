@@ -31,10 +31,12 @@ public class AdminSeeder implements CommandLineRunner {
     private final HallRepository hallRepository;
     private final CinemaRepository cinemaRepository;
 
-    @Value("${APP_ADMIN_NAME:Admin}")
+    // Set in .env; the defaults here are the same values, so a checkout without an
+    // .env file still boots with the documented admin account.
+    @Value("${APP_ADMIN_NAME:System Admin}")
     private String adminName;
 
-    @Value("${APP_ADMIN_EMAIL:admin@mtms.local}")
+    @Value("${APP_ADMIN_EMAIL:admin@gmail.com}")
     private String adminEmail;
 
     @Value("${APP_ADMIN_PASSWORD:admin123}")
