@@ -18,6 +18,7 @@ public class MovieReminderApiController {
 
     private final MovieReminderService movieReminderService;
 
+    /** 200 {@code {ok:true}}; 400 invalid email, unknown or not coming-soon movie; 409 {@code REMINDER_EXISTS}. */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> create(@RequestBody CreateReminderRequest req) {
         movieReminderService.createReminder(req.movieId(), req.email());

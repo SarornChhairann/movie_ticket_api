@@ -2,6 +2,7 @@ package co.tkm.ticketmanagementsystem.security;
 
 import co.tkm.ticketmanagementsystem.enums.UserStatus;
 import co.tkm.ticketmanagementsystem.model.User;
+import co.tkm.ticketmanagementsystem.service.AuthService;
 import co.tkm.ticketmanagementsystem.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -66,7 +67,7 @@ public class KeycloakUserSyncFilter extends OncePerRequestFilter {
                 KeycloakClaims.role(jwtAuthentication.getToken()));
 
         if (user.getStatus() != UserStatus.ACTIVE) {
-            writeError(response, HttpStatus.FORBIDDEN,
+            writeError(response, HttpStatus.FORBIDDEN, AuthService.ACCOUNT_BLOCKED,
                     "This account is " + user.getStatus().name().toLowerCase() + ".");
             return;
         }
@@ -74,11 +75,19 @@ public class KeycloakUserSyncFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    /** Same {@code error}/{@code type} body shape that {@code ApiExceptionHandler} returns. */
     private void writeError(HttpServletResponse response, HttpStatus status, String message) throws IOException {
+        writeError(response, status, null, message);
+    }
+
+    /** Same {@code error}/{@code type}/{@code code?} body shape that {@code ApiExceptionHandler} returns. */
+    private void writeError(HttpServletResponse response, HttpStatus status, String code, String message)
+            throws IOException {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("error", message);
         body.put("type", status.name());
+        if (code != null) {
+            body.put("code", code);
+        }
 
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

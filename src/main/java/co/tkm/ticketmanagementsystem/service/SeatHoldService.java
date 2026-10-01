@@ -1,5 +1,8 @@
 package co.tkm.ticketmanagementsystem.service;
 
+import co.tkm.ticketmanagementsystem.controller.ApiException;
+import org.springframework.http.HttpStatus;
+
 import co.tkm.ticketmanagementsystem.enums.ShowtimeSeatStatus;
 import co.tkm.ticketmanagementsystem.model.SeatHold;
 import co.tkm.ticketmanagementsystem.model.ShowtimeSeat;
@@ -20,6 +23,10 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class SeatHoldService {
+
+    public static final String SEAT_BOOKED = "SEAT_BOOKED";
+    public static final String SEAT_HELD = "SEAT_HELD";
+    public static final String HOLD_EXPIRED = "HOLD_EXPIRED";
 
     private final SeatHoldRepository seatHoldRepository;
     private final SystemSettingService systemSettingService;
@@ -94,12 +101,15 @@ public class SeatHoldService {
         }
         for (ShowtimeSeat ss : lockedSeats) {
             if (ss.getStatus() != ShowtimeSeatStatus.AVAILABLE) {
-                throw new IllegalStateException("Some seats were already booked. Please reselect.");
+                throw new ApiException(HttpStatus.CONFLICT, SEAT_BOOKED,
+                        "Some seats were already booked. Please reselect.");
             }
         }
+        CouplePairs.validate(lockedSeats);
 
         if (hasActiveConflict(showtimeSeatIds, sessionId)) {
-            throw new IllegalStateException("Some seats are currently held by another user. Please reselect.");
+            throw new ApiException(HttpStatus.CONFLICT, SEAT_HELD,
+                    "Some seats are currently held by another user. Please reselect.");
         }
 
         seatHoldRepository.deleteBySessionIdAndSeatIds(sessionId, showtimeSeatIds);

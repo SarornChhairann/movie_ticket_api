@@ -18,10 +18,14 @@ public class CheckoutData {
     private final BigDecimal baseAmount;
     private final BigDecimal morningDiscount;
     private final BigDecimal weekendSurcharge;
+    /** base - morning discount + weekend surcharge; the amount promo and tax apply to. */
+    private final BigDecimal subtotal;
     private final BigDecimal serviceFee;
     private final BigDecimal taxAmount;
     private final BigDecimal discountAmount;
     private final BigDecimal totalAmount;
+    private final BigDecimal foodTotal;
+    private final List<FoodLine> foodLines;
     private final String promoCode;
     private final List<FoodItem> availableFoodItems;
     // foodItemId -> quantity selected (populated during confirm)
@@ -29,8 +33,9 @@ public class CheckoutData {
 
     public CheckoutData(User user, Showtime showtime, List<ShowtimeSeat> selectedSeats,
                         BigDecimal baseAmount, BigDecimal morningDiscount, BigDecimal weekendSurcharge,
-                        BigDecimal serviceFee, BigDecimal taxAmount,
+                        BigDecimal subtotal, BigDecimal serviceFee, BigDecimal taxAmount,
                         BigDecimal discountAmount, BigDecimal totalAmount,
+                        BigDecimal foodTotal, List<FoodLine> foodLines,
                         String promoCode, List<FoodItem> availableFoodItems,
                         Map<Long, Integer> foodSelections) {
         this.user = user;
@@ -39,12 +44,19 @@ public class CheckoutData {
         this.baseAmount = baseAmount;
         this.morningDiscount = morningDiscount;
         this.weekendSurcharge = weekendSurcharge;
+        this.subtotal = subtotal;
         this.serviceFee = serviceFee;
         this.taxAmount = taxAmount;
         this.discountAmount = discountAmount;
         this.totalAmount = totalAmount;
+        this.foodTotal = foodTotal;
+        this.foodLines = foodLines;
         this.promoCode = promoCode;
         this.availableFoodItems = availableFoodItems;
         this.foodSelections = foodSelections;
+    }
+
+    /** One priced food selection; {@code unitPrice} is the item price at quote time. */
+    public record FoodLine(Long foodItemId, String name, BigDecimal unitPrice, int quantity, BigDecimal lineTotal) {
     }
 }

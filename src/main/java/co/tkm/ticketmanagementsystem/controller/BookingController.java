@@ -14,7 +14,9 @@ import co.tkm.ticketmanagementsystem.service.SeatRealtimeService;
 import co.tkm.ticketmanagementsystem.service.TicketService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.RequestHeader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -53,9 +55,11 @@ public class BookingController {
     @GetMapping(value = "/seats/{showtimeId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Get the seat map for a showtime, including which seats are held")
     @Transactional(readOnly = true)
-    public ResponseEntity<SeatMapResponse> seatMap(@PathVariable Long showtimeId, HttpSession session) {
+    public ResponseEntity<SeatMapResponse> seatMap(@PathVariable Long showtimeId,
+                                                   @RequestHeader(value = HoldSessions.HEADER, required = false) String sessionHeader,
+                                                   HttpServletRequest request) {
         List<ShowtimeSeat> showtimeSeats = bookingService.getSeatsForShowtime(showtimeId);
-        String sessionId = session.getId();
+        String sessionId = HoldSessions.resolve(sessionHeader, request);
         Set<Long> heldByOthers = seatHoldService.getHeldSeatIdsByOtherSessionsForShowtime(showtimeId, sessionId);
         Set<Long> heldByMe = seatHoldService.getHeldSeatIdsBySession(sessionId);
         Showtime showtime = bookingService.getShowtime(showtimeId);
@@ -77,17 +81,40 @@ public class BookingController {
                                   @RequestParam("seatIds") List<Long> seatIds,
                                   @RequestParam(value = "promoCode", required = false) String promoCode,
                                   Authentication authentication,
-                                  HttpSession session) {
+                                  @RequestHeader(value = HoldSessions.HEADER, required = false) String sessionHeader,
+                                  HttpServletRequest request) {
         String userEmail = resolveEmail(authentication);
-        if (seatHoldService.hasActiveConflict(seatIds, session.getId())) {
-            throw new IllegalStateException("Some seats are currently held by another user. Please reselect.");
+        String sessionId = HoldSessions.resolve(sessionHeader, request);
+        if (seatHoldService.hasActiveConflict(seatIds, sessionId)) {
+            throw new ApiException(HttpStatus.CONFLICT, SeatHoldService.SEAT_HELD,
+                    "Some seats are currently held by another user. Please reselect.");
         }
         CheckoutData checkoutData = bookingService.buildCheckout(showtimeId, seatIds, userEmail, promoCode);
-        seatHoldService.holdSeatsRealtime(showtimeId, seatIds, session.getId());
+        seatHoldService.holdSeatsRealtime(showtimeId, seatIds, sessionId);
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated()
                 && !"anonymousUser".equals(authentication.getPrincipal());
 
         return ResponseEntity.ok(toCheckoutResponse(checkoutData, seatIds, isAuthenticated));
+    }
+
+    @PostMapping(value = "/quote/{showtimeId}", consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Price the held seats with optional promo and food; read-only (no hold, no booking)")
+    @Transactional(readOnly = true)
+    public ResponseEntity<QuoteResponse> quote(@PathVariable Long showtimeId,
+                                               @RequestBody QuoteRequest req,
+                                               Authentication authentication,
+                                               @RequestHeader(value = HoldSessions.HEADER, required = false) String sessionHeader,
+                                               HttpServletRequest request) {
+        String sessionId = HoldSessions.resolve(sessionHeader, request);
+        List<Long> seatIds = req.seatIds() == null ? List.of() : req.seatIds();
+        if (!seatHoldService.ownsActiveHolds(seatIds, sessionId)) {
+            throw new ApiException(HttpStatus.CONFLICT, SeatHoldService.HOLD_EXPIRED,
+                    "Your seat hold expired. Please reselect seats.");
+        }
+        CheckoutData data = bookingService.buildCheckout(showtimeId, seatIds, resolveEmail(authentication),
+                req.promoCode(), req.foodItems());
+        return ResponseEntity.ok(toQuoteResponse(data));
     }
 
     @PostMapping(value = "/promo/validate", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -107,33 +134,26 @@ public class BookingController {
     }
 
     @PostMapping(value = "/checkout/{showtimeId}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Confirm a booking for the held seats")
-    public ResponseEntity<Map<String, Object>> checkout(@PathVariable Long showtimeId,
+    @Operation(summary = "Confirm and pay for the held seats; returns the booking with its tickets")
+    public ResponseEntity<BookingDetailResponse> checkout(@PathVariable Long showtimeId,
                            @RequestBody CheckoutRequest req,
                            Authentication authentication,
-                           HttpSession session) {
-        String userEmail = resolveEmail(authentication);
-        List<Long> seatIds = req.seatIds();
-        Map<Long, Integer> foodSelections = req.foodItems() != null ? req.foodItems() : Map.of();
-
-        if (seatHoldService.hasActiveConflict(seatIds, session.getId())) {
-            throw new IllegalStateException("Some seats were selected by another user. Please reselect.");
-        }
-        if (!seatHoldService.ownsActiveHolds(seatIds, session.getId())) {
-            throw new IllegalStateException("Your seat hold expired. Please reselect seats.");
-        }
-        Booking booking = bookingService.confirmCheckout(
-                showtimeId, seatIds, userEmail,
+                           @RequestHeader(value = HoldSessions.HEADER, required = false) String sessionHeader,
+                           HttpServletRequest request) {
+        String sessionId = HoldSessions.resolve(sessionHeader, request);
+        BookingService.Confirmation confirmation = bookingService.confirmCheckout(
+                showtimeId, req.seatIds(), resolveEmail(authentication), sessionId,
                 req.guestName(), req.guestPhone(), req.guestEmail(),
-                req.promoCode(), req.paymentMethod(), foodSelections);
-        seatHoldService.releaseHolds(session.getId());
-        seatRealtimeService.publishBooked(showtimeId, seatIds);
-
-        return ResponseEntity.ok(Map.of("bookingId", booking.getId()));
+                req.promoCode(), req.paymentMethod(),
+                req.foodItems() != null ? req.foodItems() : Map.of());
+        return ResponseEntity.ok(toBookingDetail(confirmation.booking(), confirmation.tickets()));
     }
 
     @PostMapping(value = "/cancel/{bookingId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Cancel one of the current user's bookings")
+    @Operation(summary = "Cancel one of the current user's bookings",
+            description = "403 NOT_OWNER (not the caller's booking, or a guest booking); "
+                    + "409 ALREADY_CANCELLED; 409 CANCEL_WINDOW (inside the cancellation window); "
+                    + "400 when the booking does not exist. Freed seats are broadcast as RELEASED.")
     public ResponseEntity<Map<String, Object>> cancelBooking(@PathVariable Long bookingId,
                                 Authentication authentication) {
         bookingService.cancelBooking(bookingId, authentication.getName());
@@ -150,7 +170,7 @@ public class BookingController {
     }
 
     @GetMapping(value = "/my-bookings", produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "List the current user's bookings")
+    @Operation(summary = "List the current user's bookings, newest first")
     @Transactional(readOnly = true)
     public ResponseEntity<List<BookingDetailResponse>> myBookings(Authentication authentication) {
         List<Booking> bookings = bookingService.getBookingsForUser(authentication.getName());
@@ -189,6 +209,19 @@ public class BookingController {
                 data.getServiceFee(), data.getTaxAmount(), data.getDiscountAmount(), data.getTotalAmount(),
                 data.getPromoCode(), data.getAvailableFoodItems(), seatIds,
                 seatHoldService.getHoldMinutes(), isAuthenticated);
+    }
+
+    private QuoteResponse toQuoteResponse(CheckoutData data) {
+        User user = data.getUser();
+        UserSummary userSummary = user == null ? null
+                : new UserSummary(user.getId(), user.getName(), user.getEmail(), user.getPhone());
+        return new QuoteResponse(
+                toShowtimeInfo(data.getShowtime()),
+                data.getSelectedSeats().stream().map(this::toSeatInfo).toList(),
+                data.getBaseAmount(), data.getMorningDiscount(), data.getWeekendSurcharge(), data.getSubtotal(),
+                data.getPromoCode(), data.getDiscountAmount(), data.getTaxAmount(), data.getServiceFee(),
+                data.getFoodLines(), data.getFoodTotal(), data.getTotalAmount(),
+                data.getAvailableFoodItems(), userSummary);
     }
 
     private BookingDetailResponse toBookingDetail(Booking booking, List<Ticket> tickets) {
@@ -232,6 +265,18 @@ public class BookingController {
                                     BigDecimal serviceFee, BigDecimal taxAmount, BigDecimal discountAmount,
                                     BigDecimal totalAmount, String promoCode, List<FoodItem> availableFoodItems,
                                     List<Long> seatIds, int holdMinutes, boolean isAuthenticated) {
+    }
+
+    public record QuoteRequest(List<Long> seatIds, String promoCode, Map<Long, Integer> foodItems) {
+    }
+
+    /** Every price line of analytics 3.4, in display order. All amounts are computed by the server. */
+    public record QuoteResponse(ShowtimeInfo showtime, List<SeatInfo> seats,
+                                BigDecimal baseAmount, BigDecimal morningDiscount, BigDecimal weekendSurcharge,
+                                BigDecimal subtotal, String promoCode, BigDecimal discountAmount,
+                                BigDecimal taxAmount, BigDecimal serviceFee,
+                                List<CheckoutData.FoodLine> foodLines, BigDecimal foodTotal, BigDecimal totalAmount,
+                                List<FoodItem> availableFoodItems, UserSummary user) {
     }
 
     public record CheckoutRequest(List<Long> seatIds, String guestName, String guestPhone, String guestEmail,

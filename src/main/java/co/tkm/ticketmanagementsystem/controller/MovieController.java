@@ -22,6 +22,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,6 +36,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Tag(name = "Movies", description = "Browse movies, filter listings, and view showtimes for a movie")
 public class MovieController {
+
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Phnom_Penh");
 
     private final MovieService movieService;
     private final ShowtimeRepository showtimeRepository;
@@ -94,7 +99,11 @@ public class MovieController {
                          @RequestParam(value = "date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                          @RequestParam(value = "hallId", required = false) Long hallId) {
         Movie movie = movieService.findById(id);
-        List<Showtime> showtimes = showtimeRepository.findByMovieIdWithHall(id);
+        // Customers only see showtimes they can still book: not blocked, not started.
+        LocalDateTime now = LocalDateTime.now(APP_ZONE);
+        List<Showtime> showtimes = showtimeRepository.findByMovieIdWithHall(id).stream()
+                .filter(s -> isBookable(s, now))
+                .collect(Collectors.toList());
 
         if (cinemaId != null) {
             showtimes = showtimes.stream()
@@ -158,15 +167,29 @@ public class MovieController {
                 availableDates, selectedDate, hallSummaries, hallId));
     }
 
+    static boolean isBookable(Showtime s, LocalDateTime now) {
+        if (s.isBlocked() || s.getShowDate() == null) {
+            return false;
+        }
+        LocalTime time = s.getShowTime() != null ? s.getShowTime() : LocalTime.MIDNIGHT;
+        return LocalDateTime.of(s.getShowDate(), time).isAfter(now);
+    }
+
     private ShowtimeSummary toShowtimeSummary(Showtime s) {
+        Hall hall = s.getHall();
+        String cinemaName = hall == null ? null
+                : (hall.getCinema() != null ? hall.getCinema().getName() : hall.getCity());
         return new ShowtimeSummary(
                 s.getId(),
                 s.getShowTime() != null ? s.getShowTime().toString() : null,
-                s.getHall() != null ? s.getHall().getId() : null,
-                s.getHall() != null ? s.getHall().getName() : null,
+                hall != null ? hall.getId() : null,
+                hall != null ? hall.getName() : null,
                 s.getNormalPrice(),
                 s.getCouplePrice(),
-                s.isBlocked());
+                s.isBlocked(),
+                cinemaName,
+                hall != null && hall.isHasDolbyAtmos(),
+                hall != null && hall.isHasScreenX());
     }
 
     public record HallSummary(Long id, String name, String city) {
@@ -174,7 +197,8 @@ public class MovieController {
 
     public record ShowtimeSummary(Long id, String showTime, Long hallId, String hallName,
                                    java.math.BigDecimal normalPrice, java.math.BigDecimal couplePrice,
-                                   boolean blocked) {
+                                   boolean blocked, String cinemaName, boolean hasDolbyAtmos,
+                                   boolean hasScreenX) {
     }
 
     public record MovieListResponse(List<Movie> movies,

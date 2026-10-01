@@ -28,6 +28,15 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(status).body(body);
     }
 
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<Map<String, Object>> handleApi(ApiException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", ex.getMessage());
+        body.put("type", ex.getStatus().name());
+        body.put("code", ex.getCode());
+        return ResponseEntity.status(ex.getStatus()).body(body);
+    }
+
     /**
      * Everything the Keycloak layer throws deliberately: 401 on a bad credential, 409 on
      * a duplicate account, 502 when Keycloak is unreachable or misconfigured. Handling it

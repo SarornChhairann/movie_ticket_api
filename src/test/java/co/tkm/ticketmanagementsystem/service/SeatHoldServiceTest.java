@@ -1,6 +1,10 @@
 package co.tkm.ticketmanagementsystem.service;
 
+import co.tkm.ticketmanagementsystem.controller.ApiException;
+import co.tkm.ticketmanagementsystem.enums.SeatType;
 import co.tkm.ticketmanagementsystem.enums.ShowtimeSeatStatus;
+import co.tkm.ticketmanagementsystem.model.Seat;
+import org.springframework.http.HttpStatus;
 import co.tkm.ticketmanagementsystem.model.SeatHold;
 import co.tkm.ticketmanagementsystem.model.Showtime;
 import co.tkm.ticketmanagementsystem.model.ShowtimeSeat;
@@ -15,7 +19,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -77,7 +83,9 @@ class SeatHoldServiceTest {
         when(seatHoldRepository.findActiveHoldsByOtherSession(eq(List.of(1L)), eq("S"), any(LocalDateTime.class)))
                 .thenReturn(List.of(new SeatHold(1L, 1L, "OTHER", LocalDateTime.now().plusMinutes(5))));
 
-        assertThrows(IllegalStateException.class, () -> seatHoldService.holdSeatsRealtime(50L, List.of(1L), "S"));
+        ApiException ex = assertThrows(ApiException.class, () -> seatHoldService.holdSeatsRealtime(50L, List.of(1L), "S"));
+        assertEquals(SeatHoldService.SEAT_HELD, ex.getCode());
+        assertEquals(HttpStatus.CONFLICT, ex.getStatus());
 
         verify(seatHoldRepository, never()).saveAll(any());
         verify(seatRealtimeService, never()).publishHeld(any(), any(), any(), any());
@@ -96,10 +104,55 @@ class SeatHoldServiceTest {
         when(showtimeSeatRepository.findAllByShowtimeIdAndIdsForUpdate(50L, List.of(1L)))
                 .thenReturn(List.of(s1));
 
-        assertThrows(IllegalStateException.class, () -> seatHoldService.holdSeatsRealtime(50L, List.of(1L), "S"));
+        ApiException ex = assertThrows(ApiException.class, () -> seatHoldService.holdSeatsRealtime(50L, List.of(1L), "S"));
+        assertEquals(SeatHoldService.SEAT_BOOKED, ex.getCode());
 
         verify(seatHoldRepository, never()).saveAll(any());
         verify(seatRealtimeService, never()).publishHeld(any(), any(), any(), any());
+    }
+
+    @Test
+    void holdSeatsRealtime_rejectsLoneCoupleSeatWithoutHolding() {
+        Showtime st = new Showtime();
+        st.setId(50L);
+        Seat seat = new Seat();
+        seat.setSeatType(SeatType.COUPLE);
+        seat.setSeatCode("A1");
+        ShowtimeSeat s1 = new ShowtimeSeat();
+        s1.setId(1L);
+        s1.setShowtime(st);
+        s1.setSeat(seat);
+        s1.setStatus(ShowtimeSeatStatus.AVAILABLE);
+
+        when(showtimeSeatRepository.findAllByShowtimeIdAndIdsForUpdate(50L, List.of(1L)))
+                .thenReturn(List.of(s1));
+
+        ApiException ex = assertThrows(ApiException.class, () -> seatHoldService.holdSeatsRealtime(50L, List.of(1L), "S"));
+        assertEquals("COUPLE_PAIR_INVALID", ex.getCode());
+        verify(seatHoldRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void holdSeatsRealtime_expiresHoldMinutesFromNowAndNeverBooksTheSeat() {
+        when(systemSettingService.getInt(SystemSettingService.HOLD_MINUTES, 10)).thenReturn(7);
+        Showtime st = new Showtime();
+        st.setId(50L);
+        ShowtimeSeat s1 = new ShowtimeSeat();
+        s1.setId(1L);
+        s1.setShowtime(st);
+        s1.setStatus(ShowtimeSeatStatus.AVAILABLE);
+        when(showtimeSeatRepository.findAllByShowtimeIdAndIdsForUpdate(50L, List.of(1L)))
+                .thenReturn(List.of(s1));
+        when(seatHoldRepository.findActiveHoldsByOtherSession(eq(List.of(1L)), eq("S"), any(LocalDateTime.class)))
+                .thenReturn(List.of());
+
+        SeatHoldService.HoldResult result = seatHoldService.holdSeatsRealtime(50L, List.of(1L), "S");
+
+        long expectedMs = System.currentTimeMillis() + 7 * 60_000L;
+        long actualMs = result.expiresAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        assertTrue(Math.abs(actualMs - expectedMs) < 5_000, "expiry should be ~7 minutes from now");
+        assertEquals(ShowtimeSeatStatus.AVAILABLE, s1.getStatus());
+        verify(showtimeSeatRepository, never()).save(any());
     }
 
     @Test

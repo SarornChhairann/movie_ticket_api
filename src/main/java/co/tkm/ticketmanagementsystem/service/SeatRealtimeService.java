@@ -12,13 +12,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SeatRealtimeService {
 
-    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Phnom_Penh");
-
     private final SimpMessagingTemplate messagingTemplate;
 
     public void publishHeld(Long showtimeId, List<Long> showtimeSeatIds, String sessionId, LocalDateTime expiresAt) {
         publish(showtimeId, new SeatEvent("HELD", showtimeId, showtimeSeatIds, sessionId,
-                expiresAt == null ? null : expiresAt.atZone(APP_ZONE).toInstant().toEpochMilli()));
+                expiresAt == null ? null : expiresAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()));
     }
 
     public void publishReleased(Long showtimeId, List<Long> showtimeSeatIds, String sessionId) {

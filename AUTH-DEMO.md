@@ -1,29 +1,32 @@
-# Demo — Keycloak authentication, in three points
+# Demo — Keycloak authentication, in two points
 
-The whole talk in one sentence: **identity is a separate service, so this API never stores
-a password and never decides who you are — it only checks a signature and a role.**
+**The one-sentence version:** we moved login out of this app. Keycloak keeps the passwords
+and hands out tokens. Our API never stores a password and never decides who you are — it
+just checks that a token is real and looks at the role inside it.
 
-| Part | Owns | Port |
-| ---- | ---- | ---- |
+| Part | What it owns | Port |
+| ---- | ------------ | ---- |
 | Keycloak (`ticket-realm`) | passwords, roles, tokens, sessions | 8080 |
-| Ticket API (Spring Boot) | movies, bookings, tickets — and it *fronts* Keycloak | 8010 |
-| PostgreSQL | business data + a **mirror** of the users | 5433 |
-| Ticket UI (React) | never talks to Keycloak, only to the API | 8081 |
+| Ticket API (Spring Boot) | movies, bookings, tickets — and it *calls* Keycloak for the client | 8010 |
+| PostgreSQL | business data + a **copy** of the user list | 5433 |
+| Ticket UI (React) | never talks to Keycloak, only to our API | 8081 |
 
-Three points, in the order the request actually travels:
+The three points follow one request from start to finish:
 
-1. **Getting a token** — the API fronts Keycloak so the client never has to know it exists.
-2. **Using a token** — the app is a pure OAuth2 resource server; realm roles become Spring authorities.
-3. **Keeping a local row** — `users` is a mirror, not a credential store, and the back office can lock it.
+1. **Getting a token** — the client asks our API for a token; our API asks Keycloak.
+2. **Using a token** — every later request carries the token; Spring checks it and reads the role.
 
 ---
 
-## Point 1 — The API fronts Keycloak
+## Point 1 — The client talks to us, we talk to Keycloak
 
-`POST /login` looks like an ordinary login endpoint to the client, but the app does not
-check a password — it runs Keycloak's **password grant** on the caller's behalf and hands
-back the tokens Keycloak issued. `POST /register` is the same trick against Keycloak's
-**Admin REST API**. So the UI has one base URL to configure, not two.
+`POST /login` looks like a normal login endpoint. But our code never compares a password.
+It forwards the email and password to Keycloak using the **password grant**, and returns
+the tokens Keycloak sends back. `POST /register` does the same thing against Keycloak's
+**Admin REST API**.
+
+Why do it this way? The React app only has to know **one** base URL. It never needs to know
+Keycloak exists.
 
 ### DFD — 1.0 Get a token
 
@@ -35,7 +38,7 @@ flowchart LR
         P11(("1.1<br/>AuthController<br/>/login"))
         P12(("1.2<br/>AuthService<br/>login()"))
         P13(("1.3<br/>KeycloakAdminClient<br/>passwordGrant()"))
-        P14(("1.4<br/>mirror()<br/>decode + upsert"))
+        P14(("1.4<br/>mirror()<br/>read token + save user"))
     end
 
     KC["Keycloak<br/>token endpoint"]
@@ -48,18 +51,19 @@ flowchart LR
     KC -->|"access + refresh token"| P13
     P13 -->|"TokenResponse"| P12
     P12 -->|"access token"| P14
-    P14 -->|"create or realign row"| D1
+    P14 -->|"create or update row"| D1
     D1 -->|"role + status"| P12
     P12 -->|"Session(token, user)"| P11
     P11 -->|"tokens + role + redirectUrl"| CUST
 ```
 
-### The wiring
+### The code
 
-Three classes, one job each — the controller is thin, the service holds the flow, and
-exactly one class is allowed to speak HTTP to Keycloak.
+Three classes, one job each. The controller is thin, the service holds the steps, and only
+**one** class is allowed to make HTTP calls to Keycloak.
 
-[AuthController.java:42-45](src/main/java/co/tkm/ticketmanagementsystem/controller/AuthController.java#L42-L45) — takes the request, returns the tokens:
+**1. The controller** takes the request and returns the tokens —
+[AuthController.java:42-45](src/main/java/co/tkm/ticketmanagementsystem/controller/AuthController.java#L42-L45):
 
 ```java
 @PostMapping(value = {"/login", "/api/auth/login"}, ...)
@@ -69,7 +73,8 @@ public LoginResponse login(@Valid @RequestBody LoginRequest req) {
 }
 ```
 
-[AuthService.java:43-46](src/main/java/co/tkm/ticketmanagementsystem/service/AuthService.java#L43-L46) — Keycloak first, mirror second:
+**2. The service** does two steps: ask Keycloak, then save the local copy —
+[AuthService.java:43-46](src/main/java/co/tkm/ticketmanagementsystem/service/AuthService.java#L43-L46):
 
 ```java
 public Session login(String email, String password) {
@@ -78,7 +83,8 @@ public Session login(String email, String password) {
 }
 ```
 
-[KeycloakAdminClient.java:69-76](src/main/java/co/tkm/ticketmanagementsystem/service/KeycloakAdminClient.java#L69-L76) — the actual OAuth2 call:
+**3. The client** makes the real OAuth2 call —
+[KeycloakAdminClient.java:69-76](src/main/java/co/tkm/ticketmanagementsystem/service/KeycloakAdminClient.java#L69-L76):
 
 ```java
 public TokenResponse passwordGrant(String username, String password) {
@@ -91,25 +97,25 @@ public TokenResponse passwordGrant(String username, String password) {
 }
 ```
 
-Worth saying out loud during the demo:
+Three details worth mentioning out loud:
 
-- **Register rolls back.** `AuthService.register()` creates the Keycloak user *first*
-  (it is the system of record); if the local mirror insert then fails, it calls
-  `keycloak.deleteUser(...)` so the realm is not left holding an orphan account.
-- **Changing a password never touches a hash.** `changePassword()` verifies the old
-  password by *logging in with it*, then resets the credential through the Admin API.
-- **The app has its own Keycloak identity.** Admin API calls use the `ticket-backend`
-  confidential client's service account, whose token is cached until 20s before it expires
-  (`adminToken()`), not re-fetched per request.
+- **Register undoes itself if it fails.** `AuthService.register()` creates the Keycloak user
+  first, because Keycloak is the source of truth. If saving the local copy then fails, it
+  calls `keycloak.deleteUser(...)` so we do not leave a half-created account behind.
+- **Changing a password never touches a hash.** `changePassword()` checks the old password by
+  simply *logging in with it*. If that works, it sets the new one through the Admin API.
+- **Our app has its own Keycloak login.** Admin API calls use the `ticket-backend` client's
+  service account. Its token is cached until 20 seconds before it expires (`adminToken()`),
+  so we do not fetch a new one on every request.
 
 ---
 
-## Point 2 — After login, it is only a signed token and a role
+## Point 2 — After login, it is just a signed token and a role
 
-Nothing is stored between requests: no session, no cookie, no `remember-me`. Each request
-carries `Authorization: Bearer <access_token>`, Spring validates the signature against the
-realm's published public keys, and the roles inside the token become the authorities the
-route rules already used.
+Nothing is remembered between requests. No session, no cookie, no "remember me". Every
+request carries `Authorization: Bearer <access_token>`. Spring checks the signature using
+the realm's public keys, then turns the roles inside the token into Spring authorities — the
+same authorities our route rules already used before Keycloak.
 
 ### DFD — 2.0 Serve an authenticated request
 
@@ -118,7 +124,7 @@ flowchart TB
     CUST["Customer"]
     KC["Keycloak<br/>JWKS / public keys"]
 
-    P21(("2.1<br/>BearerTokenAuthenticationFilter<br/>verify signature + issuer"))
+    P21(("2.1<br/>BearerTokenAuthenticationFilter<br/>check signature + issuer"))
     P22(("2.2<br/>jwtAuthenticationConverter<br/>roles → authorities"))
     P23(("2.3<br/>authorizeHttpRequests<br/>route rules"))
     P24(("2.4<br/>Controller"))
@@ -126,7 +132,7 @@ flowchart TB
     D2[("D2  bookings, tickets")]
 
     CUST -->|"Bearer access_token"| P21
-    P21 -->|"fetch keys once, cache"| KC
+    P21 -->|"fetch keys once, then cache"| KC
     P21 -->|"invalid / expired → 401 JSON"| CUST
     P21 -->|"Jwt"| P22
     P22 -->|"JwtAuthenticationToken<br/>(name = email)"| P23
@@ -136,15 +142,16 @@ flowchart TB
     P24 -->|"JSON"| CUST
 ```
 
-### The wiring
+### The code
 
-[SecurityConfig.java:57-91](src/main/java/co/tkm/ticketmanagementsystem/config/SecurityConfig.java#L57-L91) — stateless, no login form, no logout filter, just a resource server:
+[SecurityConfig.java:57-91](src/main/java/co/tkm/ticketmanagementsystem/config/SecurityConfig.java#L57-L91) —
+stateless, no login form, no logout filter. Just a resource server:
 
 ```java
 http
     .csrf(AbstractHttpConfigurer::disable)                 // no cookie = nothing to forge
     .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-    .logout(AbstractHttpConfigurer::disable)               // POST /logout is our endpoint
+    .logout(AbstractHttpConfigurer::disable)               // POST /logout is our own endpoint
     .authorizeHttpRequests(auth -> auth
         .requestMatchers(HttpMethod.POST, "/login", "/register", "/logout").permitAll()
         .requestMatchers("/bookings/my-bookings", "/profile/**").authenticated()
@@ -158,8 +165,8 @@ http
                     BearerTokenAuthenticationFilter.class);
 ```
 
-Two decisions in that converter are the reason **no existing code had to change**
-([SecurityConfig.java:106-115](src/main/java/co/tkm/ticketmanagementsystem/config/SecurityConfig.java#L106-L115)):
+The converter below is small, but it is **the reason we did not have to rewrite the rest of
+the app** ([SecurityConfig.java:106-115](src/main/java/co/tkm/ticketmanagementsystem/config/SecurityConfig.java#L106-L115)):
 
 ```java
 private Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter() {
@@ -174,13 +181,17 @@ private Collection<GrantedAuthority> authorities(Jwt jwt) {
 }
 ```
 
-- Realm roles arrive lower-case under `realm_access.roles`; upper-casing them means every
-  existing `hasRole("ADMIN")` rule keeps working untouched.
-- **The principal name is the email, not Keycloak's `sub`**, because every controller and
-  service resolves the current user with `authentication.getName()` against `users.email`.
+Two choices to point at:
 
-What the token looks like, and the one place the app admits to knowing that shape
-([KeycloakClaims.java](src/main/java/co/tkm/ticketmanagementsystem/security/KeycloakClaims.java)):
+- Keycloak sends roles in lower case under `realm_access.roles`. We upper-case them and add
+  the `ROLE_` prefix, so every existing `hasRole("ADMIN")` rule still works with no changes.
+- **The principal name is the email, not Keycloak's `sub`.** Every controller and service in
+  this project finds the current user with `authentication.getName()` looked up against
+  `users.email`, so the name had to stay an email.
+
+This is the token we get back, and
+[KeycloakClaims.java](src/main/java/co/tkm/ticketmanagementsystem/security/KeycloakClaims.java)
+is the only class that knows this shape:
 
 ```json
 { "iss": "http://localhost:8080/realms/ticket-realm",
@@ -188,13 +199,9 @@ What the token looks like, and the one place the app admits to knowing that shap
   "realm_access": { "roles": ["customer", "admin"] } }
 ```
 
-Security rejects a request inside a *filter*, before any `@RestControllerAdvice` runs, so
-`SecurityConfig` writes the 401/403 body itself — in the same `{"error": ..., "type": ...}`
-shape `ApiExceptionHandler` uses everywhere else, so a client parses one format.
+One catch: security rejects a request inside a **filter**, which runs before any
+`@RestControllerAdvice`. So `ApiExceptionHandler` never sees it, and `SecurityConfig` has to
+write the 401/403 body itself. It uses the same `{"error": ..., "type": ...}` shape as
+everything else, so the client only ever parses one format.
 
-| Status | When |
-| ------ | ---- |
-| 401 | No token, or malformed / expired / not signed by this realm. Also a wrong password on `/login`. |
-| 403 | Valid token, missing role — or the account is suspended/banned here. |
-| 409 | Registering an email that already exists in the realm. |
-| 502 | Keycloak unreachable, or its `iss` does not match `issuer-uri`. |
+---

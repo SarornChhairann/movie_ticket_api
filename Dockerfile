@@ -1,4 +1,4 @@
-FROM maven:3.9.9-eclipse-temurin-17 AS build
+FROM mirror.gcr.io/library/maven:3.9.9-eclipse-temurin-17 AS build
 
 WORKDIR /workspace
 
@@ -8,12 +8,12 @@ RUN mvn -B -DskipTests dependency:go-offline
 COPY src ./src
 RUN mvn -B -DskipTests package && cp target/*.war app.war
 
-FROM eclipse-temurin:17-jre-alpine
+FROM mirror.gcr.io/library/eclipse-temurin:17-jre-jammy
 
 WORKDIR /app
 
-RUN addgroup -S spring \
-    && adduser -S spring -G spring \
+RUN groupadd --system spring \
+    && useradd --system --gid spring --home-dir /app --no-create-home --shell /usr/sbin/nologin spring \
     && mkdir -p /app/uploads/movies /app/uploads/food-items \
     && chown -R spring:spring /app
 

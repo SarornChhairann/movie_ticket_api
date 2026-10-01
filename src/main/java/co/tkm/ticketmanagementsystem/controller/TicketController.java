@@ -47,6 +47,12 @@ public class TicketController {
         return ResponseEntity.ok(toResponse(ticketService.findByTicketCode(ticketCode)));
     }
 
+    /**
+     * Public on purpose (gap G23): the ticket code is a random UUID and acts as the bearer
+     * secret, so anyone holding it can render the QR — the same trust the printed ticket
+     * has. Guests have no account to authorize against. Accepted for v1; revisit after v1
+     * (e.g. a signed, short-lived QR URL) if codes start leaking.
+     */
     @GetMapping(value = "/{ticketCode}/qr", produces = MediaType.IMAGE_PNG_VALUE)
     @Operation(summary = "Get the ticket's QR code as a PNG image")
     public ResponseEntity<byte[]> qrCode(@PathVariable String ticketCode) {

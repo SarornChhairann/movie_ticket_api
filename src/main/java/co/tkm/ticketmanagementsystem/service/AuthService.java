@@ -1,5 +1,6 @@
 package co.tkm.ticketmanagementsystem.service;
 
+import co.tkm.ticketmanagementsystem.controller.ApiException;
 import co.tkm.ticketmanagementsystem.enums.Role;
 import co.tkm.ticketmanagementsystem.enums.UserStatus;
 import co.tkm.ticketmanagementsystem.model.User;
@@ -30,6 +31,9 @@ import java.util.Optional;
 public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+
+    /** Error code for a SUSPENDED or BANNED account; also written by {@code KeycloakUserSyncFilter}. */
+    public static final String ACCOUNT_BLOCKED = "ACCOUNT_BLOCKED";
 
     private final KeycloakAdminClient keycloak;
     private final UserService userService;
@@ -189,7 +193,7 @@ public class AuthService {
 
         User user = userService.mirrorKeycloakUser(email, KeycloakClaims.displayName(jwt), KeycloakClaims.role(jwt));
         if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+            throw new ApiException(HttpStatus.FORBIDDEN, ACCOUNT_BLOCKED,
                     "This account is " + user.getStatus().name().toLowerCase() + ".");
         }
         return user;
