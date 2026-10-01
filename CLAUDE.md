@@ -8,18 +8,21 @@ A Spring Boot 3.5.9 / Java 17 movie ticket booking and cinema management system 
 
 ## Common commands
 
-Run everything through the Maven wrapper (`mvnw.cmd` on Windows / `./mvnw` elsewhere) — do not assume a global `mvn` install.
+Run everything through the Maven wrapper (`./mvnw` on macOS/Linux, `mvnw.cmd` on Windows) — do not assume a global `mvn` install. There is no linter/formatter configured.
 
 ```
-mvnw.cmd clean install          # full build + tests
-mvnw.cmd test                   # run all tests
-mvnw.cmd test -Dtest=BookingServiceTest                 # single test class
-mvnw.cmd test -Dtest=BookingServiceTest#someMethodName   # single test method
-mvnw.cmd spring-boot:run         # run the app locally (port 8010 by default)
+./mvnw clean install                                   # full build + tests
+./mvnw test                                            # run all tests
+./mvnw test -Dtest=BookingServiceTest                  # single test class
+./mvnw test -Dtest=BookingServiceTest#someMethodName   # single test method
+./mvnw spring-boot:run                                 # run the app locally (port 8010 by default)
 ```
+
+Tests live under `src/test/java/.../service/` (`BookingServiceTest`, `SeatHoldServiceTest`, `ShowtimeServiceAdminRulesTest`) plus a context-load test.
 
 ```
 docker compose up -d db keycloak    # Postgres on 5433 + Keycloak on 8080, both needed to run the app
+docker compose up --build           # full stack including the app container (see README-Docker.md)
 ```
 
 Configuration lives in **`.env` at the project root** — one file read by both `docker compose` (for `${VAR}` substitution in `docker-compose.yml`) and the app itself, since `application.yml` declares `spring.config.import: optional:file:./.env[.properties]`. `src/main/resources/application.yml` is now only the wiring: every value is a `${VAR:default}` placeholder pointing at a key in `.env`, with the same value as its default so a checkout without an `.env` still boots. Real environment variables outrank the file, which is how the container overrides `localhost` with `db:`/`keycloak:`. `.env` is git-ignored; `.env.example` is the committed template. Tests use `src/test/resources/application.yml`, read no `.env`, and run against H2 in Postgres-compatibility mode, so they need neither Postgres nor Keycloak. The dev datasource points at `jdbc:postgresql://localhost:5433/spring_boot_ticket`, and auth needs a Keycloak at `http://localhost:8080` serving the `ticket-realm` — both are in `docker-compose.yml`. Note `APP_SEED_FORCE=true` in `.env`: every start wipes and reseeds the demo data.
@@ -31,7 +34,7 @@ Swagger UI is available at `/swagger-ui.html` (`/v3/api-docs` for the raw OpenAP
 Standard layered package structure under `co.tkm.ticketmanagementsystem`:
 
 - `config/` — Spring `@Configuration` classes (security, web/CORS/static resources, WebSocket, Swagger/OpenAPI, JPA) plus startup data machinery (see Data seeding below).
-- `controller/` — All `@RestController` (JSON in/out). Business-domain controllers are tagged with springdoc `@Tag`/`@Operation` so they appear grouped in Swagger UI.
+- `controller/` — All `@RestController` (JSON in/out). Admin endpoints (`/admin/**`) live in the `controller/admin/` subpackage, one controller per domain. Business-domain controllers are tagged with springdoc `@Tag`/`@Operation` so they appear grouped in Swagger UI.
 - `service/` — Business logic; controllers stay thin and delegate here.
 - `repository/` — Spring Data JPA repositories.
 - `model/` — JPA entities. Most extend `AuditableEntity` for created/updated tracking.
@@ -77,5 +80,13 @@ Movie posters and food item images are stored on disk under `app.uploads.movies-
 ### Other notables
 
 - QR codes for tickets: `QrCodeService` (zxing). Ticket PDFs: `PdfTicketService` (Apache PDFBox).
-- `WebConfig` also registers permissive CORS for `http://localhost:8081` — relevant if a separate frontend dev server is involved.
+- The client is a separate React app on `http://localhost:8081` (see `ARCHITECTURE.md`). `WebConfig`'s CORS allow-list comes from `app.cors.allowed-origins` (default `http://localhost:8081`) — add origins there, not in code.
+- `MovieBrowseCacheService` is a hand-rolled in-memory cache (1h TTL) behind `MovieBrowseApiController`. Only `ShowtimeService` calls `evictAll()`; any other write that changes what the browse endpoints return must evict it too, or stale data is served for up to an hour.
 - Email (booking confirmations, etc.) goes through `EmailService` / the `JavaMailSender` bean in `WebConfig`; real delivery requires `spring.mail.username`/`password` (blank by default, so mail is a no-op locally unless configured).
+
+## Companion docs
+
+- `ARCHITECTURE.md` — DFDs and how UI / API / Keycloak / Postgres fit together.
+- `KEYCLOAK.md` (rules), `KEYCLOAK-INTEGRATION.md` (wire-level: which class calls which Keycloak URL with which credential), `AUTH-DEMO.md` (demo script).
+- `README-Docker.md` — Compose stack.
+- `postman/Ticket-Auth.postman_collection.json` — auth flow requests; `index.html` — static API payload reference page.
