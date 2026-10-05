@@ -1,5 +1,12 @@
 server:
   port: ${SERVER_PORT:8010}
+  error:
+    # Spring Boot DevTools turns these on for local runs; keep stack traces,
+    # exception names, and raw exception messages (which can carry SQL) out of
+    # error responses everywhere. ApiExceptionHandler writes its own messages.
+    include-stacktrace: ${SERVER_ERROR_INCLUDE_STACKTRACE:never}
+    include-exception: ${SERVER_ERROR_INCLUDE_EXCEPTION:false}
+    include-message: ${SERVER_ERROR_INCLUDE_MESSAGE:never}
 
 spring:
   application:
@@ -99,8 +106,8 @@ app:
     customers: ${APP_SEED_CUSTOMERS:25}
     randomSeed: ${APP_SEED_RANDOM_SEED:20260503}
     counts:
-      users: ${APP_SEED_COUNTS_USERS:50}
-      cinemas: ${APP_SEED_COUNTS_CINEMAS:3}
+      users: ${APP_SEED_COUNTS_USERS:24}
+      cinemas: ${APP_SEED_COUNTS_CINEMAS:6}
       hallsPerCinema: ${APP_SEED_COUNTS_HALLS_PER_CINEMA:3}
       movies: ${APP_SEED_COUNTS_MOVIES:15}
       showtimesPerMovie: ${APP_SEED_COUNTS_SHOWTIMES_PER_MOVIE:5}

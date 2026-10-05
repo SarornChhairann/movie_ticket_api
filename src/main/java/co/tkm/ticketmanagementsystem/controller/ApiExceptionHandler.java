@@ -1,6 +1,9 @@
 package co.tkm.ticketmanagementsystem.controller;
 
 import co.tkm.ticketmanagementsystem.service.FoodItemImageStorageException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -14,6 +17,8 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     @ExceptionHandler(FoodItemImageStorageException.class)
     public ResponseEntity<Map<String, Object>> handleFoodImage(FoodItemImageStorageException ex) {
@@ -63,6 +68,19 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("error", ex.getMessage());
+        body.put("type", "CONFLICT");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    /**
+     * A write that a database constraint refused and no service check caught first.
+     * The SQL detail stays in the log; the client gets a plain conflict.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", "This change conflicts with existing data: a duplicate value, or a record that is still in use.");
         body.put("type", "CONFLICT");
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }

@@ -40,13 +40,14 @@ public class AdminFoodOrderController {
             String customerName = booking.getUser() != null ? booking.getUser().getName() : booking.getGuestName();
             return new FoodOrderResponse(o.getId(), booking.getId(), customerName,
                     showtime.getMovie().getTitle(), showtime.getShowDate(), showtime.getShowTime(),
-                    o.getFoodItem().getName(), o.getQuantity(), o.getUnitPrice());
+                    o.getFoodItem().getName(), o.getQuantity(), o.getUnitPrice(),
+                    o.getUnitPrice().multiply(BigDecimal.valueOf(o.getQuantity())));
         }).toList();
         return ResponseEntity.ok(response);
     }
 
     public record FoodOrderResponse(Long id, Long bookingId, String customerName, String movieTitle,
                                      LocalDate showDate, LocalTime showTime, String foodItemName,
-                                     Integer quantity, BigDecimal unitPrice) {
+                                     Integer quantity, BigDecimal unitPrice, BigDecimal lineTotal) {
     }
 }

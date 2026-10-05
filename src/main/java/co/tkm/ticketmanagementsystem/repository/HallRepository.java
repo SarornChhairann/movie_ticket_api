@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface HallRepository extends JpaRepository<Hall, Long> {
@@ -17,4 +18,6 @@ public interface HallRepository extends JpaRepository<Hall, Long> {
 
     @Query("SELECT COUNT(h) FROM Hall h WHERE h.cinema.id = :cinemaId")
     long countByCinemaId(@Param("cinemaId") UUID cinemaId);
+
+    Optional<Hall> findByName(String name);
 }

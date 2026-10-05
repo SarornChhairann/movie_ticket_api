@@ -3,6 +3,7 @@ package co.tkm.ticketmanagementsystem.service;
 import co.tkm.ticketmanagementsystem.enums.MovieStatus;
 import co.tkm.ticketmanagementsystem.model.Movie;
 import co.tkm.ticketmanagementsystem.repository.MovieRepository;
+import co.tkm.ticketmanagementsystem.repository.ShowtimeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -25,12 +26,16 @@ public class MovieService {
     private static final String UPLOAD_URL_PREFIX = "/uploads/movies/";
 
     private final MovieRepository movieRepository;
+    private final ShowtimeRepository showtimeRepository;
+    private final MovieBrowseCacheService movieBrowseCacheService;
     @Value("${app.uploads.movies-dir:uploads/movies}")
     private String uploadsMoviesDir;
 
     @Transactional
     public Movie save(Movie movie) {
-        return movieRepository.save(movie);
+        Movie saved = movieRepository.save(movie);
+        movieBrowseCacheService.evictAll();
+        return saved;
     }
 
     @Transactional
@@ -75,7 +80,9 @@ public class MovieService {
             target.setBannerPath(storeImage(bannerFile));
         }
 
-        return movieRepository.save(target);
+        Movie saved = movieRepository.save(target);
+        movieBrowseCacheService.evictAll();
+        return saved;
     }
 
     public List<Movie> findAll() {
@@ -136,12 +143,20 @@ public class MovieService {
         movie.setReleaseDate(data.getReleaseDate());
         movie.setDurationMinutes(data.getDurationMinutes());
         movie.setStatus(data.getStatus());
-        return movieRepository.save(movie);
+        Movie saved = movieRepository.save(movie);
+        movieBrowseCacheService.evictAll();
+        return saved;
     }
 
     @Transactional
     public void delete(Long id) {
+        long showtimes = showtimeRepository.countByMovieId(id);
+        if (showtimes > 0) {
+            throw new IllegalStateException("Cannot delete movie: it has " + showtimes
+                    + " showtime(s). Delete its showtimes first, or set the movie to ARCHIVED.");
+        }
         movieRepository.deleteById(id);
+        movieBrowseCacheService.evictAll();
     }
 
     public long count() {

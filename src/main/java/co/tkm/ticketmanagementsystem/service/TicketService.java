@@ -78,7 +78,7 @@ public class TicketService {
         if (ticket.getStatus() == TicketStatus.CANCELLED) {
             throw new IllegalArgumentException("This ticket has been cancelled.");
         }
-        if (ticket.getScannedAt() != null) {
+        if (ticket.getStatus() == TicketStatus.USED || ticket.getScannedAt() != null) {
             throw new IllegalArgumentException("Ticket already scanned at " + ticket.getScannedAt() + ".");
         }
 
@@ -87,6 +87,7 @@ public class TicketService {
             throw new IllegalArgumentException("Ticket is valid for " + showDate + ", not today.");
         }
 
+        ticket.setStatus(TicketStatus.USED);
         ticket.setScannedAt(LocalDateTime.now());
         return ticketRepository.save(ticket);
     }

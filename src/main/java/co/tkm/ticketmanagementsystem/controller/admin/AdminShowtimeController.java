@@ -71,7 +71,7 @@ public class AdminShowtimeController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Create or update a showtime (set id to update); optionally broadcasts a notification")
-    @Transactional(readOnly = true)
+    @Transactional
     public ResponseEntity<ShowtimeResponse> saveShowtime(@RequestBody ShowtimeRequest req) {
         Showtime showtime = new Showtime();
         showtime.setId(req.id());
@@ -105,7 +105,7 @@ public class AdminShowtimeController {
 
     @PostMapping(value = "/{id}/block", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Toggle a showtime's blocked/published status")
-    @Transactional(readOnly = true)
+    @Transactional
     public ResponseEntity<ShowtimeResponse> toggleBlockShowtime(@PathVariable Long id) {
         showtimeService.toggleBlocked(id);
         return ResponseEntity.ok(toShowtimeResponse(showtimeService.findById(id), null, null, false));
@@ -113,7 +113,7 @@ public class AdminShowtimeController {
 
     @PostMapping(value = "/{id}/copy-next-week", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Copy a showtime to the same day/time next week")
-    @Transactional(readOnly = true)
+    @Transactional
     public ResponseEntity<ShowtimeResponse> copyShowtimeNextWeek(@PathVariable Long id) {
         Showtime copy = showtimeService.copyToNextWeek(id);
         return ResponseEntity.ok(toShowtimeResponse(copy, null, null, false));

@@ -3,19 +3,30 @@ package co.tkm.ticketmanagementsystem.service;
 import co.tkm.ticketmanagementsystem.enums.*;
 import co.tkm.ticketmanagementsystem.model.*;
 import co.tkm.ticketmanagementsystem.repository.*;
+import co.tkm.ticketmanagementsystem.service.CambodiaSeedCatalog.CinemaSeed;
+import co.tkm.ticketmanagementsystem.service.CambodiaSeedCatalog.FoodSeed;
+import co.tkm.ticketmanagementsystem.service.CambodiaSeedCatalog.HallPlan;
+import co.tkm.ticketmanagementsystem.service.CambodiaSeedCatalog.MovieSeed;
+import co.tkm.ticketmanagementsystem.service.CambodiaSeedCatalog.PersonSeed;
+import co.tkm.ticketmanagementsystem.service.CambodiaSeedCatalog.PromoSeed;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.github.javafaker.Faker;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.*;
 
 @Service
@@ -23,6 +34,15 @@ import java.util.*;
 public class DatabaseSeederService {
 
     private static final Logger log = LoggerFactory.getLogger(DatabaseSeederService.class);
+    private static final String MOVIE_URL_PREFIX = "/uploads/movies/";
+    private static final String FOOD_URL_PREFIX = "/uploads/food-items/";
+    private static final LocalTime[] SHOW_TIMES = {
+            LocalTime.of(10, 30),
+            LocalTime.of(13, 15),
+            LocalTime.of(16, 0),
+            LocalTime.of(18, 45),
+            LocalTime.of(21, 15)
+    };
 
     private final UserRepository userRepository;
     private final CinemaRepository cinemaRepository;
@@ -37,12 +57,11 @@ public class DatabaseSeederService {
     private final BookingFoodItemRepository bookingFoodItemRepository;
     private final PaymentRepository paymentRepository;
     private final TicketRepository ticketRepository;
-    private final SystemSettingRepository systemSettingRepository;
 
-    @Value("${app.seed.counts.users:50}")
+    @Value("${app.seed.counts.users:24}")
     private int userCount;
 
-    @Value("${app.seed.counts.cinemas:3}")
+    @Value("${app.seed.counts.cinemas:6}")
     private int cinemaCount;
 
     @Value("${app.seed.counts.hallsPerCinema:3}")
@@ -63,11 +82,15 @@ public class DatabaseSeederService {
     @Value("${app.seed.counts.bookings:20}")
     private int bookingCount;
 
-    private final Faker faker = new Faker();
+    @Value("${app.uploads.movies-dir:uploads/movies}")
+    private String uploadsMoviesDir;
+
+    @Value("${app.uploads.food-items-dir:uploads/food-items}")
+    private String uploadsFoodItemsDir;
 
     @Transactional
     public void seed() {
-        log.info("Starting comprehensive database seeding...");
+        log.info("Starting Cambodia catalog seeding...");
         long start = System.currentTimeMillis();
 
         List<User> users = seedUsers();
@@ -79,7 +102,7 @@ public class DatabaseSeederService {
         List<Movie> movies = seedMovies();
         List<Showtime> showtimes = seedShowtimes(movies, halls);
         List<ShowtimeSeat> showtimeSeats = seedShowtimeSeats(showtimes, seats);
-        List<Booking> bookings = seedBookings(users, showtimes, showtimeSeats, foodItems, promoCodes);
+        List<Booking> bookings = seedBookings(users, showtimes, showtimeSeats, foodItems);
 
         long end = System.currentTimeMillis();
         log.info("Database seeding completed in {} ms.", (end - start));
@@ -107,16 +130,15 @@ public class DatabaseSeederService {
 
     private List<User> seedUsers() {
         List<User> users = new ArrayList<>();
-        for (int i = 0; i < userCount; i++) {
+        for (PersonSeed person : take(CambodiaSeedCatalog.CUSTOMERS, userCount)) {
             User user = new User();
-            user.setName(faker.name().fullName());
-            user.setEmail(UUID.randomUUID().toString().substring(0, 8) + "_" + faker.internet().emailAddress());
-            user.setPhone(faker.phoneNumber().cellPhone());
-            // Demo rows only mirror the shape of a real account; Keycloak holds credentials.
+            user.setName(person.name());
+            user.setEmail(person.email());
+            user.setPhone(person.phone());
             user.setPassword(User.KEYCLOAK_MANAGED_PASSWORD);
             user.setRole(Role.CUSTOMER);
             user.setStatus(UserStatus.ACTIVE);
-            user.setPoints(faker.number().numberBetween(0, 1000));
+            user.setPoints(person.points());
             users.add(user);
         }
         return userRepository.saveAll(users);
@@ -124,14 +146,14 @@ public class DatabaseSeederService {
 
     private List<Cinema> seedCinemas() {
         List<Cinema> cinemas = new ArrayList<>();
-        for (int i = 0; i < cinemaCount; i++) {
+        for (CinemaSeed source : take(CambodiaSeedCatalog.CINEMAS, cinemaCount)) {
             Cinema cinema = new Cinema();
-            cinema.setName(faker.company().name() + " Cinema " + i);
-            cinema.setAddress(faker.address().fullAddress());
-            cinema.setTotalHalls(hallsPerCinema);
-            cinema.setOpeningHours("08:00 AM - 11:00 PM");
-            cinema.setLatitude(Double.valueOf(faker.address().latitude().replace(",", ".")));
-            cinema.setLongitude(Double.valueOf(faker.address().longitude().replace(",", ".")));
+            cinema.setName(source.name());
+            cinema.setAddress(source.address());
+            cinema.setTotalHalls(Math.min(hallsPerCinema, CambodiaSeedCatalog.HALL_PLANS.size()));
+            cinema.setOpeningHours(source.openingHours());
+            cinema.setLatitude(source.latitude());
+            cinema.setLongitude(source.longitude());
             cinemas.add(cinema);
         }
         return cinemaRepository.saveAll(cinemas);
@@ -139,16 +161,23 @@ public class DatabaseSeederService {
 
     private List<Hall> seedHalls(List<Cinema> cinemas) {
         List<Hall> halls = new ArrayList<>();
-        for (Cinema cinema : cinemas) {
-            for (int i = 1; i <= hallsPerCinema; i++) {
+        List<CinemaSeed> sources = take(CambodiaSeedCatalog.CINEMAS, cinemas.size());
+        int hallLimit = Math.min(hallsPerCinema, CambodiaSeedCatalog.HALL_PLANS.size());
+        for (int i = 0; i < cinemas.size(); i++) {
+            Cinema cinema = cinemas.get(i);
+            CinemaSeed source = sources.get(i);
+            for (int h = 0; h < hallLimit; h++) {
+                HallPlan plan = CambodiaSeedCatalog.HALL_PLANS.get(h);
                 Hall hall = new Hall();
-                hall.setName(cinema.getName() + " - Hall " + i);
+                hall.setName(source.shortName() + " · " + plan.suffix());
                 hall.setCinema(cinema);
-                hall.setTotalSeats(60); // 6 rows * 10 cols
-                hall.setCity(faker.address().city());
+                hall.setTotalSeats(60);
+                hall.setCapacity(60);
+                hall.setCity(source.city());
                 hall.setAddress(cinema.getAddress());
-                hall.setAmenities("Dolby Atmos, 4K Projection");
-                hall.setType(i == 1 ? "IMAX" : "STANDARD");
+                hall.setAmenities(plan.amenities());
+                hall.setType(plan.type());
+                hall.setHasDolbyAtmos(plan.dolbyAtmos());
                 halls.add(hall);
             }
         }
@@ -176,12 +205,15 @@ public class DatabaseSeederService {
 
     private List<FoodItem> seedFoodItems() {
         List<FoodItem> items = new ArrayList<>();
-        for (int i = 0; i < foodItemCount; i++) {
+        for (FoodSeed source : take(CambodiaSeedCatalog.FOOD, foodItemCount)) {
             FoodItem item = new FoodItem();
-            item.setName(faker.food().dish());
-            item.setDescription(faker.lorem().sentence());
-            item.setPrice(BigDecimal.valueOf(faker.number().randomDouble(2, 2, 15)));
+            item.setName(source.name());
+            item.setDescription(source.description());
+            item.setPrice(source.price());
+            item.setImageUrl(publishImage("seed/food/" + source.slug() + ".jpg",
+                    uploadsFoodItemsDir, FOOD_URL_PREFIX, source.slug() + ".jpg"));
             item.setAvailable(true);
+            item.setStockQuantity(0);
             items.add(item);
         }
         return foodItemRepository.saveAll(items);
@@ -189,13 +221,14 @@ public class DatabaseSeederService {
 
     private List<PromoCode> seedPromoCodes() {
         List<PromoCode> promos = new ArrayList<>();
-        for (int i = 0; i < promoCodeCount; i++) {
+        for (PromoSeed source : take(CambodiaSeedCatalog.PROMOS, promoCodeCount)) {
             PromoCode promo = new PromoCode();
-            promo.setCode(faker.regexify("[A-Z0-9]{5}") + i);
-            promo.setDiscountType(faker.options().option(DiscountType.class));
-            promo.setDiscountPercent(faker.number().numberBetween(5, 20));
-            promo.setValidUntil(LocalDate.now().plusDays(30));
-            promo.setMaxUses(100);
+            promo.setCode(source.code());
+            promo.setDiscountType(DiscountType.PERCENT);
+            promo.setDiscountPercent(source.discountPercent());
+            promo.setMinPurchase(source.minPurchase());
+            promo.setValidUntil(LocalDate.now().plusDays(90));
+            promo.setMaxUses(source.maxUses());
             promo.setUsedCount(0);
             promo.setActive(true);
             promos.add(promo);
@@ -205,19 +238,23 @@ public class DatabaseSeederService {
 
     private List<Movie> seedMovies() {
         List<Movie> movies = new ArrayList<>();
-        for (int i = 0; i < movieCount; i++) {
+        for (MovieSeed source : take(CambodiaSeedCatalog.MOVIES, movieCount)) {
             Movie movie = new Movie();
-            movie.setTitle(faker.book().title());
-            movie.setDescription(faker.lorem().paragraph(3));
-            movie.setGenre(faker.book().genre());
-            movie.setDirector(faker.name().fullName());
-            movie.setCast(faker.name().fullName() + ", " + faker.name().fullName());
-            movie.setLanguage(faker.nation().language());
-            movie.setFormat("2D, 3D");
-            movie.setRating(faker.options().option("G", "PG", "PG-13", "R"));
-            movie.setDurationMinutes(faker.number().numberBetween(90, 180));
-            movie.setReleaseDate(LocalDate.now().minusDays(faker.number().numberBetween(0, 30)));
-            movie.setStatus(faker.options().option(MovieStatus.NOW_SHOWING, MovieStatus.COMING_SOON));
+            movie.setTitle(source.title());
+            movie.setDescription(source.description());
+            movie.setGenre(source.genre());
+            movie.setDirector(source.director());
+            movie.setCast(source.cast());
+            movie.setLanguage(source.language());
+            movie.setFormat("2D");
+            movie.setRating(source.rating());
+            movie.setDurationMinutes(source.durationMinutes());
+            movie.setReleaseDate(source.releaseDate());
+            movie.setStatus(source.status());
+            movie.setImagePath(publishImage("seed/movies/" + source.slug() + "-poster.jpg",
+                    uploadsMoviesDir, MOVIE_URL_PREFIX, source.slug() + "-poster.jpg"));
+            movie.setBannerPath(publishImage("seed/movies/" + source.slug() + "-banner.jpg",
+                    uploadsMoviesDir, MOVIE_URL_PREFIX, source.slug() + "-banner.jpg"));
             movies.add(movie);
         }
         return movieRepository.saveAll(movies);
@@ -225,17 +262,38 @@ public class DatabaseSeederService {
 
     private List<Showtime> seedShowtimes(List<Movie> movies, List<Hall> halls) {
         List<Showtime> showtimes = new ArrayList<>();
+        if (halls.isEmpty()) {
+            return showtimes;
+        }
+        Set<String> usedSlots = new HashSet<>();
+        int cursor = 0;
         for (Movie movie : movies) {
-            if (movie.getStatus() != MovieStatus.NOW_SHOWING) continue;
-            for (int i = 0; i < showtimesPerMovie; i++) {
+            if (movie.getStatus() != MovieStatus.NOW_SHOWING) {
+                continue;
+            }
+            int placed = 0;
+            int attempts = 0;
+            while (placed < showtimesPerMovie && attempts < halls.size() * 14) {
+                attempts++;
+                Hall hall = halls.get(cursor % halls.size());
+                LocalDate date = LocalDate.now().plusDays(cursor % 7L);
+                LocalTime time = SHOW_TIMES[cursor % SHOW_TIMES.length];
+                cursor++;
+                String key = hall.getId() + "|" + date + "|" + time;
+                if (!usedSlots.add(key)) {
+                    continue;
+                }
+                boolean atmos = "ATMOS".equals(hall.getType());
                 Showtime st = new Showtime();
                 st.setMovie(movie);
-                st.setHall(halls.get(faker.number().numberBetween(0, halls.size())));
-                st.setShowDate(LocalDate.now().plusDays(faker.number().numberBetween(0, 7)));
-                st.setShowTime(LocalTime.of(faker.number().numberBetween(10, 22), 0));
-                st.setNormalPrice(BigDecimal.valueOf(faker.number().randomDouble(2, 5, 10)));
-                st.setCouplePrice(BigDecimal.valueOf(faker.number().randomDouble(2, 12, 20)));
+                st.setHall(hall);
+                st.setShowDate(date);
+                st.setShowTime(time);
+                st.setNormalPrice(atmos ? CambodiaSeedCatalog.ATMOS_SEAT : CambodiaSeedCatalog.STANDARD_SEAT);
+                st.setCouplePrice(atmos ? CambodiaSeedCatalog.ATMOS_COUPLE : CambodiaSeedCatalog.STANDARD_COUPLE);
+                st.setBlocked(false);
                 showtimes.add(st);
+                placed++;
             }
         }
         return showtimeRepository.saveAll(showtimes);
@@ -243,7 +301,6 @@ public class DatabaseSeederService {
 
     private List<ShowtimeSeat> seedShowtimeSeats(List<Showtime> showtimes, List<Seat> allSeats) {
         List<ShowtimeSeat> showtimeSeats = new ArrayList<>();
-        // Group seats by hall
         Map<Long, List<Seat>> seatsByHall = new HashMap<>();
         for (Seat s : allSeats) {
             seatsByHall.computeIfAbsent(s.getHall().getId(), k -> new ArrayList<>()).add(s);
@@ -252,19 +309,20 @@ public class DatabaseSeederService {
         int batchSize = 1000;
         for (Showtime st : showtimes) {
             List<Seat> hallSeats = seatsByHall.get(st.getHall().getId());
-            if (hallSeats != null) {
-                for (Seat seat : hallSeats) {
-                    ShowtimeSeat ss = new ShowtimeSeat();
-                    ss.setShowtime(st);
-                    ss.setSeat(seat);
-                    ss.setStatus(ShowtimeSeatStatus.AVAILABLE);
-                    showtimeSeats.add(ss);
-                    
-                    if (showtimeSeats.size() >= batchSize) {
-                        showtimeSeatRepository.saveAll(showtimeSeats);
-                        showtimeSeatRepository.flush();
-                        showtimeSeats.clear();
-                    }
+            if (hallSeats == null) {
+                continue;
+            }
+            for (Seat seat : hallSeats) {
+                ShowtimeSeat ss = new ShowtimeSeat();
+                ss.setShowtime(st);
+                ss.setSeat(seat);
+                ss.setStatus(ShowtimeSeatStatus.AVAILABLE);
+                showtimeSeats.add(ss);
+
+                if (showtimeSeats.size() >= batchSize) {
+                    showtimeSeatRepository.saveAll(showtimeSeats);
+                    showtimeSeatRepository.flush();
+                    showtimeSeats.clear();
                 }
             }
         }
@@ -274,11 +332,15 @@ public class DatabaseSeederService {
         return showtimeSeatRepository.findAll();
     }
 
-    private List<Booking> seedBookings(List<User> users, List<Showtime> showtimes, List<ShowtimeSeat> allShowtimeSeats, List<FoodItem> foodItems, List<PromoCode> promoCodes) {
+    private List<Booking> seedBookings(List<User> users, List<Showtime> showtimes,
+                                       List<ShowtimeSeat> allShowtimeSeats, List<FoodItem> foodItems) {
         List<Booking> bookings = new ArrayList<>();
         List<Payment> payments = new ArrayList<>();
         List<Ticket> tickets = new ArrayList<>();
         List<BookingFoodItem> bfItems = new ArrayList<>();
+        if (showtimes.isEmpty() || users.isEmpty()) {
+            return bookings;
+        }
 
         Map<Long, List<ShowtimeSeat>> ssByShowtime = new HashMap<>();
         for (ShowtimeSeat ss : allShowtimeSeats) {
@@ -286,67 +348,95 @@ public class DatabaseSeederService {
         }
 
         for (int i = 0; i < bookingCount; i++) {
-            if (showtimes.isEmpty() || users.isEmpty()) break;
-            
-            Showtime st = showtimes.get(faker.number().numberBetween(0, showtimes.size()));
-            User user = users.get(faker.number().numberBetween(0, users.size()));
-            
-            List<ShowtimeSeat> availableSeats = ssByShowtime.get(st.getId()).stream()
+            Showtime st = showtimes.get(i % showtimes.size());
+            User user = users.get(i % users.size());
+            List<ShowtimeSeat> availableSeats = ssByShowtime.getOrDefault(st.getId(), List.of()).stream()
                     .filter(s -> s.getStatus() == ShowtimeSeatStatus.AVAILABLE)
+                    .filter(s -> s.getSeat().getSeatType() == SeatType.NORMAL)
                     .toList();
-                    
-            if (availableSeats.isEmpty()) continue;
-            
-            ShowtimeSeat bookedSeat = availableSeats.get(faker.number().numberBetween(0, availableSeats.size()));
+            if (availableSeats.isEmpty()) {
+                continue;
+            }
+
+            ShowtimeSeat bookedSeat = availableSeats.get(i % availableSeats.size());
             bookedSeat.setStatus(ShowtimeSeatStatus.BOOKED);
             showtimeSeatRepository.save(bookedSeat);
 
+            BigDecimal total = st.getNormalPrice();
             Booking booking = new Booking();
             booking.setUser(user);
             booking.setShowtime(st);
-            booking.setTotalAmount(st.getNormalPrice());
             booking.setStatus(BookingStatus.CONFIRMED);
-            booking.setBookedAt(LocalDateTime.now());
-            booking.setPaymentMethod("CREDIT_CARD");
+            booking.setBookedAt(LocalDateTime.now().minusDays(i % 5L).minusHours(i % 8L));
+            booking.setPaymentMethod(CambodiaSeedCatalog.PAYMENT_METHODS[i % CambodiaSeedCatalog.PAYMENT_METHODS.length]);
+
+            if (!foodItems.isEmpty() && i % 2 == 0) {
+                FoodItem food = foodItems.get(i % foodItems.size());
+                int quantity = (i % 2) + 1;
+                BookingFoodItem bfi = new BookingFoodItem();
+                bfi.setBooking(booking);
+                bfi.setFoodItem(food);
+                bfi.setQuantity(quantity);
+                bfi.setUnitPrice(food.getPrice());
+                bfItems.add(bfi);
+                total = total.add(food.getPrice().multiply(BigDecimal.valueOf(quantity)));
+            }
+            booking.setTotalAmount(total);
             booking = bookingRepository.save(booking);
             bookings.add(booking);
 
             Payment payment = new Payment();
             payment.setBooking(booking);
             payment.setAmount(booking.getTotalAmount());
-            payment.setMethod("CREDIT_CARD");
+            payment.setMethod(booking.getPaymentMethod());
             payment.setStatus(PaymentStatus.PAID);
-            payment.setPaidAt(LocalDateTime.now());
+            payment.setPaidAt(booking.getBookedAt());
             payments.add(payment);
 
             Ticket ticket = new Ticket();
             ticket.setBooking(booking);
             ticket.setSeat(bookedSeat.getSeat());
-            ticket.setTicketCode(UUID.randomUUID().toString());
+            ticket.setTicketCode("TKM-" + String.format("%05d", i + 1));
             ticket.setStatus(TicketStatus.ACTIVE);
-            ticket.setIssuedAt(LocalDateTime.now());
+            ticket.setIssuedAt(booking.getBookedAt());
             tickets.add(ticket);
-            
-            if (faker.bool().bool()) {
-                FoodItem food = foodItems.get(faker.number().numberBetween(0, foodItems.size()));
-                BookingFoodItem bfi = new BookingFoodItem();
-                bfi.setBooking(booking);
-                bfi.setFoodItem(food);
-                bfi.setQuantity(faker.number().numberBetween(1, 3));
-                bfi.setUnitPrice(food.getPrice());
-                bfItems.add(bfi);
-            }
         }
-        
+
         paymentRepository.saveAll(payments);
         ticketRepository.saveAll(tickets);
         bookingFoodItemRepository.saveAll(bfItems);
-        
         return bookings;
     }
 
-    private void printReport(List<User> users, List<Cinema> cinemas, List<Hall> halls, List<Seat> seats, 
-                             List<Movie> movies, List<Showtime> showtimes, List<ShowtimeSeat> showtimeSeats, 
+    private String publishImage(String classpath, String uploadDir, String urlPrefix, String filename) {
+        ClassPathResource resource = new ClassPathResource(classpath);
+        if (!resource.exists()) {
+            log.warn("Seed image missing: {}", classpath);
+            return null;
+        }
+        try {
+            Path dir = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Files.createDirectories(dir);
+            Path destination = dir.resolve(filename);
+            try (InputStream in = resource.getInputStream()) {
+                Files.copy(in, destination, StandardCopyOption.REPLACE_EXISTING);
+            }
+            return urlPrefix + filename;
+        } catch (IOException ex) {
+            log.warn("Could not copy seed image {}: {}", classpath, ex.getMessage());
+            return null;
+        }
+    }
+
+    private static <T> List<T> take(List<T> source, int count) {
+        if (count <= 0 || source.isEmpty()) {
+            return List.of();
+        }
+        return source.subList(0, Math.min(count, source.size()));
+    }
+
+    private void printReport(List<User> users, List<Cinema> cinemas, List<Hall> halls, List<Seat> seats,
+                             List<Movie> movies, List<Showtime> showtimes, List<ShowtimeSeat> showtimeSeats,
                              List<FoodItem> foodItems, List<PromoCode> promoCodes, List<Booking> bookings) {
         log.info("========================================");
         log.info("       DATABASE SEEDING REPORT          ");

@@ -55,26 +55,28 @@ public class ReportService {
         LocalDateTime since = LocalDate.now().minusDays(days - 1L).atStartOfDay();
         List<Booking> bookings = bookingRepository.findByBookedAtAfter(since);
 
-        // Build a map keyed by date string
-        Map<String, long[]> byDate = new LinkedHashMap<>();
+        // Per date: booking count and confirmed revenue, summed exactly (no cents dropped)
+        Map<String, Long> countByDate = new LinkedHashMap<>();
+        Map<String, BigDecimal> revenueByDate = new LinkedHashMap<>();
         for (int i = days - 1; i >= 0; i--) {
-            byDate.put(LocalDate.now().minusDays(i).toString(), new long[]{0, 0});
+            String key = LocalDate.now().minusDays(i).toString();
+            countByDate.put(key, 0L);
+            revenueByDate.put(key, BigDecimal.ZERO);
         }
 
         for (Booking b : bookings) {
             String key = b.getBookedAt().toLocalDate().toString();
-            long[] arr = byDate.get(key);
-            if (arr != null) {
-                arr[0]++;
-                if (b.getStatus() == BookingStatus.CONFIRMED) {
-                    arr[1] += b.getTotalAmount().longValue();
+            if (countByDate.containsKey(key)) {
+                countByDate.merge(key, 1L, Long::sum);
+                if (b.getStatus() == BookingStatus.CONFIRMED && b.getTotalAmount() != null) {
+                    revenueByDate.merge(key, b.getTotalAmount(), BigDecimal::add);
                 }
             }
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Map.Entry<String, long[]> e : byDate.entrySet()) {
-            result.add(Map.of("date", e.getKey(), "count", e.getValue()[0], "revenue", e.getValue()[1]));
+        for (String key : countByDate.keySet()) {
+            result.add(Map.of("date", key, "count", countByDate.get(key), "revenue", revenueByDate.get(key)));
         }
         return result;
     }
@@ -85,24 +87,24 @@ public class ReportService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getTopMovies(int limit) {
         List<Booking> confirmed = bookingRepository.findByStatus(BookingStatus.CONFIRMED);
-        Map<String, long[]> movieStats = new LinkedHashMap<>();
+        Map<String, Long> ticketsByTitle = new LinkedHashMap<>();
+        Map<String, BigDecimal> revenueByTitle = new LinkedHashMap<>();
 
         for (Booking b : confirmed) {
             String title = b.getShowtime().getMovie().getTitle();
             long ticketCount = ticketRepository.findByBooking(b).size();
-            long[] arr = movieStats.computeIfAbsent(title, k -> new long[]{0, 0});
-            arr[0] += ticketCount;
-            arr[1] += b.getTotalAmount().longValue();
+            ticketsByTitle.merge(title, ticketCount, Long::sum);
+            revenueByTitle.merge(title, b.getTotalAmount() != null ? b.getTotalAmount() : BigDecimal.ZERO, BigDecimal::add);
         }
 
-        return movieStats.entrySet().stream()
-                .sorted((a, b) -> Long.compare(b.getValue()[0], a.getValue()[0]))
+        return ticketsByTitle.entrySet().stream()
+                .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
                 .limit(limit)
                 .map(e -> {
                     Map<String, Object> m = new java.util.HashMap<>();
                     m.put("title", e.getKey());
-                    m.put("tickets", e.getValue()[0]);
-                    m.put("revenue", e.getValue()[1]);
+                    m.put("tickets", e.getValue());
+                    m.put("revenue", revenueByTitle.get(e.getKey()));
                     return m;
                 })
                 .toList();

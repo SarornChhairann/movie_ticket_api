@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.annotation.Order;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+@Order(20)
 @RequiredArgsConstructor
 @ConditionalOnProperty(value = "app.seed.admin.enabled", havingValue = "true", matchIfMissing = true)
 public class AdminSeeder implements CommandLineRunner {

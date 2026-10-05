@@ -33,7 +33,7 @@ public class AdminSettingController {
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Save one or more system settings (key -> value)")
     public ResponseEntity<List<SystemSetting>> saveSettings(@RequestBody Map<String, String> params) {
-        params.forEach(systemSettingService::set);
+        systemSettingService.saveAll(params);
         return ResponseEntity.ok(systemSettingService.findAll());
     }
 }

@@ -7,6 +7,7 @@ import co.tkm.ticketmanagementsystem.model.Seat;
 import co.tkm.ticketmanagementsystem.repository.CinemaRepository;
 import co.tkm.ticketmanagementsystem.repository.HallRepository;
 import co.tkm.ticketmanagementsystem.repository.SeatRepository;
+import co.tkm.ticketmanagementsystem.repository.ShowtimeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,8 @@ public class HallService {
     private final HallRepository hallRepository;
     private final SeatRepository seatRepository;
     private final CinemaRepository cinemaRepository;
+    private final ShowtimeRepository showtimeRepository;
+    private final MovieBrowseCacheService movieBrowseCacheService;
 
     @Transactional
     public Hall save(Hall hall) {
@@ -36,6 +39,7 @@ public class HallService {
         Cinema cinema = cinemaRepository.findById(hall.getCinema().getId())
                 .orElseThrow(() -> new IllegalArgumentException("Cinema not found: " + hall.getCinema().getId()));
         hall.setCinema(cinema);
+        requireUniqueName(hall.getName(), null);
 
         if (hall.getTotalSeats() == null || hall.getTotalSeats() <= 0) {
             hall.setTotalSeats(DEFAULT_ROWS * TOTAL_SEATS_PER_ROW);
@@ -93,6 +97,7 @@ public class HallService {
         }
         Cinema cinema = cinemaRepository.findById(data.getCinema().getId())
                 .orElseThrow(() -> new IllegalArgumentException("Cinema not found: " + data.getCinema().getId()));
+        requireUniqueName(data.getName(), id);
         hall.setCinema(cinema);
         hall.setName(data.getName());
         hall.setCity(data.getCity());
@@ -100,6 +105,7 @@ public class HallService {
         hall.setType(data.getType());
         hall.setHasDolbyAtmos(data.isHasDolbyAtmos());
         hall.setHasScreenX(data.isHasScreenX());
+        hall.setAmenities(data.getAmenities());
         Integer requestedTotalSeats = data.getTotalSeats();
         if (requestedTotalSeats == null) {
             hall.setTotalSeats(DEFAULT_ROWS * TOTAL_SEATS_PER_ROW);
@@ -111,12 +117,38 @@ public class HallService {
         } else {
             hall.setCapacity(data.getCapacity());
         }
-        return hallRepository.save(hall);
+        Hall saved = hallRepository.save(hall);
+        movieBrowseCacheService.evictAll();
+        return saved;
     }
 
+    /**
+     * Deletes a hall with no showtimes, together with the seat layout generated for it.
+     * A hall that still has showtimes is refused, since those carry bookings and seat state.
+     */
     @Transactional
     public void deleteById(Long id) {
-        hallRepository.deleteById(id);
+        Hall hall = findById(id);
+        long showtimes = showtimeRepository.countByHallId(id);
+        if (showtimes > 0) {
+            throw new IllegalStateException("Cannot delete hall: it has " + showtimes
+                    + " showtime(s). Delete its showtimes first.");
+        }
+        seatRepository.deleteAll(seatRepository.findByHall(hall));
+        hallRepository.delete(hall);
+        movieBrowseCacheService.evictAll();
+    }
+
+    /** Hall names are unique in the database; say so instead of failing on the constraint. */
+    private void requireUniqueName(String name, Long selfId) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Hall name is required.");
+        }
+        hallRepository.findByName(name)
+                .filter(other -> !other.getId().equals(selfId))
+                .ifPresent(other -> {
+                    throw new IllegalArgumentException("A hall named \"" + name + "\" already exists.");
+                });
     }
 
     public long count() {

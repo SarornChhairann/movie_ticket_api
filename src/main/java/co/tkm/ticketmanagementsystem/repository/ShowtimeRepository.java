@@ -112,4 +112,8 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, Long> {
         """)
     List<Showtime> findByShowDateCinemaNotBlocked(@Param("showDate") LocalDate showDate,
                                                   @Param("cinemaId") UUID cinemaId);
+
+    long countByMovieId(Long movieId);
+
+    long countByHallId(Long hallId);
 }

@@ -10,7 +10,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -57,6 +60,62 @@ public class SystemSettingService {
     @Transactional(readOnly = true)
     public String get(String key) {
         return repo.findById(key).map(SystemSetting::getValue).orElse(null);
+    }
+
+    /**
+     * Validates every entry first, then saves them together, so one bad value saves nothing.
+     * Only the six known keys are accepted; values must parse the way the readers parse them.
+     */
+    @Transactional
+    public void saveAll(Map<String, String> values) {
+        if (values == null || values.isEmpty()) {
+            throw new IllegalArgumentException("No settings to save.");
+        }
+        List<String> problems = new ArrayList<>();
+        Map<String, String> clean = new LinkedHashMap<>();
+        values.forEach((key, raw) -> {
+            String value = raw == null ? "" : raw.trim();
+            String problem = checkValue(key, value);
+            if (problem != null) problems.add(problem);
+            else clean.put(key, value);
+        });
+        if (!problems.isEmpty()) {
+            throw new IllegalArgumentException(String.join(" ", problems));
+        }
+        clean.forEach(this::set);
+    }
+
+    private static String checkValue(String key, String value) {
+        switch (key) {
+            case HOLD_MINUTES -> {
+                Integer n = parseWhole(value);
+                return (n == null || n < 1) ? "hold_minutes must be a whole number of at least 1." : null;
+            }
+            case CANCELLATION_HOURS -> {
+                Integer n = parseWhole(value);
+                return (n == null || n < 0 || n > 72) ? "cancellation_hours must be a whole number from 0 to 72." : null;
+            }
+            case SERVICE_FEE -> {
+                BigDecimal d = parseDecimal(value);
+                return (d == null || d.signum() < 0) ? "service_fee must be an amount of 0 or more, e.g. 1.50." : null;
+            }
+            case TAX_RATE, WEEKEND_SURCHARGE_RATE, MORNING_DISCOUNT_RATE -> {
+                BigDecimal d = parseDecimal(value);
+                return (d == null || d.signum() < 0 || d.compareTo(BigDecimal.ONE) > 0)
+                        ? key + " must be a decimal from 0 to 1 (0.10 means 10%)." : null;
+            }
+            default -> {
+                return "Unknown setting: " + key + ".";
+            }
+        }
+    }
+
+    private static Integer parseWhole(String v) {
+        try { return Integer.valueOf(v); } catch (NumberFormatException e) { return null; }
+    }
+
+    private static BigDecimal parseDecimal(String v) {
+        try { return new BigDecimal(v); } catch (NumberFormatException e) { return null; }
     }
 
     @Transactional
