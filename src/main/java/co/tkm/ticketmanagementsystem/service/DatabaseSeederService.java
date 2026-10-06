@@ -57,6 +57,7 @@ public class DatabaseSeederService {
     private final BookingFoodItemRepository bookingFoodItemRepository;
     private final PaymentRepository paymentRepository;
     private final TicketRepository ticketRepository;
+    private final MovieReminderRepository movieReminderRepository;
 
     @Value("${app.seed.counts.users:24}")
     private int userCount;
@@ -118,6 +119,7 @@ public class DatabaseSeederService {
         bookingRepository.deleteAllInBatch();
         showtimeSeatRepository.deleteAllInBatch();
         showtimeRepository.deleteAllInBatch();
+        movieReminderRepository.deleteAllInBatch();
         movieRepository.deleteAllInBatch();
         promoCodeRepository.deleteAllInBatch();
         foodItemRepository.deleteAllInBatch();
