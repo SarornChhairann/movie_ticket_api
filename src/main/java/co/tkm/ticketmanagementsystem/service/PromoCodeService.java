@@ -115,4 +115,14 @@ public class PromoCodeService {
             promoCodeRepository.save(promo);
         });
     }
+
+    /** Gives back one use when a booking that recorded one is cancelled; never below 0. */
+    @Transactional
+    public void releaseUsage(String code) {
+        if (code == null || code.isBlank()) return;
+        promoCodeRepository.findByCodeIgnoreCase(code.trim()).ifPresent(promo -> {
+            promo.setUsedCount(Math.max(0, promo.getUsedCount() - 1));
+            promoCodeRepository.save(promo);
+        });
+    }
 }

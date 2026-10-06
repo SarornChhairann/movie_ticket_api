@@ -25,6 +25,8 @@ public class EmailService {
         StringBuilder body = new StringBuilder();
         body.append("Dear ").append(resolveName(booking)).append(",\n\n");
         body.append("Your booking is confirmed!\n\n");
+        body.append("Booking reference: ").append(booking.getReference()).append("\n");
+        body.append("(Use it with your phone number to find your tickets in the app.)\n\n");
         body.append("Movie: ").append(booking.getShowtime().getMovie().getTitle()).append("\n");
         body.append("Date:  ").append(booking.getShowtime().getShowDate()).append("\n");
         body.append("Time:  ").append(booking.getShowtime().getShowTime()).append("\n");
@@ -37,7 +39,7 @@ public class EmailService {
         }
         body.append("\nThank you for booking with us!\n");
 
-        send(recipient, "Booking Confirmed – #" + booking.getId(), body.toString());
+        send(recipient, "Booking Confirmed – " + booking.getReference(), body.toString());
     }
 
     public void sendCancellationNotice(Booking booking) {
@@ -45,11 +47,11 @@ public class EmailService {
         if (recipient == null) return;
 
         String body = "Dear " + resolveName(booking) + ",\n\n" +
-                "Your booking #" + booking.getId() + " for \"" +
+                "Your booking " + booking.getReference() + " for \"" +
                 booking.getShowtime().getMovie().getTitle() + "\" has been cancelled.\n\n" +
                 "If you have any questions please contact our support team.\n\nThank you.";
 
-        send(recipient, "Booking Cancelled – #" + booking.getId(), body);
+        send(recipient, "Booking Cancelled – " + booking.getReference(), body);
     }
 
     private void send(String to, String subject, String body) {

@@ -27,6 +27,8 @@ public class SystemSettingService {
     public static final String TAX_RATE              = "tax_rate";
     public static final String WEEKEND_SURCHARGE_RATE  = "weekend_surcharge_rate";
     public static final String MORNING_DISCOUNT_RATE   = "morning_discount_rate";
+    public static final String MAX_SEATS_PER_BOOKING   = "max_seats_per_booking";
+    public static final String HOLD_EXTEND_MINUTES     = "hold_extend_minutes";
 
     private final SystemSettingRepository repo;
 
@@ -40,6 +42,8 @@ public class SystemSettingService {
             seed(TAX_RATE,               "0.10", "Tax rate as decimal (e.g. 0.10 = 10%)");
             seed(WEEKEND_SURCHARGE_RATE, "0.10", "Weekend surcharge rate as decimal (e.g. 0.10 = 10%)");
             seed(MORNING_DISCOUNT_RATE,  "0.10", "Morning discount rate for showtimes before noon (e.g. 0.10 = 10%)");
+            seed(HOLD_EXTEND_MINUTES,    "5",    "Minutes one extend adds to a seat hold (once per hold)");
+            seed(MAX_SEATS_PER_BOOKING,  "8",    "Most seats one session may hold or book at once (a couple pair counts as 2)");
         } catch (Exception ex) {
             log.error("Failed to seed system settings defaults. Application can still start, but pricing/holds may break.", ex);
         }
@@ -64,7 +68,7 @@ public class SystemSettingService {
 
     /**
      * Validates every entry first, then saves them together, so one bad value saves nothing.
-     * Only the six known keys are accepted; values must parse the way the readers parse them.
+     * Only the known keys are accepted; values must parse the way the readers parse them.
      */
     @Transactional
     public void saveAll(Map<String, String> values) {
@@ -90,6 +94,14 @@ public class SystemSettingService {
             case HOLD_MINUTES -> {
                 Integer n = parseWhole(value);
                 return (n == null || n < 1) ? "hold_minutes must be a whole number of at least 1." : null;
+            }
+            case HOLD_EXTEND_MINUTES -> {
+                Integer n = parseWhole(value);
+                return (n == null || n < 1) ? "hold_extend_minutes must be a whole number of at least 1." : null;
+            }
+            case MAX_SEATS_PER_BOOKING -> {
+                Integer n = parseWhole(value);
+                return (n == null || n < 1) ? "max_seats_per_booking must be a whole number of at least 1." : null;
             }
             case CANCELLATION_HOURS -> {
                 Integer n = parseWhole(value);

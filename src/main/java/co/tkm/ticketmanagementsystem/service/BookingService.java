@@ -116,8 +116,8 @@ public class BookingService {
 
         // 3-4. Booking PENDING plus food lines.
         String method = isBlank(paymentMethod) ? "CARD" : paymentMethod.trim();
-        Booking savedBooking = savePendingBooking(checkoutData, method, guestName, guestPhone, guestEmail,
-                foodSelections);
+        Booking savedBooking = savePendingBooking(checkoutData, method, sessionId, guestName, guestPhone,
+                guestEmail, foodSelections);
 
         // 5. Charge.
         PaymentGateway.PaymentResult result = paymentGateway.charge(savedBooking, method);
@@ -164,11 +164,13 @@ public class BookingService {
     }
 
     /** Steps 3-4 of confirm: the {@code PENDING} booking and its food lines. */
-    private Booking savePendingBooking(CheckoutData checkoutData, String method, String guestName,
-                                       String guestPhone, String guestEmail, Map<Long, Integer> foodSelections) {
+    private Booking savePendingBooking(CheckoutData checkoutData, String method, String sessionId,
+                                       String guestName, String guestPhone, String guestEmail,
+                                       Map<Long, Integer> foodSelections) {
         User user = checkoutData.getUser();
         Booking booking = new Booking();
         booking.setUser(user);
+        booking.setSessionId(sessionId);
         if (user == null) {
             booking.setGuestName(guestName.trim());
             booking.setGuestPhone(guestPhone.trim());
@@ -256,8 +258,8 @@ public class BookingService {
             }
         }
 
-        Booking booking = savePendingBooking(checkoutData, ABA_KHQR, guestName, guestPhone, guestEmail,
-                foodSelections);
+        Booking booking = savePendingBooking(checkoutData, ABA_KHQR, sessionId, guestName, guestPhone,
+                guestEmail, foodSelections);
         String tranId = newTranId(booking.getId());
         String seatIds = selectedSeatIds.stream().map(String::valueOf).collect(Collectors.joining(","));
         paymentService.recordPending(booking, ABA_KHQR, tranId, sessionId, seatIds, holdEnds);
@@ -414,8 +416,9 @@ public class BookingService {
 
     /**
      * Customer cancel (analytics 3.6, invariant 7): owner only, never a guest booking, and
-     * not inside the cancellation window. Frees the seats and, once committed, tells open
-     * seat maps with {@code RELEASED}. Points and promo usage are not reversed.
+     * not inside the cancellation window. Frees the seats, gives back what the booking took
+     * (points, promo use) and marks a paid payment {@code REFUND_PENDING}; once committed,
+     * tells open seat maps with {@code RELEASED}.
      */
     @Transactional
     public void cancelBooking(Long bookingId, String userEmail) {
@@ -453,8 +456,12 @@ public class BookingService {
         });
     }
 
-    /** Sets every ticket and the booking {@code CANCELLED}; returns the freed showtime seat ids. */
+    /**
+     * Sets every ticket and the booking {@code CANCELLED} and reverses the paid path's side
+     * effects; returns the freed showtime seat ids.
+     */
     private List<Long> cancelTicketsAndFreeSeats(Booking booking) {
+        reverseSideEffects(booking);
         List<Long> freedSeatIds = new ArrayList<>();
         List<Ticket> tickets = ticketRepository.findByBooking(booking);
         for (Ticket ticket : tickets) {
@@ -473,6 +480,67 @@ public class BookingService {
         return freedSeatIds;
     }
 
+    /**
+     * Undoes what {@link #finishPaid} gave a {@code CONFIRMED} booking: the points it earned
+     * (never below 0) and its promo use (never below 0). A {@code PAID} payment becomes
+     * {@code REFUND_PENDING} so an admin can return the money. A booking that was never
+     * confirmed earned nothing, so only its payment is looked at.
+     */
+    private void reverseSideEffects(Booking booking) {
+        if (booking.getStatus() == BookingStatus.CONFIRMED) {
+            User user = booking.getUser();
+            if (user != null) {
+                user.setPoints(Math.max(0, user.getPoints() - booking.getTotalAmount().intValue()));
+                userRepository.save(user);
+            }
+            if (booking.getPromoCode() != null) {
+                promoCodeService.releaseUsage(booking.getPromoCode());
+            }
+        }
+        paymentRepository.findByBooking(booking)
+                .filter(payment -> payment.getStatus() == PaymentStatus.PAID)
+                .ifPresent(payment -> {
+                    payment.setStatus(PaymentStatus.REFUND_PENDING);
+                    paymentRepository.save(payment);
+                });
+    }
+
+    /** Admin returned the money of a cancelled booking: {@code REFUND_PENDING} → {@code REFUNDED}. */
+    @Transactional
+    public void markRefunded(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found: " + bookingId));
+        Payment payment = paymentRepository.findByBooking(booking)
+                .filter(p -> p.getStatus() == PaymentStatus.REFUND_PENDING)
+                .orElseThrow(() -> new IllegalStateException("Booking #" + bookingId + " has no refund pending."));
+        payment.setStatus(PaymentStatus.REFUNDED);
+        paymentRepository.save(payment);
+    }
+
+    /** Payment status per booking id; bookings without a payment are absent. */
+    @Transactional(readOnly = true)
+    public Map<Long, PaymentStatus> paymentStatuses(List<Long> bookingIds) {
+        if (bookingIds == null || bookingIds.isEmpty()) return Map.of();
+        Map<Long, PaymentStatus> statuses = new java.util.HashMap<>();
+        for (Object[] row : paymentRepository.findStatusesByBookingIds(bookingIds)) {
+            statuses.put((Long) row[0], (PaymentStatus) row[1]);
+        }
+        return statuses;
+    }
+
+    /** Admin list of bookings whose payment is in [status], newest first. */
+    @Transactional(readOnly = true)
+    public List<Booking> getBookingsByPaymentStatus(PaymentStatus status) {
+        List<Booking> bookings = new ArrayList<>(bookingRepository.findAllById(
+                paymentRepository.findBookingIdsByStatus(status)));
+        bookings.sort(java.util.Comparator.comparing(Booking::getBookedAt).reversed());
+        bookings.forEach(booking -> {
+            booking.getShowtime().getMovie().getTitle();
+            if (booking.getUser() != null) booking.getUser().getName();
+        });
+        return bookings;
+    }
+
     @Transactional
     public void adminCancelBooking(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
@@ -488,6 +556,37 @@ public class BookingService {
     public Booking findById(Long id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found: " + id));
+        booking.getShowtime().getMovie().getTitle();
+        return booking;
+    }
+
+    /**
+     * A booking for its owner only (analytics invariant 9): the signed-in user it belongs
+     * to, or the session that created it. Missing and not-yours are the same 404
+     * {@code BOOKING_NOT_FOUND}.
+     */
+    @Transactional(readOnly = true)
+    public Booking findForReader(Long id, String userEmail, String sessionId) {
+        Booking booking = bookingRepository.findById(id).orElseThrow(BookingAccess::notFound);
+        BookingAccess.assertCanRead(booking, userEmail, sessionId);
+        booking.getShowtime().getMovie().getTitle();
+        return booking;
+    }
+
+    /**
+     * Guest lookup (G30): the booking whose reference matches and whose phone (the guest
+     * phone, or the account's phone) has the same digits. Any miss is the same 404
+     * {@code BOOKING_NOT_FOUND}, so a caller cannot tell a wrong phone from a wrong code.
+     */
+    @Transactional(readOnly = true)
+    public Booking lookup(String reference, String phone) {
+        String ref = BookingReference.normalize(reference);
+        String digits = BookingReference.phoneDigits(phone);
+        if (ref == null || digits.isEmpty()) throw BookingAccess.notFound();
+        Booking booking = bookingRepository.findByReference(ref).orElseThrow(BookingAccess::notFound);
+        String stored = booking.getGuestPhone() != null ? booking.getGuestPhone()
+                : booking.getUser() != null ? booking.getUser().getPhone() : null;
+        if (!digits.equals(BookingReference.phoneDigits(stored))) throw BookingAccess.notFound();
         booking.getShowtime().getMovie().getTitle();
         return booking;
     }
@@ -525,6 +624,8 @@ public class BookingService {
         if (selectedSeatIds == null || selectedSeatIds.isEmpty()) {
             throw new IllegalArgumentException("Please select at least one seat.");
         }
+        SeatHoldService.requireWithinSeatLimit(selectedSeatIds.size(), systemSettingService.getInt(
+                SystemSettingService.MAX_SEATS_PER_BOOKING, SeatHoldService.DEFAULT_MAX_SEATS));
 
         User user = (userEmail != null) ? userRepository.findByEmail(userEmail).orElse(null) : null;
         Showtime showtime = findShowtime(showtimeId);

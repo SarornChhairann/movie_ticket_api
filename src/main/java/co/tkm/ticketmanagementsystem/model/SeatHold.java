@@ -32,4 +32,8 @@ public class SeatHold extends AuditableEntity {
 
     @Column(nullable = false)
     private LocalDateTime expiresAt;
+
+    /** This session's hold on the showtime was extended once already (sprint 14). */
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private boolean extended;
 }

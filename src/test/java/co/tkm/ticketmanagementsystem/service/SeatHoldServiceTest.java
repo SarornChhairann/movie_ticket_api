@@ -42,6 +42,8 @@ class SeatHoldServiceTest {
     @Test
     void holdSeatsRealtime_savesHoldsAndPublishes() {
         when(systemSettingService.getInt(SystemSettingService.HOLD_MINUTES, 10)).thenReturn(10);
+        when(systemSettingService.getInt(SystemSettingService.MAX_SEATS_PER_BOOKING, SeatHoldService.DEFAULT_MAX_SEATS))
+                .thenReturn(8);
 
         Showtime st = new Showtime();
         st.setId(50L);
@@ -81,7 +83,7 @@ class SeatHoldServiceTest {
         when(showtimeSeatRepository.findAllByShowtimeIdAndIdsForUpdate(50L, List.of(1L)))
                 .thenReturn(List.of(s1));
         when(seatHoldRepository.findActiveHoldsByOtherSession(eq(List.of(1L)), eq("S"), any(LocalDateTime.class)))
-                .thenReturn(List.of(new SeatHold(1L, 1L, "OTHER", LocalDateTime.now().plusMinutes(5))));
+                .thenReturn(List.of(new SeatHold(1L, 1L, "OTHER", LocalDateTime.now().plusMinutes(5), false)));
 
         ApiException ex = assertThrows(ApiException.class, () -> seatHoldService.holdSeatsRealtime(50L, List.of(1L), "S"));
         assertEquals(SeatHoldService.SEAT_HELD, ex.getCode());
@@ -135,6 +137,8 @@ class SeatHoldServiceTest {
     @Test
     void holdSeatsRealtime_expiresHoldMinutesFromNowAndNeverBooksTheSeat() {
         when(systemSettingService.getInt(SystemSettingService.HOLD_MINUTES, 10)).thenReturn(7);
+        when(systemSettingService.getInt(SystemSettingService.MAX_SEATS_PER_BOOKING, SeatHoldService.DEFAULT_MAX_SEATS))
+                .thenReturn(8);
         Showtime st = new Showtime();
         st.setId(50L);
         ShowtimeSeat s1 = new ShowtimeSeat();
@@ -153,6 +157,21 @@ class SeatHoldServiceTest {
         assertTrue(Math.abs(actualMs - expectedMs) < 5_000, "expiry should be ~7 minutes from now");
         assertEquals(ShowtimeSeatStatus.AVAILABLE, s1.getStatus());
         verify(showtimeSeatRepository, never()).save(any());
+    }
+
+    @Test
+    void holdSeatsRealtime_aboveTheSeatCapIsSeatLimitBeforeLocking() {
+        when(systemSettingService.getInt(SystemSettingService.MAX_SEATS_PER_BOOKING, SeatHoldService.DEFAULT_MAX_SEATS))
+                .thenReturn(2);
+        when(seatHoldRepository.findActiveBySessionAndShowtime(eq("S"), eq(50L), any(LocalDateTime.class)))
+                .thenReturn(List.of(heldBy("S", 1L), heldBy("S", 2L)));
+
+        ApiException ex = assertThrows(ApiException.class,
+                () -> seatHoldService.holdSeatsRealtime(50L, List.of(3L), "S"));
+
+        assertEquals(SeatHoldService.SEAT_LIMIT, ex.getCode());
+        verify(showtimeSeatRepository, never()).findAllByShowtimeIdAndIdsForUpdate(any(), any());
+        verify(seatHoldRepository, never()).saveAll(any());
     }
 
     @Test
@@ -188,5 +207,13 @@ class SeatHoldServiceTest {
         verify(seatHoldRepository).deleteExpired(any(LocalDateTime.class));
         verify(seatRealtimeService).publishReleased(eq(10L), eq(List.of(100L, 101L)), eq("A"));
         verify(seatRealtimeService).publishReleased(eq(11L), eq(List.of(200L)), eq("B"));
+    }
+
+    private static co.tkm.ticketmanagementsystem.model.SeatHold heldBy(String session, Long seatId) {
+        co.tkm.ticketmanagementsystem.model.SeatHold hold = new co.tkm.ticketmanagementsystem.model.SeatHold();
+        hold.setSessionId(session);
+        hold.setShowtimeSeatId(seatId);
+        hold.setExpiresAt(LocalDateTime.now().plusMinutes(5));
+        return hold;
     }
 }

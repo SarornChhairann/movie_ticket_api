@@ -11,6 +11,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -79,4 +80,22 @@ public class Booking extends AuditableEntity {
     @NotNull
     @Column(nullable = false)
     private LocalDateTime bookedAt;
+
+    /**
+     * The {@code X-Session-Id} that created the booking. With the owning user, the only
+     * reader of the booking (analytics invariant 9). Never shown to a client.
+     */
+    @Column(length = 200)
+    private String sessionId;
+
+    /** What the customer types back in to find the booking (G29); see {@link co.tkm.ticketmanagementsystem.service.BookingReference}. */
+    @Column(length = 8, unique = true)
+    private String reference;
+
+    @PrePersist
+    void assignReference() {
+        if (reference == null) {
+            reference = co.tkm.ticketmanagementsystem.service.BookingReference.generate();
+        }
+    }
 }

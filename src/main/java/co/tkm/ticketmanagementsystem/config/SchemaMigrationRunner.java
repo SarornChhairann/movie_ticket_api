@@ -260,6 +260,31 @@ public class SchemaMigrationRunner implements BeanPostProcessor, PriorityOrdered
             }
             jdbcTemplate.execute("ALTER TABLE halls ADD COLUMN IF NOT EXISTS has_screen_x BOOLEAN NOT NULL DEFAULT FALSE");
         });
+
+        // Sprint 12 (G25): the session that created a booking is one of its two readers.
+        // Older guest bookings paid through PayWay take it from their payment row.
+        applyIfNotApplied(jdbcTemplate, "2026_10_06_001_bookings_session_id", () -> {
+            if (!tableExists(jdbcTemplate, "bookings")) {
+                return;
+            }
+            jdbcTemplate.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS session_id VARCHAR(200)");
+            if (tableExists(jdbcTemplate, "payments") && columnExists(jdbcTemplate, "payments", "session_id")) {
+                jdbcTemplate.execute("""
+                        UPDATE bookings b SET session_id = p.session_id
+                        FROM payments p
+                        WHERE p.booking_id = b.id AND b.session_id IS NULL AND p.session_id IS NOT NULL
+                        """);
+            }
+        });
+
+        // Sprint 12 (G28): Hibernate wrote a CHECK listing the old PaymentStatus values when it
+        // created the table, and ddl-auto=update never widens it, so REFUND_PENDING would fail.
+        applyIfNotApplied(jdbcTemplate, "2026_10_06_002_payments_status_check_drop", () -> {
+            if (!tableExists(jdbcTemplate, "payments")) {
+                return;
+            }
+            jdbcTemplate.execute("ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_status_check");
+        });
     }
 
     private void applyIfNotApplied(JdbcTemplate jdbcTemplate, String id, Runnable migration) {

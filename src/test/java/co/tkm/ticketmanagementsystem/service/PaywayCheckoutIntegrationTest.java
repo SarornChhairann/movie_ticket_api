@@ -267,6 +267,17 @@ class PaywayCheckoutIntegrationTest {
     }
 
     @Test
+    void theStartingSessionPollsAUserPaymentWithoutTheSignIn() {
+        PaywayService.Started started = start();
+        when(paywayClient.checkTransaction(started.tranId())).thenReturn("PENDING");
+
+        // G31: the app restarted and the sign-in lapsed, but it restored the session.
+        PaywayService.Status status = paywayService.poll(started.tranId(), null, session);
+
+        assertThat(status.status()).isEqualTo("PENDING");
+    }
+
+    @Test
     void callbackWithABadHmacIsRejectedAndConfirmsNothing() {
         PaywayService.Started started = start();
         String body = "{\"tran_id\":\"" + started.tranId() + "\",\"status\":\"0\",\"payment_amount\":1}";

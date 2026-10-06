@@ -1,5 +1,6 @@
 package co.tkm.ticketmanagementsystem.controller.admin;
 
+import co.tkm.ticketmanagementsystem.enums.PaymentStatus;
 import co.tkm.ticketmanagementsystem.model.Booking;
 import co.tkm.ticketmanagementsystem.service.BookingService;
 import co.tkm.ticketmanagementsystem.service.ReportService;
@@ -30,15 +31,31 @@ public class AdminBookingController {
     private final ReportService reportService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "List bookings, optionally filtered by a search query")
+    @Operation(summary = "List bookings, optionally filtered by a search query or a payment status",
+            description = "paymentStatus is one of PENDING, PAID, FAILED, REFUND_PENDING, REFUNDED; "
+                    + "when both are given, the search runs inside that payment status.")
     @Transactional(readOnly = true)
-    public ResponseEntity<List<BookingSummary>> bookings(@RequestParam(required = false) String q) {
+    public ResponseEntity<List<BookingSummary>> bookings(@RequestParam(required = false) String q,
+                                                         @RequestParam(required = false) PaymentStatus paymentStatus) {
         List<Booking> bookings = (q != null && !q.isBlank())
                 ? bookingService.searchBookings(q)
-                : bookingService.getAllBookingsForAdmin();
+                : paymentStatus != null
+                        ? bookingService.getBookingsByPaymentStatus(paymentStatus)
+                        : bookingService.getAllBookingsForAdmin();
+        Map<Long, PaymentStatus> payments = bookingService.paymentStatuses(
+                bookings.stream().map(Booking::getId).toList());
+        return ResponseEntity.ok(bookings.stream()
+                .filter(b -> paymentStatus == null || paymentStatus == payments.get(b.getId()))
+                .map(b -> BookingSummary.from(b, payments.get(b.getId())))
+                .toList());
+    }
 
-                
-        return ResponseEntity.ok(bookings.stream().map(BookingSummary::from).toList());
+    @PostMapping(value = "/{id}/refund", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Mark a cancelled booking's payment as refunded",
+            description = "REFUND_PENDING becomes REFUNDED. 409 when the booking has no refund pending.")
+    public ResponseEntity<Map<String, Object>> markRefunded(@PathVariable Long id) {
+        bookingService.markRefunded(id);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Booking #" + id + " refunded."));
     }
 
     @PostMapping(value = "/{id}/cancel", produces = MediaType.APPLICATION_JSON_VALUE)

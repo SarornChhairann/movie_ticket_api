@@ -63,7 +63,8 @@ public class PaywayService {
     private final ObjectMapper objectMapper;
 
     /** What the app needs to open the checkout page. */
-    public record Started(Long bookingId, String tranId, BigDecimal amount, String checkoutUrl, String abaDeeplink) {
+    public record Started(Long bookingId, String reference, String tranId, BigDecimal amount, String checkoutUrl,
+                          String abaDeeplink) {
     }
 
     /** One poll answer: {@code APPROVED} carries the confirmation, the rest carry nothing. */
@@ -93,7 +94,7 @@ public class PaywayService {
             throw new PaymentFailedException(e.getMessage());
         }
         Booking booking = pending.booking();
-        return new Started(booking.getId(), pending.tranId(), booking.getTotalAmount(),
+        return new Started(booking.getId(), booking.getReference(), pending.tranId(), booking.getTotalAmount(),
                 result.checkoutUrl(), result.abaDeeplink());
     }
 
@@ -224,9 +225,11 @@ public class PaywayService {
 
     private BookingService.PaywayState requireOwner(String tranId, String userEmail, String sessionId) {
         BookingService.PaywayState state = bookingService.paywayState(tranId);
-        boolean owner = state.ownerEmail() != null
-                ? state.ownerEmail().equalsIgnoreCase(Objects.requireNonNullElse(userEmail, ""))
-                : state.sessionId() != null && state.sessionId().equals(sessionId);
+        // The signed-in owner, or the session that started it (G31): a guest app restarted
+        // mid-payment restores that session, and a user whose sign-in lapsed still has it.
+        boolean owner = (state.ownerEmail() != null
+                        && state.ownerEmail().equalsIgnoreCase(Objects.requireNonNullElse(userEmail, "")))
+                || (state.sessionId() != null && state.sessionId().equals(sessionId));
         if (!owner) {
             throw new ApiException(HttpStatus.FORBIDDEN, BookingService.NOT_OWNER,
                     "This payment belongs to someone else.");

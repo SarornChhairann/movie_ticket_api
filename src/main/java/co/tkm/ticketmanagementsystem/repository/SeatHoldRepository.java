@@ -44,6 +44,18 @@ public interface SeatHoldRepository extends JpaRepository<SeatHold, Long> {
     List<Long> findActiveHeldSeatIdsBySession(@Param("sessionId") String sessionId,
                                               @Param("now") LocalDateTime now);
 
+    @Query("""
+        SELECT sh
+        FROM SeatHold sh, ShowtimeSeat ss
+        WHERE ss.id = sh.showtimeSeatId
+          AND ss.showtime.id = :showtimeId
+          AND sh.sessionId = :sessionId
+          AND sh.expiresAt > :now
+        """)
+    List<SeatHold> findActiveBySessionAndShowtime(@Param("sessionId") String sessionId,
+                                                  @Param("showtimeId") Long showtimeId,
+                                                  @Param("now") LocalDateTime now);
+
     @Query("SELECT MIN(sh.expiresAt) FROM SeatHold sh WHERE sh.sessionId = :sessionId AND sh.showtimeSeatId IN :seatIds")
     LocalDateTime findEarliestExpiry(@Param("sessionId") String sessionId, @Param("seatIds") List<Long> seatIds);
 

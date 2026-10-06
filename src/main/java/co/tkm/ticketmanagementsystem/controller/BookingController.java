@@ -1,6 +1,7 @@
 package co.tkm.ticketmanagementsystem.controller;
 
 import co.tkm.ticketmanagementsystem.dto.CheckoutData;
+import co.tkm.ticketmanagementsystem.enums.PaymentStatus;
 import co.tkm.ticketmanagementsystem.model.Booking;
 import co.tkm.ticketmanagementsystem.model.FoodItem;
 import co.tkm.ticketmanagementsystem.model.Showtime;
@@ -8,6 +9,7 @@ import co.tkm.ticketmanagementsystem.model.ShowtimeSeat;
 import co.tkm.ticketmanagementsystem.model.Ticket;
 import co.tkm.ticketmanagementsystem.model.User;
 import co.tkm.ticketmanagementsystem.service.BookingService;
+import co.tkm.ticketmanagementsystem.service.LookupRateLimiter;
 import co.tkm.ticketmanagementsystem.service.PaywayService;
 import co.tkm.ticketmanagementsystem.service.PromoCodeService;
 import co.tkm.ticketmanagementsystem.service.SeatHoldService;
@@ -53,6 +55,9 @@ public class BookingController {
     private final SeatRealtimeService seatRealtimeService;
     private final PromoCodeService promoCodeService;
     private final PaywayService paywayService;
+    private final LookupRateLimiter lookupRateLimiter;
+
+    public static final String TOO_MANY_ATTEMPTS = "TOO_MANY_ATTEMPTS";
 
     @GetMapping(value = "/seats/{showtimeId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Get the seat map for a showtime, including which seats are held")
@@ -74,7 +79,7 @@ public class BookingController {
 
         return ResponseEntity.ok(new SeatMapResponse(
                 showtimeId, toShowtimeInfo(showtime), seats, heldByOthers, heldByMe,
-                sessionId, seatHoldService.getHoldMinutes(), isWeekend, isMorning));
+                sessionId, seatHoldService.getHoldMinutes(), isWeekend, isMorning, seatHoldService.getMaxSeats()));
     }
 
     @GetMapping(value = "/checkout/{showtimeId}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -168,7 +173,8 @@ public class BookingController {
         PaywayService.Started started = paywayService.start(showtimeId, req.seatIds(), resolveEmail(authentication),
                 sessionId, req.guestName(), req.guestPhone(), req.guestEmail(), req.promoCode(),
                 req.foodItems() != null ? req.foodItems() : Map.of());
-        return ResponseEntity.ok(new PaywayStartResponse(started.bookingId(), started.tranId(), started.amount(),
+        return ResponseEntity.ok(new PaywayStartResponse(started.bookingId(), started.reference(), started.tranId(),
+                started.amount(),
                 started.checkoutUrl(), started.abaDeeplink()));
     }
 
@@ -216,12 +222,41 @@ public class BookingController {
     }
 
     @GetMapping(value = "/confirmation/{bookingId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Get booking confirmation details and issued tickets")
+    @Operation(summary = "Get booking confirmation details and issued tickets",
+            description = "Owner only: the signed-in user the booking belongs to, or the X-Session-Id that "
+                    + "created it. Anyone else, and a booking that does not exist, get 404 BOOKING_NOT_FOUND.")
     @Transactional(readOnly = true)
-    public ResponseEntity<BookingDetailResponse> confirmation(@PathVariable Long bookingId) {
-        Booking booking = bookingService.findById(bookingId);
+    public ResponseEntity<BookingDetailResponse> confirmation(@PathVariable Long bookingId,
+                                                              Authentication authentication,
+                                                              @RequestHeader(value = HoldSessions.HEADER, required = false) String sessionHeader,
+                                                              HttpServletRequest request) {
+        String sessionId = HoldSessions.resolve(sessionHeader, request);
+        Booking booking = bookingService.findForReader(bookingId, resolveEmail(authentication), sessionId);
         List<Ticket> tickets = ticketService.findByBooking(booking);
         return ResponseEntity.ok(toBookingDetail(booking, tickets));
+    }
+
+    @PostMapping(value = "/lookup", consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Find a booking by its reference and phone number (guests)",
+            description = "Phone numbers are compared on digits only. Any miss is 404 BOOKING_NOT_FOUND. "
+                    + "After 5 misses from one client in 10 minutes every lookup is 429 TOO_MANY_ATTEMPTS "
+                    + "until the oldest miss is 10 minutes old.")
+    @Transactional(readOnly = true)
+    public ResponseEntity<BookingDetailResponse> lookup(@RequestBody LookupRequest req, HttpServletRequest request) {
+        String client = request.getRemoteAddr();
+        if (lookupRateLimiter.isBlocked(client)) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, TOO_MANY_ATTEMPTS,
+                    "Too many attempts. Please try again in a few minutes.");
+        }
+        Booking booking;
+        try {
+            booking = bookingService.lookup(req.reference(), req.phone());
+        } catch (ApiException e) {
+            lookupRateLimiter.recordFailure(client);
+            throw e;
+        }
+        return ResponseEntity.ok(toBookingDetail(booking, ticketService.findByBooking(booking)));
     }
 
     @GetMapping(value = "/my-bookings", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -229,8 +264,11 @@ public class BookingController {
     @Transactional(readOnly = true)
     public ResponseEntity<List<BookingDetailResponse>> myBookings(Authentication authentication) {
         List<Booking> bookings = bookingService.getBookingsForUser(authentication.getName());
+        Map<Long, PaymentStatus> payments = bookingService.paymentStatuses(
+                bookings.stream().map(Booking::getId).toList());
         List<BookingDetailResponse> response = bookings.stream()
-                .map(booking -> toBookingDetail(booking, ticketService.findByBooking(booking)))
+                .map(booking -> toBookingDetail(booking, ticketService.findByBooking(booking),
+                        payments.get(booking.getId())))
                 .toList();
         return ResponseEntity.ok(response);
     }
@@ -280,6 +318,11 @@ public class BookingController {
     }
 
     private BookingDetailResponse toBookingDetail(Booking booking, List<Ticket> tickets) {
+        return toBookingDetail(booking, tickets,
+                bookingService.paymentStatuses(List.of(booking.getId())).get(booking.getId()));
+    }
+
+    private BookingDetailResponse toBookingDetail(Booking booking, List<Ticket> tickets, PaymentStatus paymentStatus) {
         Showtime showtime = booking.getShowtime();
         User user = booking.getUser();
         List<TicketSummary> ticketSummaries = tickets.stream()
@@ -287,13 +330,14 @@ public class BookingController {
                         t.getSeat().getSeatCode(), t.getSeat().getSeatType().name()))
                 .toList();
         return new BookingDetailResponse(
-                booking.getId(), toShowtimeInfo(showtime),
+                booking.getId(), booking.getReference(), toShowtimeInfo(showtime),
                 user != null ? user.getName() : booking.getGuestName(),
                 user != null ? user.getEmail() : booking.getGuestEmail(),
                 booking.getGuestPhone(), booking.getTotalAmount(), booking.getServiceFee(),
                 booking.getTaxAmount(), booking.getDiscountAmount(), booking.getPromoCode(),
                 booking.getPaymentMethod(), booking.getStatus().name(), booking.getBookedAt(),
-                ticketSummaries, ticketSummaries.isEmpty() ? null : ticketSummaries.get(0).ticketCode());
+                ticketSummaries, ticketSummaries.isEmpty() ? null : ticketSummaries.get(0).ticketCode(),
+                paymentStatus == null ? null : paymentStatus.name());
     }
 
     public record SeatInfo(Long id, String seatCode, String seatType, Integer rowNumber, String status) {
@@ -312,7 +356,7 @@ public class BookingController {
 
     public record SeatMapResponse(Long showtimeId, ShowtimeInfo showtime, List<SeatInfo> seats,
                                    Set<Long> heldByOthers, Set<Long> heldByMe, String sessionId,
-                                   int holdMinutes, boolean isWeekend, boolean isMorning) {
+                                   int holdMinutes, boolean isWeekend, boolean isMorning, int maxSeats) {
     }
 
     public record CheckoutResponse(UserSummary user, ShowtimeInfo showtime, List<SeatInfo> seats,
@@ -339,7 +383,7 @@ public class BookingController {
     }
 
     /** {@code checkoutUrl} is PayWay's {@code checkout_qr_url}; {@code abaDeeplink} its {@code abapay_deeplink}. */
-    public record PaywayStartResponse(Long bookingId, String tranId, BigDecimal amount, String checkoutUrl,
+    public record PaywayStartResponse(Long bookingId, String reference, String tranId, BigDecimal amount, String checkoutUrl,
                                       String abaDeeplink) {
     }
 
@@ -347,10 +391,14 @@ public class BookingController {
     public record PaywayStatusResponse(String status, BookingDetailResponse confirmation) {
     }
 
-    public record BookingDetailResponse(Long id, ShowtimeInfo showtime, String customerName, String customerEmail,
+    public record LookupRequest(String reference, String phone) {
+    }
+
+    public record BookingDetailResponse(Long id, String reference, ShowtimeInfo showtime, String customerName, String customerEmail,
                                          String customerPhone, BigDecimal totalAmount, BigDecimal serviceFee,
                                          BigDecimal taxAmount, BigDecimal discountAmount, String promoCode,
                                          String paymentMethod, String status, LocalDateTime bookedAt,
-                                         List<TicketSummary> tickets, String firstTicketCode) {
+                                         List<TicketSummary> tickets, String firstTicketCode,
+                                         String paymentStatus) {
     }
 }

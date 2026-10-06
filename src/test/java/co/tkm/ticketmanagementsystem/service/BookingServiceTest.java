@@ -72,6 +72,7 @@ class BookingServiceTest {
     @Mock private SeatHoldService seatHoldService;
     @Mock private SeatRealtimeService seatRealtimeService;
     @Mock private TicketRepository ticketRepository;
+    @Mock private co.tkm.ticketmanagementsystem.repository.PaymentRepository paymentRepository;
 
     @InjectMocks
     private BookingService bookingService;
@@ -467,6 +468,7 @@ class BookingServiceTest {
         booking.setId(50L);
         booking.setUser(owner);
         booking.setShowtime(showtime);
+        booking.setTotalAmount(new BigDecimal("12.50"));
         booking.setStatus(BookingStatus.CONFIRMED);
         List<Ticket> tickets = new java.util.ArrayList<>();
         for (ShowtimeSeat ss : seats) {
@@ -503,10 +505,22 @@ class BookingServiceTest {
         assertThat(seats).allSatisfy(ss -> assertThat(ss.getStatus()).isEqualTo(ShowtimeSeatStatus.AVAILABLE));
         verify(seatRealtimeService).publishReleased(10L, List.of(400L, 401L), null);
         verify(emailService).sendCancellationNotice(booking);
-        // Points and promo usage are not reversed in this sprint.
+        // Sprint 12: the points the booking earned come back off, never below 0.
         assertThat(user.getPoints()).isZero();
-        verify(userRepository, never()).save(any());
+        verify(userRepository).save(user);
         verify(promoCodeService, never()).recordUsage(any());
+    }
+
+    @Test
+    void cancel_givesBackThePointsAndThePromoUse() {
+        user.setPoints(20);
+        Booking booking = bookingWithSeats(user, 48, twoBookedSeats());
+        booking.setPromoCode("SAVE10");
+
+        bookingService.cancelBooking(50L, "user@test.com");
+
+        assertThat(user.getPoints()).isEqualTo(8);
+        verify(promoCodeService).releaseUsage("SAVE10");
     }
 
     @Test

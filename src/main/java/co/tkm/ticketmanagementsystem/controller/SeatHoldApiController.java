@@ -40,7 +40,24 @@ public class SeatHoldApiController {
                                              HttpServletRequest request) {
         String sessionId = HoldSessions.resolve(sessionHeader, request);
         SeatHoldService.HoldResult result = seatHoldService.holdSeatsRealtime(req.showtimeId(), req.seatIds(), sessionId);
-        return ResponseEntity.ok(new HoldResponse(result.showtimeId(), toEpochMs(result.expiresAt()), result.holdMinutes()));
+        return ResponseEntity.ok(toResponse(result));
+    }
+
+    /**
+     * Once per hold: adds {@code hold_extend_minutes} to this session's holds on the
+     * showtime. Same body and session as hold. 409 {@code HOLD_EXTEND_LIMIT} on a second
+     * extend, 409 {@code HOLD_EXPIRED} when nothing is held.
+     */
+    @PostMapping(value = "/extend", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<HoldResponse> extend(@RequestBody HoldRequest req,
+                                               @RequestHeader(value = HoldSessions.HEADER, required = false) String sessionHeader,
+                                               HttpServletRequest request) {
+        String sessionId = HoldSessions.resolve(sessionHeader, request);
+        return ResponseEntity.ok(toResponse(seatHoldService.extend(req.showtimeId(), sessionId)));
+    }
+
+    private static HoldResponse toResponse(SeatHoldService.HoldResult result) {
+        return new HoldResponse(result.showtimeId(), toEpochMs(result.expiresAt()), result.holdMinutes(), result.extended());
     }
 
     @PostMapping(value = "/release", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -73,7 +90,7 @@ public class SeatHoldApiController {
     public record HoldRequest(Long showtimeId, List<Long> seatIds) {
     }
 
-    public record HoldResponse(Long showtimeId, long expiresAtEpochMs, int holdMinutes) {
+    public record HoldResponse(Long showtimeId, long expiresAtEpochMs, int holdMinutes, boolean extended) {
     }
 
     public record ReleaseRequest(Long showtimeId, List<Long> seatIds) {

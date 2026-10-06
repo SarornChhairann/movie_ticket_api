@@ -27,12 +27,13 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("SELECT COUNT(b) FROM Booking b WHERE b.bookedAt >= :since")
     long countBookingsSince(@Param("since") LocalDateTime since);
 
-    // Search bookings by booking ID (string match), user email, guest email, or movie title
+    // Search bookings by booking ID (string match), reference, user email, guest email, or movie title
     @Query("""
         SELECT b FROM Booking b
         LEFT JOIN b.user u
         WHERE (:q IS NULL OR :q = ''
             OR CAST(b.id AS string) LIKE CONCAT('%', :q, '%')
+            OR UPPER(COALESCE(b.reference,'')) LIKE UPPER(CONCAT('%', :q, '%'))
             OR LOWER(COALESCE(u.email,'')) LIKE LOWER(CONCAT('%', :q, '%'))
             OR LOWER(COALESCE(u.name,'')) LIKE LOWER(CONCAT('%', :q, '%'))
             OR LOWER(COALESCE(b.guestEmail,'')) LIKE LOWER(CONCAT('%', :q, '%'))
@@ -43,6 +44,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> searchBookings(@Param("q") String q);
 
     List<Booking> findByUserOrderByBookedAtDesc(User user);
+
+    java.util.Optional<Booking> findByReference(String reference);
+
+    List<Booking> findByReferenceIsNull();
 
     boolean existsByShowtimeIdAndStatusNot(Long showtimeId, BookingStatus status);
 
