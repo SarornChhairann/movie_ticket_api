@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -76,6 +77,13 @@ public class SeatHoldService {
             if (id == null || !held.contains(id)) return false;
         }
         return true;
+    }
+
+    /** When the first of this session's holds on [seatIds] ends; empty when it holds none of them. */
+    @Transactional(readOnly = true)
+    public Optional<LocalDateTime> earliestExpiry(List<Long> seatIds, String sessionId) {
+        if (seatIds == null || seatIds.isEmpty() || sessionId == null) return Optional.empty();
+        return Optional.ofNullable(seatHoldRepository.findEarliestExpiry(sessionId, seatIds));
     }
 
     @Transactional

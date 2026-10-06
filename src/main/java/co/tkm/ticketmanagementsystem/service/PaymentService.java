@@ -27,4 +27,21 @@ public class PaymentService {
         payment.setPaidAt(result.paid() ? LocalDateTime.now() : null);
         return paymentRepository.save(payment);
     }
+
+    /** A PayWay payment waiting for the customer: {@code PENDING} until PayWay reports back. */
+    @Transactional
+    public Payment recordPending(Booking booking, String method, String tranId, String sessionId,
+                                 String seatIds, LocalDateTime expiresAt) {
+        Payment payment = new Payment();
+        payment.setBooking(booking);
+        payment.setAmount(booking.getTotalAmount());
+        payment.setMethod(method);
+        payment.setStatus(PaymentStatus.PENDING);
+        payment.setTranId(tranId);
+        payment.setSessionId(sessionId);
+        payment.setSeatIds(seatIds);
+        payment.setExpiresAt(expiresAt);
+        payment.setProviderStatus("PENDING");
+        return paymentRepository.save(payment);
+    }
 }

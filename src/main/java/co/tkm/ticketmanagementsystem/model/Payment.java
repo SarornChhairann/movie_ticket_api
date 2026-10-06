@@ -54,4 +54,23 @@ public class Payment extends AuditableEntity {
     private PaymentStatus status;
 
     private LocalDateTime paidAt;
+
+    /** PayWay transaction id (max 20 chars); null for the in-app gateway. */
+    @Column(unique = true, length = 20)
+    private String tranId;
+
+    /** The {@code X-Session-Id} that started a PayWay payment: guest ownership and hold release. */
+    @Column(length = 200)
+    private String sessionId;
+
+    /** Comma-separated showtime seat ids the PayWay payment pays for. */
+    @Column(length = 1000)
+    private String seatIds;
+
+    /** When the seat hold behind a PayWay payment ends. */
+    private LocalDateTime expiresAt;
+
+    /** Last status PayWay reported (APPROVED, DECLINED, CANCELLED, callback status, CLOSED). */
+    @Column(length = 30)
+    private String providerStatus;
 }

@@ -88,6 +88,15 @@ keycloak:
   # Push the APP_ADMIN_* account into the realm at startup (non-fatal if Keycloak is down).
   bootstrap-admin: ${KEYCLOAK_BOOTSTRAP_ADMIN:true}
 
+# ABA PayWay KHQR checkout (sprint 9). Credentials only come from the environment;
+# with no merchant id / API key the PayWay endpoints answer 503 PAYWAY_UNAVAILABLE.
+payway:
+  base-url: ${PAYWAY_BASE_URL:https://checkout-sandbox.payway.com.kh}
+  merchant-id: ${PAYWAY_MERCHANT_ID:}
+  api-key: ${PAYWAY_API_KEY:}
+  # Public URL of POST /api/payway/callback; its domain must be whitelisted on the merchant profile.
+  return-url: ${PAYWAY_RETURN_URL:}
+
 app:
   cors:
     # Origins allowed to call this API from a browser (the React dev server).

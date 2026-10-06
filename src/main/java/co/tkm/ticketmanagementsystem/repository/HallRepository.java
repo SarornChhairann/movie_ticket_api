@@ -20,4 +20,11 @@ public interface HallRepository extends JpaRepository<Hall, Long> {
     long countByCinemaId(@Param("cinemaId") UUID cinemaId);
 
     Optional<Hall> findByName(String name);
+
+    /** Customer hall list: cinema fetched in the same query, ordered by cinema name then hall name. */
+    @Query("SELECT h FROM Hall h LEFT JOIN FETCH h.cinema c ORDER BY c.name ASC, h.name ASC")
+    List<Hall> findAllWithCinemaOrdered();
+
+    @Query("SELECT h FROM Hall h LEFT JOIN FETCH h.cinema WHERE h.id = :id")
+    Optional<Hall> findByIdWithCinema(@Param("id") Long id);
 }

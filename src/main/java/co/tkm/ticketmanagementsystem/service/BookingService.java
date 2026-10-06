@@ -5,23 +5,28 @@ import org.springframework.http.HttpStatus;
 
 import co.tkm.ticketmanagementsystem.dto.CheckoutData;
 import co.tkm.ticketmanagementsystem.enums.BookingStatus;
+import co.tkm.ticketmanagementsystem.enums.PaymentStatus;
 import co.tkm.ticketmanagementsystem.enums.ShowtimeSeatStatus;
 import co.tkm.ticketmanagementsystem.enums.UserStatus;
 import co.tkm.ticketmanagementsystem.enums.TicketStatus;
 import co.tkm.ticketmanagementsystem.model.Booking;
 import co.tkm.ticketmanagementsystem.model.BookingFoodItem;
 import co.tkm.ticketmanagementsystem.model.FoodItem;
+import co.tkm.ticketmanagementsystem.model.Payment;
 import co.tkm.ticketmanagementsystem.model.Showtime;
 import co.tkm.ticketmanagementsystem.model.ShowtimeSeat;
 import co.tkm.ticketmanagementsystem.model.Ticket;
 import co.tkm.ticketmanagementsystem.model.User;
 import co.tkm.ticketmanagementsystem.repository.BookingFoodItemRepository;
 import co.tkm.ticketmanagementsystem.repository.BookingRepository;
+import co.tkm.ticketmanagementsystem.repository.PaymentRepository;
 import co.tkm.ticketmanagementsystem.repository.ShowtimeRepository;
 import co.tkm.ticketmanagementsystem.repository.ShowtimeSeatRepository;
 import co.tkm.ticketmanagementsystem.repository.TicketRepository;
 import co.tkm.ticketmanagementsystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -30,16 +35,21 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class BookingService {
+
+    private static final Logger log = LoggerFactory.getLogger(BookingService.class);
 
     public static final String PROMO_INVALID = "PROMO_INVALID";
     public static final String NOT_OWNER = "NOT_OWNER";
@@ -68,6 +78,7 @@ public class BookingService {
     private final PaymentGateway paymentGateway;
     private final SeatHoldService seatHoldService;
     private final SeatRealtimeService seatRealtimeService;
+    private final PaymentRepository paymentRepository;
 
     public List<ShowtimeSeat> getSeatsForShowtime(Long showtimeId) {
         Showtime showtime = findShowtime(showtimeId);
@@ -99,7 +110,35 @@ public class BookingService {
                                         String sessionId, String guestName, String guestPhone, String guestEmail,
                                         String promoCode, String paymentMethod,
                                         Map<Long, Integer> foodSelections) {
-        // 1-2. Lock, recheck availability and couple pairs, and recompute the price.
+        // 1-2. Lock, recheck availability, couple pairs, hold, and account; recompute the price.
+        CheckoutData checkoutData = lockAndValidate(showtimeId, selectedSeatIds, userEmail, sessionId,
+                guestName, guestPhone, promoCode, foodSelections);
+
+        // 3-4. Booking PENDING plus food lines.
+        String method = isBlank(paymentMethod) ? "CARD" : paymentMethod.trim();
+        Booking savedBooking = savePendingBooking(checkoutData, method, guestName, guestPhone, guestEmail,
+                foodSelections);
+
+        // 5. Charge.
+        PaymentGateway.PaymentResult result = paymentGateway.charge(savedBooking, method);
+        paymentService.record(savedBooking, method, result);
+
+        if (!result.paid()) {
+            // Seats stay AVAILABLE, no tickets, no promo use, no points; the hold is kept for a retry.
+            savedBooking.setStatus(BookingStatus.CANCELLED);
+            bookingRepository.save(savedBooking);
+            throw new PaymentFailedException(result.reason());
+        }
+
+        // 6. PAID: confirm, issue tickets (marks seats BOOKED), then the side effects.
+        List<Ticket> tickets = finishPaid(savedBooking, checkoutData.getSelectedSeats(), selectedSeatIds, sessionId);
+        return new Confirmation(savedBooking, tickets);
+    }
+
+    /** Steps 1-2 of confirm: lock the seats, recompute the quote, require the hold and a usable account. */
+    private CheckoutData lockAndValidate(Long showtimeId, List<Long> selectedSeatIds, String userEmail,
+                                         String sessionId, String guestName, String guestPhone,
+                                         String promoCode, Map<Long, Integer> foodSelections) {
         CheckoutData checkoutData = resolveCheckoutData(showtimeId, selectedSeatIds, userEmail, true,
                 promoCode, foodSelections);
 
@@ -121,8 +160,13 @@ public class BookingService {
         if (user == null && (isBlank(guestName) || isBlank(guestPhone))) {
             throw new IllegalArgumentException("Please enter your name and phone number.");
         }
+        return checkoutData;
+    }
 
-        // 3-4. Booking PENDING plus food lines.
+    /** Steps 3-4 of confirm: the {@code PENDING} booking and its food lines. */
+    private Booking savePendingBooking(CheckoutData checkoutData, String method, String guestName,
+                                       String guestPhone, String guestEmail, Map<Long, Integer> foodSelections) {
+        User user = checkoutData.getUser();
         Booking booking = new Booking();
         booking.setUser(user);
         if (user == null) {
@@ -132,7 +176,6 @@ public class BookingService {
                 booking.setGuestEmail(guestEmail.trim());
             }
         }
-        String method = isBlank(paymentMethod) ? "CARD" : paymentMethod.trim();
         booking.setShowtime(checkoutData.getShowtime());
         booking.setTotalAmount(checkoutData.getTotalAmount());
         booking.setServiceFee(checkoutData.getServiceFee());
@@ -144,37 +187,193 @@ public class BookingService {
         booking.setBookedAt(LocalDateTime.now());
         Booking savedBooking = bookingRepository.save(booking);
         saveFoodItems(savedBooking, foodSelections);
+        return savedBooking;
+    }
 
-        // 5. Charge.
-        PaymentGateway.PaymentResult result = paymentGateway.charge(savedBooking, method);
-        paymentService.record(savedBooking, method, result);
-
-        if (!result.paid()) {
-            // Seats stay AVAILABLE, no tickets, no promo use, no points; the hold is kept for a retry.
-            savedBooking.setStatus(BookingStatus.CANCELLED);
-            bookingRepository.save(savedBooking);
-            throw new PaymentFailedException(result.reason());
+    /**
+     * The paid path, shared by the in-app gateway and PayWay: {@code CONFIRMED}, tickets
+     * (seats {@code BOOKED}), promo use, points, holds released, then the {@code BOOKED}
+     * broadcast and the email once the transaction commits.
+     */
+    private List<Ticket> finishPaid(Booking booking, List<ShowtimeSeat> seats, List<Long> seatIds, String sessionId) {
+        booking.setStatus(BookingStatus.CONFIRMED);
+        bookingRepository.save(booking);
+        List<Ticket> tickets = ticketService.issueTickets(booking, seats);
+        if (booking.getPromoCode() != null) {
+            promoCodeService.recordUsage(booking.getPromoCode());
         }
-
-        // 6. PAID: confirm, issue tickets (marks seats BOOKED), then the side effects.
-        savedBooking.setStatus(BookingStatus.CONFIRMED);
-        bookingRepository.save(savedBooking);
-        List<Ticket> tickets = ticketService.issueTickets(savedBooking, checkoutData.getSelectedSeats());
-        if (checkoutData.getPromoCode() != null) {
-            promoCodeService.recordUsage(checkoutData.getPromoCode());
-        }
+        User user = booking.getUser();
         if (user != null) {
-            user.setPoints(user.getPoints() + checkoutData.getTotalAmount().intValue());
+            user.setPoints(user.getPoints() + booking.getTotalAmount().intValue());
             userRepository.save(user);
         }
         seatHoldService.releaseHolds(sessionId);
 
-        List<Long> bookedSeatIds = List.copyOf(selectedSeatIds);
+        Long showtimeId = booking.getShowtime().getId();
+        List<Long> bookedSeatIds = List.copyOf(seatIds);
         afterCommit(() -> {
             seatRealtimeService.publishBooked(showtimeId, bookedSeatIds);
-            emailService.sendBookingConfirmation(savedBooking, tickets);
+            emailService.sendBookingConfirmation(booking, tickets);
         });
-        return new Confirmation(savedBooking, tickets);
+        return tickets;
+    }
+
+    // ------------------------------------------------------------------ ABA PayWay
+
+    /** PayWay's minimum payment lifetime, in minutes. */
+    public static final int PAYWAY_MIN_LIFETIME_MINUTES = 3;
+    public static final String PAYMENT_CLOSED = "PAYMENT_CLOSED";
+    public static final String ABA_KHQR = "ABA_KHQR";
+
+    /**
+     * Start of a PayWay payment: confirm steps 1-4 under the seat lock, then a
+     * {@code PENDING} payment carrying a fresh {@code tran_id}. No charge, no tickets, no
+     * {@code BOOKED} seats, and the hold stays. Fails with {@code HOLD_EXPIRED} when fewer
+     * than {@link #PAYWAY_MIN_LIFETIME_MINUTES} minutes are left, before anything is written.
+     * Earlier pending PayWay payments of this session are cancelled; their ids come back
+     * so the caller can close them at PayWay.
+     */
+    @Transactional
+    public PaywayBooking openPaywayBooking(Long showtimeId, List<Long> selectedSeatIds, String userEmail,
+                                           String sessionId, String guestName, String guestPhone,
+                                           String guestEmail, String promoCode,
+                                           Map<Long, Integer> foodSelections) {
+        CheckoutData checkoutData = lockAndValidate(showtimeId, selectedSeatIds, userEmail, sessionId,
+                guestName, guestPhone, promoCode, foodSelections);
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime holdEnds = seatHoldService.earliestExpiry(selectedSeatIds, sessionId).orElse(now);
+        long lifetime = Duration.between(now, holdEnds).toMinutes();
+        if (lifetime < PAYWAY_MIN_LIFETIME_MINUTES) {
+            throw new ApiException(HttpStatus.CONFLICT, SeatHoldService.HOLD_EXPIRED,
+                    "Less than " + PAYWAY_MIN_LIFETIME_MINUTES + " minutes are left on your seat hold. Please reselect seats.");
+        }
+
+        List<String> superseded = new ArrayList<>();
+        for (String staleTranId : paymentRepository.findTranIdsBySessionAndStatus(sessionId, PaymentStatus.PENDING)) {
+            if (cancelPayway(staleTranId, "SUPERSEDED")) {
+                superseded.add(staleTranId);
+            }
+        }
+
+        Booking booking = savePendingBooking(checkoutData, ABA_KHQR, guestName, guestPhone, guestEmail,
+                foodSelections);
+        String tranId = newTranId(booking.getId());
+        String seatIds = selectedSeatIds.stream().map(String::valueOf).collect(Collectors.joining(","));
+        paymentService.recordPending(booking, ABA_KHQR, tranId, sessionId, seatIds, holdEnds);
+        return new PaywayBooking(booking, checkoutData, tranId, (int) lifetime, superseded);
+    }
+
+    /** A pending PayWay booking, what Purchase needs to describe it, and the payments it superseded. */
+    public record PaywayBooking(Booking booking, CheckoutData checkoutData, String tranId,
+                                int lifetimeMinutes, List<String> supersededTranIds) {
+    }
+
+    /** Where a PayWay payment stands locally, and who may look at it. */
+    public record PaywayState(BookingStatus bookingStatus, String providerStatus, String ownerEmail,
+                              String sessionId) {
+    }
+
+    @Transactional(readOnly = true)
+    public PaywayState paywayState(String tranId) {
+        Payment payment = paymentRepository.findByTranId(tranId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + tranId));
+        Booking booking = payment.getBooking();
+        String ownerEmail = booking.getUser() != null ? booking.getUser().getEmail() : null;
+        return new PaywayState(booking.getStatus(), payment.getProviderStatus(), ownerEmail, payment.getSessionId());
+    }
+
+    /**
+     * PayWay approved the payment: run the paid path exactly once. The payment row is
+     * locked, so a poll and the callback racing each other serialize; the loser sees
+     * {@code CONFIRMED} and gets the same confirmation back without a second ticket or
+     * a second round of points. A payment closed or declined earlier never confirms.
+     */
+    @Transactional
+    public Confirmation completePayway(String tranId) {
+        Payment payment = paymentRepository.findByTranIdForUpdate(tranId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + tranId));
+        Booking booking = payment.getBooking();
+        if (booking.getStatus() == BookingStatus.CONFIRMED) {
+            return loaded(new Confirmation(booking, ticketRepository.findByBooking(booking)));
+        }
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
+            log.warn("PayWay approved {} after it was {}; booking {} stays cancelled",
+                    tranId, payment.getProviderStatus(), booking.getId());
+            throw new ApiException(HttpStatus.CONFLICT, PAYMENT_CLOSED, "This payment was already closed.");
+        }
+
+        List<Long> seatIds = parseSeatIds(payment.getSeatIds());
+        List<ShowtimeSeat> seats = showtimeSeatRepository
+                .findAllByShowtimeIdAndIdsForUpdate(booking.getShowtime().getId(), seatIds);
+        for (ShowtimeSeat seat : seats) {
+            if (seat.getStatus() != ShowtimeSeatStatus.AVAILABLE) {
+                log.error("PayWay approved {} but seat {} is no longer available", tranId, seat.getId());
+                throw new ApiException(HttpStatus.CONFLICT, SeatHoldService.SEAT_BOOKED,
+                        "Some seats were already booked. Please contact the cinema.");
+            }
+        }
+
+        payment.setStatus(PaymentStatus.PAID);
+        payment.setPaidAt(LocalDateTime.now());
+        payment.setProviderStatus("APPROVED");
+        paymentRepository.save(payment);
+        List<Ticket> tickets = finishPaid(booking, seats, seatIds, payment.getSessionId());
+        return loaded(new Confirmation(booking, tickets));
+    }
+
+    /**
+     * A PayWay payment that will not be paid (declined, cancelled, closed, expired,
+     * superseded, or Purchase failed): booking {@code CANCELLED}, payment {@code FAILED},
+     * seats untouched, hold kept. Returns false when it was no longer pending.
+     */
+    @Transactional
+    public boolean cancelPayway(String tranId, String providerStatus) {
+        Payment payment = paymentRepository.findByTranIdForUpdate(tranId).orElse(null);
+        if (payment == null || payment.getBooking().getStatus() != BookingStatus.PENDING) {
+            return false;
+        }
+        Booking booking = payment.getBooking();
+        booking.setStatus(BookingStatus.CANCELLED);
+        bookingRepository.save(booking);
+        payment.setStatus(PaymentStatus.FAILED);
+        payment.setProviderStatus(providerStatus);
+        paymentRepository.save(payment);
+        return true;
+    }
+
+    /** Stores a non-approving status PayWay reported (e.g. a callback) without changing the booking. */
+    @Transactional
+    public void recordPaywayStatus(String tranId, String providerStatus) {
+        paymentRepository.findByTranIdForUpdate(tranId).ifPresent(payment -> {
+            if (payment.getStatus() == PaymentStatus.PENDING) {
+                payment.setProviderStatus(providerStatus);
+                paymentRepository.save(payment);
+            }
+        });
+    }
+
+    /** Touches every lazy relation the confirmation response walks, inside the transaction. */
+    private static Confirmation loaded(Confirmation confirmation) {
+        Booking booking = confirmation.booking();
+        booking.getShowtime().getMovie().getTitle();
+        booking.getShowtime().getHall().getName();
+        if (booking.getUser() != null) {
+            booking.getUser().getName();
+        }
+        confirmation.tickets().forEach(t -> t.getSeat().getSeatCode());
+        return confirmation;
+    }
+
+    private static List<Long> parseSeatIds(String seatIds) {
+        if (seatIds == null || seatIds.isBlank()) return List.of();
+        return Arrays.stream(seatIds.split(",")).map(String::trim).map(Long::valueOf).toList();
+    }
+
+    /** Unique and at most 20 characters: booking id and the millisecond clock, both base 36. */
+    static String newTranId(Long bookingId) {
+        return ("CK" + Long.toString(bookingId, 36) + "T" + Long.toString(System.currentTimeMillis(), 36))
+                .toUpperCase();
     }
 
     /** A confirmed booking and the tickets it issued. */

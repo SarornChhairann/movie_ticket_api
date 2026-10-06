@@ -113,6 +113,18 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, Long> {
     List<Showtime> findByShowDateCinemaNotBlocked(@Param("showDate") LocalDate showDate,
                                                   @Param("cinemaId") UUID cinemaId);
 
+    /** Unblocked showtimes at one hall from [fromDate] on, with the movie, in date and time order. */
+    @Query("""
+        SELECT s FROM Showtime s
+        JOIN FETCH s.movie m
+        WHERE s.hall.id = :hallId
+          AND s.showDate >= :fromDate
+          AND s.blocked = false
+        ORDER BY s.showDate ASC, s.showTime ASC
+        """)
+    List<Showtime> findUnblockedByHallFrom(@Param("hallId") Long hallId,
+                                           @Param("fromDate") LocalDate fromDate);
+
     long countByMovieId(Long movieId);
 
     long countByHallId(Long hallId);

@@ -8,6 +8,7 @@ import co.tkm.ticketmanagementsystem.model.ShowtimeSeat;
 import co.tkm.ticketmanagementsystem.model.Ticket;
 import co.tkm.ticketmanagementsystem.model.User;
 import co.tkm.ticketmanagementsystem.service.BookingService;
+import co.tkm.ticketmanagementsystem.service.PaywayService;
 import co.tkm.ticketmanagementsystem.service.PromoCodeService;
 import co.tkm.ticketmanagementsystem.service.SeatHoldService;
 import co.tkm.ticketmanagementsystem.service.SeatRealtimeService;
@@ -51,6 +52,7 @@ public class BookingController {
     private final SeatHoldService seatHoldService;
     private final SeatRealtimeService seatRealtimeService;
     private final PromoCodeService promoCodeService;
+    private final PaywayService paywayService;
 
     @GetMapping(value = "/seats/{showtimeId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Get the seat map for a showtime, including which seats are held")
@@ -147,6 +149,59 @@ public class BookingController {
                 req.promoCode(), req.paymentMethod(),
                 req.foodItems() != null ? req.foodItems() : Map.of());
         return ResponseEntity.ok(toBookingDetail(confirmation.booking(), confirmation.tickets()));
+    }
+
+    @PostMapping(value = "/payway/{showtimeId}", consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Start an ABA KHQR payment for the held seats",
+            description = "Same body and X-Session-Id rule as confirm. Writes a PENDING booking and payment, "
+                    + "creates the PayWay purchase for the server total, and returns its checkout page. "
+                    + "No tickets and no BOOKED seats until PayWay approves. 409 HOLD_EXPIRED when under "
+                    + "3 minutes are left on the hold; 402 PAYMENT_FAILED when PayWay refuses the purchase; "
+                    + "503 PAYWAY_UNAVAILABLE when the server has no PayWay keys.")
+    public ResponseEntity<PaywayStartResponse> startPayway(@PathVariable Long showtimeId,
+                                                           @RequestBody CheckoutRequest req,
+                                                           Authentication authentication,
+                                                           @RequestHeader(value = HoldSessions.HEADER, required = false) String sessionHeader,
+                                                           HttpServletRequest request) {
+        String sessionId = HoldSessions.resolve(sessionHeader, request);
+        PaywayService.Started started = paywayService.start(showtimeId, req.seatIds(), resolveEmail(authentication),
+                sessionId, req.guestName(), req.guestPhone(), req.guestEmail(), req.promoCode(),
+                req.foodItems() != null ? req.foodItems() : Map.of());
+        return ResponseEntity.ok(new PaywayStartResponse(started.bookingId(), started.tranId(), started.amount(),
+                started.checkoutUrl(), started.abaDeeplink()));
+    }
+
+    @GetMapping(value = "/payway/{tranId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Poll an ABA KHQR payment",
+            description = "PENDING, APPROVED (with the confirmation), DECLINED, or CANCELLED. "
+                    + "Owner only: the same user, or the guest session that started it (403 NOT_OWNER).")
+    public ResponseEntity<PaywayStatusResponse> pollPayway(@PathVariable String tranId,
+                                                           Authentication authentication,
+                                                           @RequestHeader(value = HoldSessions.HEADER, required = false) String sessionHeader,
+                                                           HttpServletRequest request) {
+        String sessionId = HoldSessions.resolve(sessionHeader, request);
+        return ResponseEntity.ok(toPaywayStatus(
+                paywayService.poll(tranId, resolveEmail(authentication), sessionId)));
+    }
+
+    @PostMapping(value = "/payway/{tranId}/close", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Close a pending ABA KHQR payment (the customer left the checkout page)",
+            description = "Closes the PayWay transaction and cancels the booking; seats stay AVAILABLE and the "
+                    + "hold is kept. A payment that was approved first is completed and returned as APPROVED.")
+    public ResponseEntity<PaywayStatusResponse> closePayway(@PathVariable String tranId,
+                                                            Authentication authentication,
+                                                            @RequestHeader(value = HoldSessions.HEADER, required = false) String sessionHeader,
+                                                            HttpServletRequest request) {
+        String sessionId = HoldSessions.resolve(sessionHeader, request);
+        return ResponseEntity.ok(toPaywayStatus(
+                paywayService.close(tranId, resolveEmail(authentication), sessionId)));
+    }
+
+    private PaywayStatusResponse toPaywayStatus(PaywayService.Status status) {
+        BookingService.Confirmation c = status.confirmation();
+        return new PaywayStatusResponse(status.status(),
+                c == null ? null : toBookingDetail(c.booking(), c.tickets()));
     }
 
     @PostMapping(value = "/cancel/{bookingId}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -281,6 +336,15 @@ public class BookingController {
 
     public record CheckoutRequest(List<Long> seatIds, String guestName, String guestPhone, String guestEmail,
                                    String promoCode, String paymentMethod, Map<Long, Integer> foodItems) {
+    }
+
+    /** {@code checkoutUrl} is PayWay's {@code checkout_qr_url}; {@code abaDeeplink} its {@code abapay_deeplink}. */
+    public record PaywayStartResponse(Long bookingId, String tranId, BigDecimal amount, String checkoutUrl,
+                                      String abaDeeplink) {
+    }
+
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    public record PaywayStatusResponse(String status, BookingDetailResponse confirmation) {
     }
 
     public record BookingDetailResponse(Long id, ShowtimeInfo showtime, String customerName, String customerEmail,
