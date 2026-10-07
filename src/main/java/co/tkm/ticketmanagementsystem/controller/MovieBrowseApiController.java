@@ -16,7 +16,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -32,6 +35,8 @@ import java.util.UUID;
 public class MovieBrowseApiController {
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Phnom_Penh");
+    private static final int MAX_CHIPS = 4;
 
     private final ShowtimeRepository showtimeRepository;
     private final MovieRepository movieRepository;
@@ -52,7 +57,9 @@ public class MovieBrowseApiController {
                 throw new IllegalArgumentException("date is required for now_showing.");
             }
             String key = "now_showing|" + date + "|" + (cinemaId != null ? cinemaId : c.toLowerCase());
-            return ResponseEntity.ok(cacheService.getOrLoad(key, () -> nowShowing(date, cinemaId, c)));
+            List<MovieBrowseResponse> all = cacheService.getOrLoad(key, () -> nowShowing(date, cinemaId, c));
+            // After the cache read: a cached day must not keep serving showtimes that have started.
+            return ResponseEntity.ok(upcoming(all, LocalDateTime.now(APP_ZONE)));
         }
 
         if ("coming_soon".equals(t) || "coming-soon".equals(t) || "comingsoon".equals(t)) {
@@ -76,16 +83,51 @@ public class MovieBrowseApiController {
             if (s.getMovie() == null || s.getMovie().getId() == null) continue;
             Long movieId = s.getMovie().getId();
             MovieGroup g = grouped.computeIfAbsent(movieId, __ -> new MovieGroup(s.getMovie(), new ArrayList<>()));
-            g.showtimes.add(new ShowtimeChip(s.getId(), s.getShowTime() != null ? TIME_FMT.format(s.getShowTime()) : ""));
+            g.showtimes.add(toChip(s));
         }
 
+        // Every chip is cached; the started ones are dropped and the list capped per request.
         List<MovieBrowseResponse> out = new ArrayList<>();
         for (MovieGroup g : grouped.values()) {
             g.showtimes.sort(Comparator.comparing(ShowtimeChip::time));
-            List<ShowtimeChip> chips = g.showtimes.size() > 4 ? g.showtimes.subList(0, 4) : g.showtimes;
-            out.add(toResponse(g.movie, chips));
+            out.add(toResponse(g.movie, List.copyOf(g.showtimes)));
         }
         return out;
+    }
+
+    private static ShowtimeChip toChip(Showtime s) {
+        var hall = s.getHall();
+        String cinemaName = hall == null ? "" : (hall.getCinema() != null ? hall.getCinema().getName() : hall.getCity());
+        return new ShowtimeChip(
+                s.getId(),
+                s.getShowTime() != null ? TIME_FMT.format(s.getShowTime()) : "",
+                s.getShowDate() != null ? s.getShowDate().toString() : "",
+                hall == null ? "" : hall.getName(),
+                cinemaName == null ? "" : cinemaName,
+                hall != null && hall.isHasDolbyAtmos(),
+                hall != null && hall.isHasScreenX());
+    }
+
+    /**
+     * Keeps only showtimes that start after {@code now} (cinema zone), at most four per movie,
+     * and drops movies left with none.
+     */
+    static List<MovieBrowseResponse> upcoming(List<MovieBrowseResponse> all, LocalDateTime now) {
+        List<MovieBrowseResponse> out = new ArrayList<>();
+        for (MovieBrowseResponse m : all) {
+            List<ShowtimeChip> chips = m.showtimes().stream()
+                    .filter(chip -> startsAfter(chip, now))
+                    .limit(MAX_CHIPS)
+                    .toList();
+            if (!chips.isEmpty()) out.add(m.withShowtimes(chips));
+        }
+        return out;
+    }
+
+    private static boolean startsAfter(ShowtimeChip chip, LocalDateTime now) {
+        if (chip.showDate().isEmpty()) return true;
+        LocalTime time = chip.time().isEmpty() ? LocalTime.MIDNIGHT : LocalTime.parse(chip.time());
+        return LocalDateTime.of(LocalDate.parse(chip.showDate()), time).isAfter(now);
     }
 
     private List<MovieBrowseResponse> comingSoon(YearMonth month) {
@@ -110,6 +152,7 @@ public class MovieBrowseApiController {
         String language = (m.getLanguage() == null) ? "" : m.getLanguage();
         String format = (m.getFormat() == null) ? "" : m.getFormat();
         String releaseDate = (m.getReleaseDate() == null) ? "" : m.getReleaseDate().toString();
+        String genre = (m.getGenre() == null) ? "" : m.getGenre();
 
         return new MovieBrowseResponse(
                 m.getId(),
@@ -122,14 +165,22 @@ public class MovieBrowseApiController {
                 format,
                 (m.getStatus() == null ? MovieStatus.NOW_SHOWING.name() : m.getStatus().name()),
                 releaseDate,
-                showtimes
+                showtimes,
+                genre,
+                m.getDurationMinutes()
         );
     }
 
     private record MovieGroup(Movie movie, List<ShowtimeChip> showtimes) {
     }
 
-    public record ShowtimeChip(Long showtimeId, String time) {
+    public record ShowtimeChip(Long showtimeId,
+                               String time,
+                               String showDate,
+                               String hallName,
+                               String cinemaName,
+                               boolean hasDolbyAtmos,
+                               boolean hasScreenX) {
     }
 
     public record MovieBrowseResponse(Long id,
@@ -142,6 +193,13 @@ public class MovieBrowseApiController {
                                      String format,
                                      String status,
                                      String releaseDate,
-                                     List<ShowtimeChip> showtimes) {
+                                     List<ShowtimeChip> showtimes,
+                                     String genre,
+                                     Integer durationMinutes) {
+
+        MovieBrowseResponse withShowtimes(List<ShowtimeChip> chips) {
+            return new MovieBrowseResponse(id, title, posterPath, bannerPath, trailerUrl, rating, language,
+                    format, status, releaseDate, chips, genre, durationMinutes);
+        }
     }
 }

@@ -188,4 +188,25 @@ class HallApiControllerTest {
         assertThat(json.path("type").asText()).isEqualTo("NOT_FOUND");
         assertThat(json.has("code")).isFalse();
     }
+
+    /**
+     * Home's Showing rail without a cinema filter: the chip names the hall's cinema, which
+     * must be fetched with the showtimes (open-in-view is off, so a lazy cinema was a 500).
+     */
+    @Test
+    void showingTodayWithoutACinemaNamesEachChipsCinema() throws Exception {
+        LocalDate day = today.plusDays(5);
+        Showtime s = show(day, LocalTime.of(19, 30), false);
+
+        JsonNode movies = getJson("/api/movies?type=now_showing&date=" + day);
+
+        JsonNode mine = null;
+        for (JsonNode m : movies) {
+            if (m.path("id").asLong() == movie.getId()) mine = m;
+        }
+        assertThat(mine).isNotNull();
+        JsonNode chip = mine.path("showtimes").get(0);
+        assertThat(chip.path("showtimeId").asLong()).isEqualTo(s.getId());
+        assertThat(chip.path("cinemaName").asText()).isEqualTo("Alpha " + suffix);
+    }
 }

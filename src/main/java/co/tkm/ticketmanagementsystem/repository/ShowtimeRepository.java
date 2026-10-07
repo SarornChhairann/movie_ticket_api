@@ -92,6 +92,7 @@ public interface ShowtimeRepository extends JpaRepository<Showtime, Long> {
         SELECT s FROM Showtime s
         JOIN FETCH s.movie m
         JOIN FETCH s.hall h
+        LEFT JOIN FETCH h.cinema c
         WHERE s.showDate = :showDate
           AND s.blocked = false
           AND (:city = '' OR LOWER(h.city) = LOWER(:city))
