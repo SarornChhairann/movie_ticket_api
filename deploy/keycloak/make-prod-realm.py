@@ -2,7 +2,7 @@
 """Derive deploy/keycloak/realm-prod.json from the dev keycloak/realm-export.json.
 
 Production differences: no demo users (the API's AdminSeeder creates the admin from
-.env.prod), HTTPS required for external requests, brute-force protection on, no
+.env.prod), HTTP allowed (this server is reached by IP, with no DNS name), brute-force protection on, no
 wildcard redirect URIs or web origins, and no fixed ticket-backend secret, so
 Keycloak generates a random one on import (copy it into KEYCLOAK_ADMIN_CLIENT_SECRET).
 
@@ -16,7 +16,7 @@ realm = json.loads((root / "keycloak" / "realm-export.json").read_text())
 
 # Keep only the backend's service account (it carries the manage-users roles).
 realm["users"] = [u for u in realm.get("users", []) if u.get("username", "").startswith("service-account-")]
-realm["sslRequired"] = "external"
+realm["sslRequired"] = "none"
 realm["bruteForceProtected"] = True
 realm["failureFactor"] = 5
 realm["permanentLockout"] = False

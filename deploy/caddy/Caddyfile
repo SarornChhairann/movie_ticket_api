@@ -1,13 +1,13 @@
-# Public entry point: TLS (Let's Encrypt, renewed automatically), HTTP→HTTPS,
-# HTTP/2 + HTTP/3, compression, and security headers. The domains come from .env.prod.
+# Public entry on the server IP. No DNS name and no TLS certificate.
+# Port 80 is the API. Port 8080 is Keycloak. auto_https is off so Caddy
+# does not ask Let's Encrypt for a certificate.
 {
-	email {$ACME_EMAIL}
+	auto_https off
 }
 
 (common) {
 	encode zstd gzip
 	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
@@ -19,11 +19,9 @@
 	}
 }
 
-# The API (REST, /ws STOMP websocket, /uploads images, Swagger).
-{$API_DOMAIN} {
+:80 {
 	import common
 
-	# Container probes stay internal.
 	@internal path /actuator /actuator/*
 	respond @internal 404
 
@@ -36,10 +34,7 @@
 	}
 }
 
-# Keycloak: login and token endpoints are public; the admin console and the admin
-# REST API only from KEYCLOAK_ADMIN_ALLOW. The app calls the admin API inside the
-# Docker network, not through here.
-{$AUTH_DOMAIN} {
+:8080 {
 	import common
 
 	@admin {

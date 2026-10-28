@@ -37,11 +37,11 @@ build/
 /uploads/**
 
 ### Local environment ###
-# Every setting lives here; .env.example is the committed template.
+# Every .env file, in any directory. Templates named *.example stay committed.
 .env
+.env.*
 !.env.example
-.env.prod
-!.env.prod.example
+!.env.*.example
 
 ### Local notes and credentials ###
 /docs/
