@@ -48,9 +48,9 @@ services:
       - "443:443"
       - "443:443/udp"   # HTTP/3
     environment:
-      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in .env.prod}
-      AUTH_DOMAIN: ${AUTH_DOMAIN:?set AUTH_DOMAIN in .env.prod}
-      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env.prod}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in .env}
+      AUTH_DOMAIN: ${AUTH_DOMAIN:?set AUTH_DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
       # Who may open the Keycloak admin console (space-separated CIDRs).
       KEYCLOAK_ADMIN_ALLOW: ${KEYCLOAK_ADMIN_ALLOW:-127.0.0.1/32}
     volumes:
