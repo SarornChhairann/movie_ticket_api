@@ -1,10 +1,82 @@
+# =============================================================================
+# Production stack.  Run it with its own env file (never the dev .env):
+#
+#   cp .env.prod.example .env.prod && chmod 600 .env.prod   # then fill it in
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# Shape:
+#   internet ──443──▶ caddy ──edge──▶ app, keycloak
+#                                 └──backend (internal, no internet)──▶ db, redis, rabbitmq
+#
+# - Only Caddy publishes ports (80/443, automatic HTTPS). The API, Keycloak,
+#   Postgres, Redis and RabbitMQ are reachable only inside the compose networks.
+# - "backend" is internal: the data stores cannot reach the internet at all. The app
+#   and Keycloak also sit on "edge", which is how the app reaches SMTP and PayWay.
+# - Every service has a health check, a restart policy, memory/CPU limits, rotated
+#   logs, and no-new-privileges; the app also runs read-only with all caps dropped.
+# - Data lives in named volumes with fixed names, so renaming the project or a
+#   stray `docker compose down` never orphans them (`down -v` still deletes them).
+# =============================================================================
+
+name: ticket-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+  logging: *logging
+
 services:
+  # --------------------------------------------------------------------------- edge
+  caddy:
+    <<: *hardening
+    image: caddy:2.10-alpine
+    container_name: ticket-prod-caddy
+    depends_on:
+      app:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in .env.prod}
+      AUTH_DOMAIN: ${AUTH_DOMAIN:?set AUTH_DOMAIN in .env.prod}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env.prod}
+      # Who may open the Keycloak admin console (space-separated CIDRs).
+      KEYCLOAK_ADMIN_ALLOW: ${KEYCLOAK_ADMIN_ALLOW:-127.0.0.1/32}
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # certificates: keep, or Let's Encrypt rate limits bite
+      - caddy_config:/config
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    networks:
+      - edge
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 128M }
+
+  # --------------------------------------------------------------------------- app
   app:
+    <<: *hardening
     build:
       context: .
       dockerfile: Dockerfile
-    image: ticket-management-system:latest
-    container_name: ticket-management-system-app
+      args:
+        APP_VERSION: ${APP_TAG:-latest}
+    # Build here, or push from CI and set APP_IMAGE/APP_TAG to pull a fixed version.
+    image: ${APP_IMAGE:-ticket-management-system}:${APP_TAG:-latest}
+    container_name: ticket-prod-app
+    init: true                  # tini as PID 1: forwards SIGTERM, reaps zombies
     depends_on:
       db:
         condition: service_healthy
@@ -14,186 +86,214 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "${APP_PORT:-8010}:8010"
-    # Everything here comes from .env. The app reads that same file directly when it
-    # runs outside Docker (application.yml imports it); the few values that differ in
-    # a container - the database host, and the URL Keycloak is reached on - are the
-    # ones spelled out literally below.
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /tmp/app:size=256m,mode=1777   # java.io.tmpdir (Tomcat work dir, multipart)
+    cap_drop: [ALL]
     environment:
       SERVER_PORT: 8010
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-spring_boot_ticket}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-myuser}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-MySecretPassword}
+      SERVER_FORWARD_HEADERS_STRATEGY: native
+      JAVA_OPTS: ${JAVA_OPTS:-}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-ticket}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-ticket}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
-      SPRING_JPA_SHOW_SQL: ${SPRING_JPA_SHOW_SQL:-true}
-      # Fixed paths: they name the app_uploads volume mounted at /app/uploads below.
+      SPRING_JPA_SHOW_SQL: "false"
+      SERVER_ERROR_INCLUDE_STACKTRACE: never
+      SERVER_ERROR_INCLUDE_EXCEPTION: "false"
+      SERVER_ERROR_INCLUDE_MESSAGE: never
       APP_UPLOADS_MOVIES_DIR: /app/uploads/movies
       APP_UPLOADS_FOOD_ITEMS_DIR: /app/uploads/food-items
       APP_UPLOADS_FOOD_ITEMS_MAX_BYTES: ${APP_UPLOADS_FOOD_ITEMS_MAX_BYTES:-5242880}
       SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: ${SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE:-5MB}
       SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: ${SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE:-5MB}
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:8081}
-      # --- Keycloak -----------------------------------------------------------
-      # Tokens are issued with KC_HOSTNAME in their "iss" claim (localhost, so the
-      # same tokens work for Postman/Swagger on the host), while this container
-      # reaches Keycloak over the compose network as http://keycloak:8080 - hence
-      # the split between the issuer it validates and the two URLs it calls.
-      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:8080/realms/ticket-realm}
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/ticket-realm/protocol/openid-connect/certs
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:?set APP_CORS_ALLOWED_ORIGINS}
+      # --- Keycloak: tokens carry the public issuer; the app calls Keycloak inside the network.
+      KEYCLOAK_ISSUER_URI: https://${AUTH_DOMAIN}/realms/${KEYCLOAK_REALM:-ticket-realm}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/${KEYCLOAK_REALM:-ticket-realm}/protocol/openid-connect/certs
       KEYCLOAK_SERVER_URL: http://keycloak:8080
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-ticket-realm}
       KEYCLOAK_LOGIN_CLIENT_ID: ${KEYCLOAK_LOGIN_CLIENT_ID:-ticket-app}
       KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-ticket-backend}
-      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-ticket-backend-secret}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?set KEYCLOAK_ADMIN_CLIENT_SECRET}
       KEYCLOAK_BOOTSTRAP_ADMIN: ${KEYCLOAK_BOOTSTRAP_ADMIN:-true}
-      # ------------------------------------------------------------------------
-      APP_ADMIN_EMAIL: ${APP_ADMIN_EMAIL:-admin@gmail.com}
-      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-admin123}
       APP_ADMIN_NAME: ${APP_ADMIN_NAME:-System Admin}
-      APP_SEED_ENABLED: ${APP_SEED_ENABLED:-true}
-      APP_SEED_FORCE: ${APP_SEED_FORCE:-false}
-      APP_SEED_HALLS: ${APP_SEED_HALLS:-3}
-      APP_SEED_DAYS: ${APP_SEED_DAYS:-14}
-      APP_SEED_SHOWTIMES_PER_HALL_PER_DAY: ${APP_SEED_SHOWTIMES_PER_HALL_PER_DAY:-3}
-      APP_SEED_CUSTOMERS: ${APP_SEED_CUSTOMERS:-25}
-      APP_SEED_RANDOM_SEED: ${APP_SEED_RANDOM_SEED:-20260503}
-      APP_SEED_COUNTS_USERS: ${APP_SEED_COUNTS_USERS:-50}
-      APP_SEED_COUNTS_CINEMAS: ${APP_SEED_COUNTS_CINEMAS:-3}
-      APP_SEED_COUNTS_HALLS_PER_CINEMA: ${APP_SEED_COUNTS_HALLS_PER_CINEMA:-3}
-      APP_SEED_COUNTS_MOVIES: ${APP_SEED_COUNTS_MOVIES:-15}
-      APP_SEED_COUNTS_SHOWTIMES_PER_MOVIE: ${APP_SEED_COUNTS_SHOWTIMES_PER_MOVIE:-5}
-      APP_SEED_COUNTS_FOOD_ITEMS: ${APP_SEED_COUNTS_FOOD_ITEMS:-10}
-      APP_SEED_COUNTS_PROMO_CODES: ${APP_SEED_COUNTS_PROMO_CODES:-5}
-      APP_SEED_COUNTS_BOOKINGS: ${APP_SEED_COUNTS_BOOKINGS:-20}
+      APP_ADMIN_EMAIL: ${APP_ADMIN_EMAIL:?set APP_ADMIN_EMAIL}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:?set APP_ADMIN_PASSWORD}
+      # No demo data in production.
+      APP_SEED_ENABLED: "false"
+      APP_SEED_FORCE: "false"
+      # --- Mail (through the queue below)
       SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-smtp.gmail.com}
       SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
       SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
       SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
-      # --- RabbitMQ: booking mail queue -----------------------------------------
-      APP_MAIL_QUEUE_ENABLED: ${APP_MAIL_QUEUE_ENABLED:-true}
+      APP_MAIL_QUEUE_ENABLED: "true"
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: ${RABBITMQ_USER:-ticket}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-ticket}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD}
       RABBITMQ_MAIL_MAX_ATTEMPTS: ${RABBITMQ_MAIL_MAX_ATTEMPTS:-4}
-      # --- Redis: browse cache + booking-lookup throttle -------------------------
-      APP_REDIS_ENABLED: ${APP_REDIS_ENABLED:-true}
+      # --- Redis
+      APP_REDIS_ENABLED: "true"
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      # --- PayWay ----------------------------------------------------------------
-      PAYWAY_BASE_URL: ${PAYWAY_BASE_URL:-https://checkout-sandbox.payway.com.kh}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+      # --- PayWay
+      PAYWAY_BASE_URL: ${PAYWAY_BASE_URL:-https://checkout.payway.com.kh}
       PAYWAY_MERCHANT_ID: ${PAYWAY_MERCHANT_ID:-}
       PAYWAY_API_KEY: ${PAYWAY_API_KEY:-}
       PAYWAY_RETURN_URL: ${PAYWAY_RETURN_URL:-}
     volumes:
       - app_uploads:/app/uploads
     networks:
-      - ticket-net
-    restart: unless-stopped
+      - edge
+      - backend
+    stop_grace_period: 30s      # > spring.lifecycle.timeout-per-shutdown-phase (20s)
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 1G }    # heap = 75% of this (MaxRAMPercentage)
 
+  # --------------------------------------------------------------------------- auth
   keycloak:
+    <<: *hardening
     image: quay.io/keycloak/keycloak:26.7
-    container_name: ticket-management-system-keycloak
-    # --import-realm loads keycloak/realm-export.json on a fresh container: the
-    # ticket-realm, its customer/admin roles, both clients, and the demo accounts.
-    command: start-dev --import-realm
+    container_name: ticket-prod-keycloak
+    # Production mode on Postgres (never dev-file/H2). --import-realm only creates the
+    # realm when it does not exist yet; later edits made in the console are kept.
+    command: start --import-realm
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db:5432/${KEYCLOAK_DB:-keycloak}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD}
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
-      # Fixes the hostname Keycloak puts in tokens and URLs, so "iss" is the same
-      # whether the request came from another container or from the host.
-      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8080}
-      KC_HOSTNAME_STRICT: "false"
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD}
+      # TLS ends at Caddy; Keycloak trusts its X-Forwarded-* headers and stamps the
+      # public https URL into every token's "iss".
+      KC_HOSTNAME: https://${AUTH_DOMAIN}
+      KC_PROXY_HEADERS: xforwarded
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
-    ports:
-      - "${KEYCLOAK_PORT:-8080}:8080"
+      KC_LOG_LEVEL: info
     volumes:
-      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
-      # The whole data dir, not just data/h2: an empty named volume takes its
-      # ownership from the directory it shadows, and only /opt/keycloak/data
-      # exists in the image already owned by the (non-root) keycloak user.
-      - keycloak_data:/opt/keycloak/data
+      # Production realm: no demo users, HTTPS required, random client secret (see make-prod-realm.py).
+      - ./deploy/keycloak/realm-prod.json:/opt/keycloak/data/import/realm-prod.json:ro
     networks:
-      - ticket-net
+      - edge
+      - backend
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep 'UP' <&3"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
       retries: 20
-    restart: unless-stopped
+      start_period: 60s
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 1G }
 
+  # --------------------------------------------------------------------------- data
   db:
+    <<: *hardening
     image: postgres:16-alpine
-    container_name: ticket-management-system-db
+    container_name: ticket-prod-db
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-spring_boot_ticket}
-      POSTGRES_USER: ${POSTGRES_USER:-myuser}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-MySecretPassword}
-    ports:
-      - "${POSTGRES_PORT:-5433}:5432"
+      POSTGRES_DB: ${POSTGRES_DB:-ticket}
+      POSTGRES_USER: ${POSTGRES_USER:-ticket}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      # Read by deploy/postgres/init on the first start (empty volume) only.
+      KEYCLOAK_DB: ${KEYCLOAK_DB:-keycloak}
+      KEYCLOAK_DB_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD}
+    command: ["postgres", "-c", "max_connections=100", "-c", "shared_buffers=256MB", "-c", "log_min_duration_statement=1000"]
+    shm_size: 256m
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
     networks:
-      - ticket-net
+      - backend
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  rabbitmq:
-    image: rabbitmq:4.1-management-alpine
-    container_name: ticket-management-system-rabbitmq
-    hostname: rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-ticket}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-ticket}
-    ports:
-      # AMQP for an app run on the host; management UI at http://localhost:15672.
-      - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
-      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
-    volumes:
-      # Queued mail (durable queues, persistent messages) survives a restart.
-      - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - ticket-net
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
       retries: 10
-    restart: unless-stopped
+      start_period: 20s
+    stop_grace_period: 60s
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 1G }
 
   redis:
+    <<: *hardening
     image: redis:7.4-alpine
-    container_name: ticket-management-system-redis
-    # Only a cache and a throttle live here, so it is capped and evicts least-recently
-    # used keys; append-only keeps the lookup throttle across a restart.
-    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
-    ports:
-      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    container_name: ticket-prod-redis
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+    # Password from the environment, not the command line (keeps it out of `ps`).
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes --maxmemory 192mb --maxmemory-policy allkeys-lru"]
     volumes:
       - redis_data:/data
     networks:
-      - ticket-net
+      - backend
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 10
-    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 256M }
+
+  rabbitmq:
+    <<: *hardening
+    image: rabbitmq:4.1-management-alpine
+    container_name: ticket-prod-rabbitmq
+    hostname: rabbitmq          # the node name, and so its data dir, must stay fixed
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-ticket}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD}
+      # Keep the broker under its container limit instead of being OOM-killed.
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit vm_memory_high_watermark {absolute,\"400MiB\"}"
+    # No published ports: Docker cannot publish from an internal-only network. For the
+    # management UI, tunnel to the container's address (see README-Docker.md), or use
+    # `docker compose exec rabbitmq rabbitmqctl ...`.
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 512M }
 
 networks:
-  ticket-net:
-    name: ticket-management-net
+  edge:
+    name: ticket-prod-edge
     driver: bridge
+  backend:
+    name: ticket-prod-backend
+    driver: bridge
+    internal: true              # no route to the internet
 
 volumes:
-  app_uploads:
   postgres_data:
-  keycloak_data:
-  rabbitmq_data:
+    name: ticket-prod-postgres
   redis_data:
+    name: ticket-prod-redis
+  rabbitmq_data:
+    name: ticket-prod-rabbitmq
+  app_uploads:
+    name: ticket-prod-uploads
+  caddy_data:
+    name: ticket-prod-caddy-data
+  caddy_config:
+    name: ticket-prod-caddy-config
