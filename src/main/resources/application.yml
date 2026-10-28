@@ -60,6 +60,35 @@ spring:
           starttls:
             enable: true
 
+  # RabbitMQ - booking mail is queued here (app.mail.queue). docker-compose points
+  # the container at rabbitmq:5672; the management UI is on RABBITMQ_MANAGEMENT_PORT.
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:ticket}
+    password: ${RABBITMQ_PASSWORD:ticket}
+    listener:
+      simple:
+        # A failing send is retried in the listener, then dead-lettered (booking.mail.dlq).
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: ${RABBITMQ_MAIL_MAX_ATTEMPTS:4}
+          initial-interval: 2s
+          multiplier: 3
+          max-interval: 30s
+
+  # Redis - shared movie-browse cache and booking-lookup throttle (app.redis).
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+      connect-timeout: 2s
+      repositories:
+        enabled: false
+
   security:
     oauth2:
       resourceserver:
@@ -98,6 +127,15 @@ payway:
   return-url: ${PAYWAY_RETURN_URL:}
 
 app:
+  mail:
+    queue:
+      # true: booking mail goes through RabbitMQ (sent directly if the broker is down).
+      # false: sent in-process after commit, no broker needed.
+      enabled: ${APP_MAIL_QUEUE_ENABLED:true}
+  redis:
+    # true: browse cache and lookup throttle live in Redis (memory if it is down).
+    # false: both stay in this instance's memory, no Redis needed.
+    enabled: ${APP_REDIS_ENABLED:true}
   cors:
     # Origins allowed to call this API from a browser (the React dev server).
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:8081}

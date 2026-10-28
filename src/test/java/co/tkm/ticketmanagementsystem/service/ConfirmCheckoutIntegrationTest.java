@@ -116,7 +116,7 @@ class ConfirmCheckoutIntegrationTest {
 
     private BookingService.Confirmation confirm() {
         return bookingService.confirmCheckout(showtimeId, seatIds, null, session,
-                "Dara", "012345678", null, null, "CARD", Map.of());
+                "Dara", "012345678", "dara@example.com", null, "CARD", Map.of());
     }
 
     @Test

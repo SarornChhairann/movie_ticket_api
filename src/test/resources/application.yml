@@ -29,3 +29,11 @@ keycloak:
   admin-client-secret: test-secret
   # Nothing to bootstrap against, so AdminSeeder only writes the local mirror row.
   bootstrap-admin: false
+
+# No broker and no Redis in tests: mail is sent in-process, caches stay in memory.
+app:
+  mail:
+    queue:
+      enabled: false
+  redis:
+    enabled: false

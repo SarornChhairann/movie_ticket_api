@@ -6,6 +6,7 @@ import co.tkm.ticketmanagementsystem.model.Showtime;
 import co.tkm.ticketmanagementsystem.repository.MovieRepository;
 import co.tkm.ticketmanagementsystem.repository.ShowtimeRepository;
 import co.tkm.ticketmanagementsystem.service.MovieBrowseCacheService;
+import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
@@ -37,6 +38,8 @@ public class MovieBrowseApiController {
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final ZoneId APP_ZONE = ZoneId.of("Asia/Phnom_Penh");
     private static final int MAX_CHIPS = 4;
+    private static final TypeReference<List<MovieBrowseResponse>> BROWSE_LIST = new TypeReference<>() {
+    };
 
     private final ShowtimeRepository showtimeRepository;
     private final MovieRepository movieRepository;
@@ -57,7 +60,7 @@ public class MovieBrowseApiController {
                 throw new IllegalArgumentException("date is required for now_showing.");
             }
             String key = "now_showing|" + date + "|" + (cinemaId != null ? cinemaId : c.toLowerCase());
-            List<MovieBrowseResponse> all = cacheService.getOrLoad(key, () -> nowShowing(date, cinemaId, c));
+            List<MovieBrowseResponse> all = cacheService.getOrLoad(key, BROWSE_LIST, () -> nowShowing(date, cinemaId, c));
             // After the cache read: a cached day must not keep serving showtimes that have started.
             return ResponseEntity.ok(upcoming(all, LocalDateTime.now(APP_ZONE)));
         }
@@ -68,7 +71,7 @@ public class MovieBrowseApiController {
             }
             YearMonth ym = YearMonth.parse(month);
             String key = "coming_soon|" + ym + "|" + (cinemaId != null ? cinemaId : c.toLowerCase());
-            return ResponseEntity.ok(cacheService.getOrLoad(key, () -> comingSoon(ym)));
+            return ResponseEntity.ok(cacheService.getOrLoad(key, BROWSE_LIST, () -> comingSoon(ym)));
         }
 
         throw new IllegalArgumentException("Unknown type: " + type);

@@ -18,8 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.util.Locale;
-import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -27,8 +25,6 @@ import java.util.regex.Pattern;
 public class MovieReminderService {
 
     public static final String REMINDER_EXISTS = "REMINDER_EXISTS";
-
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$");
 
     private final MovieReminderRepository movieReminderRepository;
     private final MovieRepository movieRepository;
@@ -50,8 +46,8 @@ public class MovieReminderService {
         if (movieId == null) {
             throw new IllegalArgumentException("movieId is required.");
         }
-        String normalizedEmail = normalizeEmail(email);
-        if (!EMAIL_PATTERN.matcher(normalizedEmail).matches()) {
+        String normalizedEmail = EmailAddress.normalize(email);
+        if (!EmailAddress.isValid(normalizedEmail)) {
             throw new IllegalArgumentException("Please enter a valid email address.");
         }
 
@@ -86,13 +82,6 @@ public class MovieReminderService {
         } else {
             action.run();
         }
-    }
-
-    private String normalizeEmail(String email) {
-        if (email == null) {
-            return "";
-        }
-        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     /** Best-effort: logs and returns when mail is not configured or fails. */

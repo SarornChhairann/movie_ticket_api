@@ -70,7 +70,7 @@ class MovieBrowseApiControllerTest {
         LocalDate tomorrow = LocalDate.now(ZoneId.of("Asia/Phnom_Penh")).plusDays(1);
         when(showtimeRepository.findByShowDateCityNotBlocked(eq(tomorrow), any()))
                 .thenReturn(List.of(showtime(10L, tomorrow, LocalTime.of(19, 30), movie())));
-        var controller = new MovieBrowseApiController(showtimeRepository, movieRepository, new MovieBrowseCacheService());
+        var controller = new MovieBrowseApiController(showtimeRepository, movieRepository, MovieBrowseCacheService.inMemory());
 
         List<MovieBrowseResponse> body = controller.browse("now_showing", tomorrow, null, null, null).getBody();
 
@@ -95,7 +95,7 @@ class MovieBrowseApiControllerTest {
         when(showtimeRepository.findByShowDateCityNotBlocked(eq(today), any())).thenReturn(List.of(
                 showtime(10L, today, LocalTime.MIDNIGHT, movie),
                 showtime(11L, today, LocalTime.of(23, 59), movie)));
-        var controller = new MovieBrowseApiController(showtimeRepository, movieRepository, new MovieBrowseCacheService());
+        var controller = new MovieBrowseApiController(showtimeRepository, movieRepository, MovieBrowseCacheService.inMemory());
 
         controller.browse("now_showing", today, null, null, null);
         List<MovieBrowseResponse> cached = controller.browse("now_showing", today, null, null, null).getBody();

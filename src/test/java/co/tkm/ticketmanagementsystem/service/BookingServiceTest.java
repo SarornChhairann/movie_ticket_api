@@ -26,6 +26,7 @@ import co.tkm.ticketmanagementsystem.repository.BookingRepository;
 import co.tkm.ticketmanagementsystem.repository.ShowtimeRepository;
 import co.tkm.ticketmanagementsystem.repository.ShowtimeSeatRepository;
 import co.tkm.ticketmanagementsystem.repository.UserRepository;
+import co.tkm.ticketmanagementsystem.messaging.BookingMailPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -63,7 +64,7 @@ class BookingServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private PaymentService paymentService;
     @Mock private TicketService ticketService;
-    @Mock private EmailService emailService;
+    @Mock private BookingMailPublisher bookingMail;
     @Mock private PromoCodeService promoCodeService;
     @Mock private FoodItemService foodItemService;
     @Mock private BookingFoodItemRepository bookingFoodItemRepository;
@@ -360,7 +361,7 @@ class BookingServiceTest {
         verify(promoCodeService).recordUsage("SAVE10");
         verify(seatHoldService).releaseHolds(SESSION);
         verify(seatRealtimeService).publishBooked(10L, ids);
-        verify(emailService).sendBookingConfirmation(result.booking(), result.tickets());
+        verify(bookingMail).confirmed(result.booking().getId());
         verify(paymentService).record(any(), eq("CARD"), eq(PaymentGateway.PaymentResult.success()));
     }
 
@@ -387,7 +388,7 @@ class BookingServiceTest {
         verify(promoCodeService, never()).recordUsage(any());
         verify(seatHoldService, never()).releaseHolds(any());
         verify(seatRealtimeService, never()).publishBooked(any(), any());
-        verify(emailService, never()).sendBookingConfirmation(any(), any());
+        verify(bookingMail, never()).confirmed(any());
         verify(paymentService).record(any(), eq("CARD"), eq(PaymentGateway.PaymentResult.failure("Card declined.")));
     }
 
@@ -423,7 +424,7 @@ class BookingServiceTest {
         realTicketIssuing();
 
         BookingService.Confirmation result = bookingService.confirmCheckout(10L, ids, null, SESSION,
-                " Dara ", "012345", " dara@example.com ", null, null, Map.of());
+                " Dara ", "012345", " Dara@Example.com ", null, null, Map.of());
 
         Booking booking = result.booking();
         assertThat(booking.getUser()).isNull();
@@ -432,6 +433,19 @@ class BookingServiceTest {
         assertThat(booking.getGuestEmail()).isEqualTo("dara@example.com");
         assertThat(booking.getPaymentMethod()).isEqualTo("CARD");
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void confirm_guestWithoutAValidEmailIsRejectedBeforeAnythingIsSaved() {
+        List<Long> ids = lockSeats(twoNormalSeats());
+
+        for (String email : new String[]{null, " ", "dara", "dara@example"}) {
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> bookingService.confirmCheckout(
+                    10L, ids, null, SESSION, "Dara", "012345", email, null, "CARD", Map.of()));
+            assertThat(ex.getMessage()).contains("email");
+        }
+        verify(bookingRepository, never()).save(any());
+        verify(paymentGateway, never()).charge(any(), any());
     }
 
     @Test
@@ -504,7 +518,7 @@ class BookingServiceTest {
                 .allSatisfy(t -> assertThat(t.getStatus()).isEqualTo(TicketStatus.CANCELLED));
         assertThat(seats).allSatisfy(ss -> assertThat(ss.getStatus()).isEqualTo(ShowtimeSeatStatus.AVAILABLE));
         verify(seatRealtimeService).publishReleased(10L, List.of(400L, 401L), null);
-        verify(emailService).sendCancellationNotice(booking);
+        verify(bookingMail).cancelled(50L);
         // Sprint 12: the points the booking earned come back off, never below 0.
         assertThat(user.getPoints()).isZero();
         verify(userRepository).save(user);

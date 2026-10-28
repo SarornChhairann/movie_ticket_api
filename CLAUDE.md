@@ -21,7 +21,7 @@ Run everything through the Maven wrapper (`./mvnw` on macOS/Linux, `mvnw.cmd` on
 Tests live under `src/test/java/.../service/` (`BookingServiceTest`, `SeatHoldServiceTest`, `ShowtimeServiceAdminRulesTest`) plus a context-load test.
 
 ```
-docker compose up -d db keycloak    # Postgres on 5433 + Keycloak on 8080, both needed to run the app
+docker compose up -d db keycloak rabbitmq redis   # Postgres 5433, Keycloak 8080, RabbitMQ 5672 (UI 15672), Redis 6379
 docker compose up --build           # full stack including the app container (see README-Docker.md)
 ```
 
@@ -81,8 +81,8 @@ Movie posters and food item images are stored on disk under `app.uploads.movies-
 
 - QR codes for tickets: `QrCodeService` (zxing). Ticket PDFs: `PdfTicketService` (Apache PDFBox).
 - The client is a separate React app on `http://localhost:8081` (see `ARCHITECTURE.md`). `WebConfig`'s CORS allow-list comes from `app.cors.allowed-origins` (default `http://localhost:8081`) — add origins there, not in code.
-- `MovieBrowseCacheService` is a hand-rolled in-memory cache (1h TTL) behind `MovieBrowseApiController`. Only `ShowtimeService` calls `evictAll()`; any other write that changes what the browse endpoints return must evict it too, or stale data is served for up to an hour.
-- Email (booking confirmations, etc.) goes through `EmailService` / the `JavaMailSender` bean in `WebConfig`; real delivery requires `spring.mail.username`/`password` (blank by default, so mail is a no-op locally unless configured).
+- `MovieBrowseCacheService` (1h TTL) behind `MovieBrowseApiController` lives in **Redis** (`movie-browse:*` JSON keys, shared by every instance) when `app.redis.enabled=true`, else, or while Redis is unreachable, in memory. `MovieService`, `HallService`, and `ShowtimeService` call `evictAll()`; any other write that changes what the browse endpoints return must evict it too, or stale data is served for up to an hour. `LookupRateLimiter` keeps its misses in Redis too (`lookup-failures:{client}` sorted sets), with the same memory fallback.
+- Booking mail goes **through RabbitMQ**: `BookingService` calls `BookingMailPublisher` after commit with only the booking id; `BookingMailListener` consumes `booking.mail` and `BookingMailHandler` reloads the booking and calls `EmailService`. A failed send is retried by the listener (`spring.rabbitmq.listener.simple.retry`) and then dead-lettered to `booking.mail.dlq`. With `app.mail.queue.enabled=false` (tests) or the broker down, the publisher sends in-process; mail never fails a booking. The confirmation is HTML with one inline (`cid:`) QR per ticket; a guest must give a valid email at checkout (`lockAndValidate`). Real delivery requires `spring.mail.username`/`password` (blank by default, so nothing is sent locally); `From` is the username.
 
 ## Companion docs
 

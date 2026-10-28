@@ -9,6 +9,7 @@ import co.tkm.ticketmanagementsystem.enums.PaymentStatus;
 import co.tkm.ticketmanagementsystem.enums.ShowtimeSeatStatus;
 import co.tkm.ticketmanagementsystem.enums.UserStatus;
 import co.tkm.ticketmanagementsystem.enums.TicketStatus;
+import co.tkm.ticketmanagementsystem.messaging.BookingMailPublisher;
 import co.tkm.ticketmanagementsystem.model.Booking;
 import co.tkm.ticketmanagementsystem.model.BookingFoodItem;
 import co.tkm.ticketmanagementsystem.model.FoodItem;
@@ -71,7 +72,7 @@ public class BookingService {
     private final BookingFoodItemRepository bookingFoodItemRepository;
     private final PaymentService paymentService;
     private final TicketService ticketService;
-    private final EmailService emailService;
+    private final BookingMailPublisher bookingMail;
     private final PromoCodeService promoCodeService;
     private final FoodItemService foodItemService;
     private final SystemSettingService systemSettingService;
@@ -112,7 +113,7 @@ public class BookingService {
                                         Map<Long, Integer> foodSelections) {
         // 1-2. Lock, recheck availability, couple pairs, hold, and account; recompute the price.
         CheckoutData checkoutData = lockAndValidate(showtimeId, selectedSeatIds, userEmail, sessionId,
-                guestName, guestPhone, promoCode, foodSelections);
+                guestName, guestPhone, guestEmail, promoCode, foodSelections);
 
         // 3-4. Booking PENDING plus food lines.
         String method = isBlank(paymentMethod) ? "CARD" : paymentMethod.trim();
@@ -135,10 +136,14 @@ public class BookingService {
         return new Confirmation(savedBooking, tickets);
     }
 
-    /** Steps 1-2 of confirm: lock the seats, recompute the quote, require the hold and a usable account. */
+    /**
+     * Steps 1-2 of confirm: lock the seats, recompute the quote, require the hold and a
+     * usable account. A guest needs a name, a phone, and a valid email (the tickets are
+     * mailed there), checked before any {@code PENDING} row is written.
+     */
     private CheckoutData lockAndValidate(Long showtimeId, List<Long> selectedSeatIds, String userEmail,
                                          String sessionId, String guestName, String guestPhone,
-                                         String promoCode, Map<Long, Integer> foodSelections) {
+                                         String guestEmail, String promoCode, Map<Long, Integer> foodSelections) {
         CheckoutData checkoutData = resolveCheckoutData(showtimeId, selectedSeatIds, userEmail, true,
                 promoCode, foodSelections);
 
@@ -160,6 +165,9 @@ public class BookingService {
         if (user == null && (isBlank(guestName) || isBlank(guestPhone))) {
             throw new IllegalArgumentException("Please enter your name and phone number.");
         }
+        if (user == null && !EmailAddress.isValid(EmailAddress.normalize(guestEmail))) {
+            throw new IllegalArgumentException("Please enter a valid email address for your tickets.");
+        }
         return checkoutData;
     }
 
@@ -174,9 +182,7 @@ public class BookingService {
         if (user == null) {
             booking.setGuestName(guestName.trim());
             booking.setGuestPhone(guestPhone.trim());
-            if (!isBlank(guestEmail)) {
-                booking.setGuestEmail(guestEmail.trim());
-            }
+            booking.setGuestEmail(EmailAddress.normalize(guestEmail));
         }
         booking.setShowtime(checkoutData.getShowtime());
         booking.setTotalAmount(checkoutData.getTotalAmount());
@@ -212,10 +218,11 @@ public class BookingService {
         seatHoldService.releaseHolds(sessionId);
 
         Long showtimeId = booking.getShowtime().getId();
+        Long bookingId = booking.getId();
         List<Long> bookedSeatIds = List.copyOf(seatIds);
         afterCommit(() -> {
             seatRealtimeService.publishBooked(showtimeId, bookedSeatIds);
-            emailService.sendBookingConfirmation(booking, tickets);
+            bookingMail.confirmed(bookingId);
         });
         return tickets;
     }
@@ -241,7 +248,7 @@ public class BookingService {
                                            String guestEmail, String promoCode,
                                            Map<Long, Integer> foodSelections) {
         CheckoutData checkoutData = lockAndValidate(showtimeId, selectedSeatIds, userEmail, sessionId,
-                guestName, guestPhone, promoCode, foodSelections);
+                guestName, guestPhone, guestEmail, promoCode, foodSelections);
 
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime holdEnds = seatHoldService.earliestExpiry(selectedSeatIds, sessionId).orElse(now);
@@ -452,7 +459,7 @@ public class BookingService {
             if (!freedSeatIds.isEmpty()) {
                 seatRealtimeService.publishReleased(showtimeId, freedSeatIds, null);
             }
-            emailService.sendCancellationNotice(booking);
+            bookingMail.cancelled(bookingId);
         });
     }
 
@@ -549,7 +556,7 @@ public class BookingService {
             throw new IllegalArgumentException("Booking is already cancelled.");
         }
         cancelTicketsAndFreeSeats(booking);
-        emailService.sendCancellationNotice(booking);
+        afterCommit(() -> bookingMail.cancelled(bookingId));
     }
 
     @Transactional(readOnly = true)

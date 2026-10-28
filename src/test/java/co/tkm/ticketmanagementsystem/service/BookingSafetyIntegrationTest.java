@@ -216,7 +216,7 @@ class BookingSafetyIntegrationTest {
     void confirmStoresTheSessionSoTheSameSessionCanReadTheBooking() throws Exception {
         seatHoldService.holdSeatsRealtime(showtime.getId(), ids("N1"), session);
         BookingService.Confirmation confirmation = bookingService.confirmCheckout(showtime.getId(), ids("N1"),
-                null, session, "Guest " + suffix, "012345678", null, null, "CARD", Map.of());
+                null, session, "Guest " + suffix, "012345678", "guest@example.com", null, "CARD", Map.of());
         Long id = confirmation.booking().getId();
 
         assertThat(bookingRepository.findById(id).orElseThrow().getSessionId()).isEqualTo(session);
