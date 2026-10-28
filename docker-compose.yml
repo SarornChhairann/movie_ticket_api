@@ -7,12 +7,13 @@
 # Shape:
 #   internet ──80──▶ caddy ──edge──▶ app
 #            └─8080─▶ caddy ──edge──▶ keycloak
-#                                 └──backend (internal, no internet)──▶ db, redis, rabbitmq
+#                                 └──backend (internal, no internet)──▶ db, redis
 #
 # - No DNS name. PUBLIC_IP is the server's public address. Caddy serves plain HTTP:
 #   the API on port 80, Keycloak on port 8080. Let's Encrypt is not used.
 # - Only Caddy publishes ports (80 and 8080). The API, Keycloak,
-#   Postgres, Redis and RabbitMQ are reachable only inside the compose networks.
+#   Postgres and Redis are reachable only inside the compose networks.
+# - No RabbitMQ: on a 1 GB server the app sends booking mail directly instead.
 # - "backend" is internal: the data stores cannot reach the internet at all. The app
 #   and Keycloak also sit on "edge", which is how the app reaches SMTP and PayWay.
 # - Every service has a health check, a restart policy, memory/CPU limits, rotated
@@ -82,8 +83,6 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
       redis:
         condition: service_healthy
     read_only: true
@@ -124,17 +123,12 @@ services:
       # No demo data in production.
       APP_SEED_ENABLED: "false"
       APP_SEED_FORCE: "false"
-      # --- Mail (through the queue below)
+      # --- Mail (sent directly; no RabbitMQ in this stack)
       SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-smtp.gmail.com}
       SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
       SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
       SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
-      APP_MAIL_QUEUE_ENABLED: "true"
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: ${RABBITMQ_USER:-ticket}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD}
-      RABBITMQ_MAIL_MAX_ATTEMPTS: ${RABBITMQ_MAIL_MAX_ATTEMPTS:-4}
+      APP_MAIL_QUEUE_ENABLED: "false"
       # --- Redis
       APP_REDIS_ENABLED: "true"
       REDIS_HOST: redis
@@ -153,7 +147,7 @@ services:
     stop_grace_period: 30s      # > spring.lifecycle.timeout-per-shutdown-phase (20s)
     deploy:
       resources:
-        limits: { cpus: "2.0", memory: 1G }    # heap = 75% of this (MaxRAMPercentage)
+        limits: { cpus: "2.0", memory: 512M }  # heap = 75% of this (MaxRAMPercentage)
 
   # --------------------------------------------------------------------------- auth
   keycloak:
@@ -182,6 +176,9 @@ services:
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
       KC_LOG_LEVEL: info
+      # Small-server tuning (1 GB host): single node, local caches, capped heap.
+      KC_CACHE: local
+      JAVA_OPTS_KC_HEAP: ${KEYCLOAK_HEAP:--Xms64m -Xmx320m -XX:MaxMetaspaceSize=192m}
     volumes:
       # Production realm: no demo users, HTTPS required, random client secret (see make-prod-realm.py).
       - ./deploy/keycloak/realm-prod.json:/opt/keycloak/data/import/realm-prod.json:ro
@@ -193,11 +190,11 @@ services:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && IFS= read -r status <&3 && case \"$$status\" in *' 200'*) exit 0;; esac; exit 1"]
       interval: 15s
       timeout: 5s
-      retries: 20
-      start_period: 60s
+      retries: 30
+      start_period: 300s          # first start builds + imports the realm; slow on 1 GB
     deploy:
       resources:
-        limits: { cpus: "1.0", memory: 1G }
+        limits: { cpus: "1.0", memory: 640M }
 
   # --------------------------------------------------------------------------- data
   db:
@@ -212,8 +209,8 @@ services:
       KEYCLOAK_DB: ${KEYCLOAK_DB:-keycloak}
       KEYCLOAK_DB_USER: ${KEYCLOAK_DB_USER:-keycloak}
       KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD}
-    command: ["postgres", "-c", "max_connections=100", "-c", "shared_buffers=256MB", "-c", "log_min_duration_statement=1000"]
-    shm_size: 256m
+    command: ["postgres", "-c", "max_connections=50", "-c", "shared_buffers=64MB", "-c", "log_min_duration_statement=1000"]
+    shm_size: 128m
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -228,7 +225,7 @@ services:
     stop_grace_period: 60s
     deploy:
       resources:
-        limits: { cpus: "1.0", memory: 1G }
+        limits: { cpus: "1.0", memory: 256M }
 
   redis:
     <<: *hardening
@@ -237,7 +234,7 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
     # Password from the environment, not the command line (keeps it out of `ps`).
-    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes --maxmemory 192mb --maxmemory-policy allkeys-lru"]
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes --maxmemory 48mb --maxmemory-policy allkeys-lru"]
     volumes:
       - redis_data:/data
     networks:
@@ -249,34 +246,7 @@ services:
       retries: 10
     deploy:
       resources:
-        limits: { cpus: "0.50", memory: 256M }
-
-  rabbitmq:
-    <<: *hardening
-    image: rabbitmq:4.1-management-alpine
-    container_name: ticket-prod-rabbitmq
-    hostname: rabbitmq          # the node name, and so its data dir, must stay fixed
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-ticket}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD}
-      # Keep the broker under its container limit instead of being OOM-killed.
-      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit vm_memory_high_watermark {absolute,\"400MiB\"}"
-    # No published ports: Docker cannot publish from an internal-only network. For the
-    # management UI, tunnel to the container's address (see README-Docker.md), or use
-    # `docker compose exec rabbitmq rabbitmqctl ...`.
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - backend
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
-    deploy:
-      resources:
-        limits: { cpus: "1.0", memory: 512M }
+        limits: { cpus: "0.50", memory: 96M }
 
 networks:
   edge:
@@ -292,8 +262,6 @@ volumes:
     name: ticket-prod-postgres
   redis_data:
     name: ticket-prod-redis
-  rabbitmq_data:
-    name: ticket-prod-rabbitmq
   app_uploads:
     name: ticket-prod-uploads
   caddy_data:

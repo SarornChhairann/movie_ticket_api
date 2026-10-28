@@ -26,10 +26,10 @@ docker compose up -d --build                      # or the app in a container to
 ```
 internet ──80──▶ caddy ──(edge)──▶ app :8010
          └─8080─▶ caddy ──(edge)──▶ keycloak :8080
-                                   └──(backend, internal: no internet)──▶ db, redis, rabbitmq
+                                   └──(backend, internal: no internet)──▶ db, redis
 ```
 
-- **Networks.** `ticket-prod-edge` joins Caddy to the app and Keycloak. `ticket-prod-backend` is `internal: true`, so Postgres, Redis and RabbitMQ have no route out and nothing from outside can reach them. The app and Keycloak are on both: that is how the app reaches SMTP and PayWay.
+- **Networks.** `ticket-prod-edge` joins Caddy to the app and Keycloak. `ticket-prod-backend` is `internal: true`, so Postgres and Redis have no route out and nothing from outside can reach them. The app and Keycloak are on both: that is how the app reaches SMTP and PayWay.
 - **Ports.** Only Caddy publishes anything: port 80 is the API and port 8080 is Keycloak, both plain HTTP on `PUBLIC_IP`. There is no DNS name and no Let's Encrypt certificate.
 - **Volumes.** These are named volumes with fixed names, so they survive `docker compose down` and a project rename:
 
@@ -37,7 +37,6 @@ internet ──80──▶ caddy ──(edge)──▶ app :8010
   |---|---|
   | `ticket-prod-postgres` | app + Keycloak data |
   | `ticket-prod-uploads` | posters, food images |
-  | `ticket-prod-rabbitmq` | queued mail |
   | `ticket-prod-redis` | cache, lookup throttle |
   | `ticket-prod-caddy-data` | TLS certificates |
 
@@ -103,15 +102,15 @@ docker run --rm -v ticket-prod-uploads:/data -v "$PWD":/out alpine tar czf /out/
 
 Run both from cron and copy the files off the server. To restore, run `gunzip -c backup.sql.gz | dcp exec -T db sh -c 'psql -U "$POSTGRES_USER" -d postgres'` on an empty volume.
 
-Redis only holds a cache and a throttle, so it needs no backup. RabbitMQ only holds mail still waiting to be sent.
+Redis only holds a cache and a throttle, so it needs no backup.
+
+The production stack runs no RabbitMQ (it is sized for a 1 GB server): `APP_MAIL_QUEUE_ENABLED=false`, so booking mail is sent directly from the app.
 
 ### Operations
 
 | Task | Command |
 |---|---|
 | Health | `dcp ps`; `dcp exec app bash -c 'exec 3<>/dev/tcp/127.0.0.1/8010; printf "GET /actuator/health HTTP/1.0\r\n\r\n" >&3; cat <&3'` |
-| Mail queue / dead letters | `dcp exec rabbitmq rabbitmqctl list_queues name messages consumers` |
-| RabbitMQ UI | `ip=$(docker inspect -f '{{(index .NetworkSettings.Networks "ticket-prod-backend").IPAddress}}' ticket-prod-rabbitmq)`, then from your laptop `ssh -L 15672:$ip:15672 server` and open http://localhost:15672 |
 | Redis | `dcp exec redis sh -c 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli info memory'` |
 | psql | `dcp exec db sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"'` |
 
