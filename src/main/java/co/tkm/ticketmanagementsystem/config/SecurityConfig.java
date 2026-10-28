@@ -70,6 +70,8 @@ public class SecurityConfig {
                         // How a client gets a token in the first place.
                         .requestMatchers(HttpMethod.POST, "/login", "/register", "/logout").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        // Container probes; the production proxy does not route /actuator.
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/", "/movies", "/movies/**",
                                 "/bookings/seats/**", "/bookings/checkout/**", "/bookings/quote/**", "/bookings/confirmation/**",
                                 "/bookings/payway/**", "/bookings/lookup",

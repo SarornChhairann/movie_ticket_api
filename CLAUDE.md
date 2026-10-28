@@ -23,6 +23,7 @@ Tests live under `src/test/java/.../service/` (`BookingServiceTest`, `SeatHoldSe
 ```
 docker compose up -d db keycloak rabbitmq redis   # Postgres 5433, Keycloak 8080, RabbitMQ 5672 (UI 15672), Redis 6379
 docker compose up --build           # full stack including the app container (see README-Docker.md)
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build   # production: Caddy TLS, internal data network (README-Docker.md)
 ```
 
 Configuration lives in **`.env` at the project root** — one file read by both `docker compose` (for `${VAR}` substitution in `docker-compose.yml`) and the app itself, since `application.yml` declares `spring.config.import: optional:file:./.env[.properties]`. `src/main/resources/application.yml` is now only the wiring: every value is a `${VAR:default}` placeholder pointing at a key in `.env`, with the same value as its default so a checkout without an `.env` still boots. Real environment variables outrank the file, which is how the container overrides `localhost` with `db:`/`keycloak:`. `.env` is git-ignored; `.env.example` is the committed template. Tests use `src/test/resources/application.yml`, read no `.env`, and run against H2 in Postgres-compatibility mode, so they need neither Postgres nor Keycloak. The dev datasource points at `jdbc:postgresql://localhost:5433/spring_boot_ticket`, and auth needs a Keycloak at `http://localhost:8080` serving the `ticket-realm` — both are in `docker-compose.yml`. Note `APP_SEED_FORCE=true` in `.env`: every start wipes and reseeds the demo data.

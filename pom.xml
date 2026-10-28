@@ -74,6 +74,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
+        <!-- /actuator/health liveness + readiness probes for Docker / orchestrators. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
         <!-- Shared movie-browse cache and lookup throttle. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

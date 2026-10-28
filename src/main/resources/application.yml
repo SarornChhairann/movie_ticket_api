@@ -1,5 +1,10 @@
 server:
   port: ${SERVER_PORT:8010}
+  # Finish in-flight requests on SIGTERM (docker stop) instead of cutting them off.
+  shutdown: graceful
+  # Behind the production reverse proxy, trust X-Forwarded-* for scheme/host
+  # (set SERVER_FORWARD_HEADERS_STRATEGY=native there; none when hit directly).
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:none}
   error:
     # Spring Boot DevTools turns these on for local runs; keep stack traces,
     # exception names, and raw exception messages (which can carry SQL) out of
@@ -11,6 +16,9 @@ server:
 spring:
   application:
     name: TicketManagementSystem
+
+  lifecycle:
+    timeout-per-shutdown-phase: ${SPRING_LIFECYCLE_TIMEOUT:20s}
 
   config:
     # Every value below comes from .env in the project root. "optional:" so the app
@@ -101,6 +109,27 @@ spring:
           # docker-compose additionally sets
           # SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI, for when the app
           # reaches Keycloak on a different host than the one named in the token's issuer.
+
+# Health probes for Docker and orchestrators. Only /actuator/health is exposed, without
+# details. Readiness needs the database; Redis and RabbitMQ are left out on purpose:
+# the app keeps working without them (memory cache, direct mail), so their outage
+# must not take it out of rotation. The mail check is off: SMTP is optional.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,db
+  health:
+    mail:
+      enabled: false
 
 # Used by AuthService/KeycloakAdminClient to call Keycloak directly for login,
 # registration and user administration, separately from the resourceserver config

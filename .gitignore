@@ -40,6 +40,8 @@ build/
 # Every setting lives here; .env.example is the committed template.
 .env
 !.env.example
+.env.prod
+!.env.prod.example
 
 ### Local notes and credentials ###
 /docs/

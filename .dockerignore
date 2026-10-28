@@ -7,6 +7,14 @@
 .env.*
 !.env.example
 
+# Not needed inside the image.
+deploy
+docker-compose*.yml
+admin-portal
+postman
+docs
+keycloak
+
 target
 build
 dist
