@@ -189,7 +189,8 @@ services:
       - edge
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep 'UP' <&3"]
+      # Shell builtins only: the Keycloak image has no curl and may lack grep.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && IFS= read -r status <&3 && case \"$$status\" in *' 200'*) exit 0;; esac; exit 1"]
       interval: 15s
       timeout: 5s
       retries: 20
