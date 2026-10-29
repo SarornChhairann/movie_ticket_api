@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SwaggerConfig {
 
-    private static final String BEARER_SCHEME = "keycloak-bearer";
+    private static final String BEARER_SCHEME = "bearer";
 
     /**
      * Declaring the bearer scheme puts an Authorize button in Swagger UI: paste the
@@ -26,14 +26,14 @@ public class SwaggerConfig {
                         .title("Ticket Management System API")
                         .version("1.0")
                         .description("API documentation for the Ticket Management System. "
-                                + "Authentication is handled by Keycloak: POST /login (or /api/auth/login) "
+                                + "Authentication: POST /login (or /api/auth/login) "
                                 + "returns an access_token to send as 'Bearer <token>'."))
                 .components(new Components().addSecuritySchemes(BEARER_SCHEME,
                         new SecurityScheme()
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
-                                .description("Keycloak-issued access token")))
+                                .description("Access token from POST /login")))
                 .addSecurityItem(new SecurityRequirement().addList(BEARER_SCHEME));
     }
 }

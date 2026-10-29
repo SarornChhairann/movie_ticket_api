@@ -7,7 +7,7 @@ import { useAuth } from '../../auth/AuthContext.jsx';
 import { formatCount, formatDateTime, formatMoney, formatShowtime, orDash } from '../../format.js';
 import { USER_STATUSES, UserStatusBadge } from './userOptions.jsx';
 
-// GET /admin/users/{id} → { user, bookings, statuses }. No password field: passwords live in Keycloak.
+// GET /admin/users/{id} → { user, bookings, statuses }. No password field: it is never returned by the API.
 export default function UserDetail() {
   const { id } = useParams();
   const { session } = useAuth();
@@ -143,7 +143,7 @@ function StatusCard({ user, isSelf, onChange }) {
         <p>
           {target === 'ACTIVE'
             ? 'The account can sign in and book again.'
-            : 'The account is disabled in Keycloak and turned away by the API. Existing bookings are not cancelled.'}
+            : 'The account is signed out and turned away by the API. Existing bookings are not cancelled.'}
         </p>
         {error && <p className="error" role="alert">{error}</p>}
       </ConfirmDialog>

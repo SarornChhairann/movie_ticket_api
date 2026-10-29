@@ -15,6 +15,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.HtmlUtils;
 
+import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -96,6 +97,30 @@ public class EmailService {
         msg.setTo(recipient);
         msg.setSubject("Booking Cancelled – " + booking.getReference());
         msg.setText(body);
+        mailSender.send(msg);
+    }
+
+    /**
+     * The forgot-password code. Sent directly (not through the booking queue). With mail
+     * not configured the code is written to the log instead, so a local run can still
+     * finish the flow.
+     */
+    public void sendPasswordResetCode(String recipient, String name, String code, Duration validFor) {
+        if (from == null || from.isBlank()) {
+            log.info("Mail not configured (spring.mail.username is blank); password reset code for {} is {}",
+                    recipient, code);
+            return;
+        }
+        long minutes = Math.max(1, validFor.toMinutes());
+        SimpleMailMessage msg = new SimpleMailMessage();
+        msg.setFrom(from);
+        msg.setTo(recipient);
+        msg.setSubject("Your password reset code: " + code);
+        msg.setText("Hi " + (name == null || name.isBlank() ? "there" : name) + ",\n\n" +
+                "Use this code to reset your password:\n\n" +
+                "    " + code + "\n\n" +
+                "It expires in " + minutes + " minutes. If you did not ask to reset your password, " +
+                "ignore this email - your password has not changed.\n");
         mailSender.send(msg);
     }
 

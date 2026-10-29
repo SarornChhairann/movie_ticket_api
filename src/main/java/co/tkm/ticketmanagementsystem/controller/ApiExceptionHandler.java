@@ -43,8 +43,8 @@ public class ApiExceptionHandler {
     }
 
     /**
-     * Everything the Keycloak layer throws deliberately: 401 on a bad credential, 409 on
-     * a duplicate account, 502 when Keycloak is unreachable or misconfigured. Handling it
+     * Everything the auth layer throws deliberately: 401 on a bad credential or refresh
+     * token, 409 on a duplicate account. Handling it
      * here writes the response directly instead of letting Spring Boot forward to /error.
      */
     @ExceptionHandler(ResponseStatusException.class)

@@ -5,17 +5,17 @@
 #   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 #
 # Shape:
-#   internet ──80──▶ caddy ──edge──▶ app
-#            └─8080─▶ caddy ──edge──▶ keycloak
-#                                 └──backend (internal, no internet)──▶ db, redis
+#   internet ──80──▶ caddy ──edge──▶ app ──backend (internal, no internet)──▶ db, redis
 #
-# - No DNS name. PUBLIC_IP is the server's public address. Caddy serves plain HTTP:
-#   the API on port 80, Keycloak on port 8080. Let's Encrypt is not used.
-# - Only Caddy publishes ports (80 and 8080). The API, Keycloak,
-#   Postgres and Redis are reachable only inside the compose networks.
+# - No DNS name. PUBLIC_IP is the server's public address. Caddy serves the API as
+#   plain HTTP on port 80. Let's Encrypt is not used.
+# - Authentication is built into the app (it issues and verifies its own JWTs);
+#   there is no separate identity server.
+# - Only Caddy publishes a port (80). The API, Postgres and Redis are reachable
+#   only inside the compose networks.
 # - No RabbitMQ: on a 1 GB server the app sends booking mail directly instead.
 # - "backend" is internal: the data stores cannot reach the internet at all. The app
-#   and Keycloak also sit on "edge", which is how the app reaches SMTP and PayWay.
+#   also sits on "edge", which is how it reaches SMTP and PayWay.
 # - Every service has a health check, a restart policy, memory/CPU limits, rotated
 #   logs, and no-new-privileges; the app also runs read-only with all caps dropped.
 # - Data lives in named volumes with fixed names, so renaming the project or a
@@ -45,15 +45,8 @@ services:
     depends_on:
       app:
         condition: service_healthy
-      keycloak:
-        condition: service_healthy
     ports:
       - "80:80"
-      - "8080:8080"
-    environment:
-      PUBLIC_IP: ${PUBLIC_IP:?set PUBLIC_IP in .env}
-      # Who may open the Keycloak admin console (space-separated CIDRs).
-      KEYCLOAK_ADMIN_ALLOW: ${KEYCLOAK_ADMIN_ALLOW:-127.0.0.1/32}
     volumes:
       - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -81,8 +74,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      keycloak:
-        condition: service_healthy
       redis:
         condition: service_healthy
     read_only: true
@@ -108,15 +99,10 @@ services:
       SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: ${SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE:-5MB}
       SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: ${SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE:-5MB}
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:?set APP_CORS_ALLOWED_ORIGINS}
-      # --- Keycloak: tokens carry the public issuer; the app calls Keycloak inside the network.
-      KEYCLOAK_ISSUER_URI: http://${PUBLIC_IP}:8080/realms/${KEYCLOAK_REALM:-ticket-realm}
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/${KEYCLOAK_REALM:-ticket-realm}/protocol/openid-connect/certs
-      KEYCLOAK_SERVER_URL: http://keycloak:8080
-      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-ticket-realm}
-      KEYCLOAK_LOGIN_CLIENT_ID: ${KEYCLOAK_LOGIN_CLIENT_ID:-ticket-app}
-      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-ticket-backend}
-      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?set KEYCLOAK_ADMIN_CLIENT_SECRET}
-      KEYCLOAK_BOOTSTRAP_ADMIN: ${KEYCLOAK_BOOTSTRAP_ADMIN:-true}
+      # --- Auth: the app signs its own access tokens with this key (>= 32 bytes).
+      APP_JWT_SECRET: ${APP_JWT_SECRET:?set APP_JWT_SECRET}
+      APP_ACCESS_TOKEN_TTL: ${APP_ACCESS_TOKEN_TTL:-15m}
+      APP_REFRESH_TOKEN_TTL: ${APP_REFRESH_TOKEN_TTL:-7d}
       APP_ADMIN_NAME: ${APP_ADMIN_NAME:-System Admin}
       APP_ADMIN_EMAIL: ${APP_ADMIN_EMAIL:?set APP_ADMIN_EMAIL}
       APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:?set APP_ADMIN_PASSWORD}
@@ -147,54 +133,7 @@ services:
     stop_grace_period: 30s      # > spring.lifecycle.timeout-per-shutdown-phase (20s)
     deploy:
       resources:
-        limits: { cpus: "2.0", memory: 512M }  # heap = 75% of this (MaxRAMPercentage)
-
-  # --------------------------------------------------------------------------- auth
-  keycloak:
-    <<: *hardening
-    image: quay.io/keycloak/keycloak:26.7
-    container_name: ticket-prod-keycloak
-    # Production mode on Postgres (never dev-file/H2). --import-realm only creates the
-    # realm when it does not exist yet; later edits made in the console are kept.
-    command: start --import-realm
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://db:5432/${KEYCLOAK_DB:-keycloak}
-      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
-      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD}
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD}
-      # Caddy terminates nothing: the public URL is plain HTTP on the IP.
-      # Strict hostname keeps "iss" on PUBLIC_IP even when a probe uses 127.0.0.1.
-      KC_HOSTNAME: http://${PUBLIC_IP}:8080
-      KC_HOSTNAME_STRICT: "true"
-      KC_HOSTNAME_STRICT_HTTPS: "false"
-      KC_PROXY_HEADERS: xforwarded
-      KC_HTTP_ENABLED: "true"
-      KC_HEALTH_ENABLED: "true"
-      KC_LOG_LEVEL: info
-      # Small-server tuning (1 GB host): single node, local caches, capped heap.
-      KC_CACHE: local
-      JAVA_OPTS_KC_HEAP: ${KEYCLOAK_HEAP:--Xms64m -Xmx320m -XX:MaxMetaspaceSize=192m}
-    volumes:
-      # Production realm: no demo users, HTTPS required, random client secret (see make-prod-realm.py).
-      - ./deploy/keycloak/realm-prod.json:/opt/keycloak/data/import/realm-prod.json:ro
-    networks:
-      - edge
-      - backend
-    healthcheck:
-      # Shell builtins only: the Keycloak image has no curl and may lack grep.
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && IFS= read -r status <&3 && case \"$$status\" in *' 200'*) exit 0;; esac; exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 30
-      start_period: 300s          # first start builds + imports the realm; slow on 1 GB
-    deploy:
-      resources:
-        limits: { cpus: "1.0", memory: 640M }
+        limits: { cpus: "2.0", memory: 384M }  # heap = 75% of this (MaxRAMPercentage)
 
   # --------------------------------------------------------------------------- data
   db:
@@ -205,15 +144,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-ticket}
       POSTGRES_USER: ${POSTGRES_USER:-ticket}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-      # Read by deploy/postgres/init on the first start (empty volume) only.
-      KEYCLOAK_DB: ${KEYCLOAK_DB:-keycloak}
-      KEYCLOAK_DB_USER: ${KEYCLOAK_DB_USER:-keycloak}
-      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD}
     command: ["postgres", "-c", "max_connections=50", "-c", "shared_buffers=64MB", "-c", "log_min_duration_statement=1000"]
     shm_size: 128m
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
     networks:
       - backend
     healthcheck:

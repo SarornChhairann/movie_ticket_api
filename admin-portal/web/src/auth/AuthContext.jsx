@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
     });
 
     if (res.role !== 'ADMIN') {
-      // Store nothing, and end the Keycloak session the login just opened.
+      // Store nothing, and revoke the refresh token the login just issued.
       api('/api/auth/logout', {
         method: 'POST',
         body: { refresh_token: res.refresh_token },

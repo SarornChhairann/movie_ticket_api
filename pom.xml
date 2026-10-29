@@ -52,7 +52,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
-        <!-- OAuth2 Resource Server: validates the JWT access tokens Keycloak issues -->
+        <!-- OAuth2 Resource Server + Nimbus JOSE: signs and validates the app's own JWT access tokens -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>

@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@ConfigurationPropertiesScan // binds KeycloakProperties
+@ConfigurationPropertiesScan // binds AuthProperties
 public class TicketManagementSystemApplication {
 
     public static void main(String[] args) {

@@ -24,7 +24,7 @@ spring:
     # Every value below comes from .env in the project root. "optional:" so the app
     # still starts without it (the defaults after each ":" are the same values), and
     # real environment variables still win over the file - which is how the container
-    # in docker-compose.yml overrides the localhost addresses with db:/keycloak:.
+    # in docker-compose.yml overrides the localhost addresses with db:/redis:.
     import: optional:file:./.env[.properties]
 
   datasource:
@@ -97,19 +97,6 @@ spring:
       repositories:
         enabled: false
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          # The app is an OAuth2 resource server: Keycloak issues tokens, this only
-          # verifies them. Spring uses this to discover the realm's public keys via
-          # {issuer-uri}/.well-known/openid-configuration, and it must match the "iss"
-          # claim inside every token exactly.
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/ticket-realm}
-          # docker-compose additionally sets
-          # SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI, for when the app
-          # reaches Keycloak on a different host than the one named in the token's issuer.
-
 # Health probes for Docker and orchestrators. Only /actuator/health is exposed, without
 # details. Readiness needs the database; Redis and RabbitMQ are left out on purpose:
 # the app keeps working without them (memory cache, direct mail), so their outage
@@ -131,21 +118,6 @@ management:
     mail:
       enabled: false
 
-# Used by AuthService/KeycloakAdminClient to call Keycloak directly for login,
-# registration and user administration, separately from the resourceserver config
-# above (which only ever verifies tokens, never issues them or creates users).
-keycloak:
-  server-url: ${KEYCLOAK_SERVER_URL:http://localhost:8080}
-  realm: ${KEYCLOAK_REALM:ticket-realm}
-  # Public client used to exchange an email/password for a token (login).
-  login-client-id: ${KEYCLOAK_LOGIN_CLIENT_ID:ticket-app}
-  # Confidential client whose service account holds realm-management: manage-users,
-  # used to create and maintain users through Keycloak's Admin REST API.
-  admin-client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:ticket-backend}
-  admin-client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:ticket-backend-secret}
-  # Push the APP_ADMIN_* account into the realm at startup (non-fatal if Keycloak is down).
-  bootstrap-admin: ${KEYCLOAK_BOOTSTRAP_ADMIN:true}
-
 # ABA PayWay KHQR checkout (sprint 9). Credentials only come from the environment;
 # with no merchant id / API key the PayWay endpoints answer 503 PAYWAY_UNAVAILABLE.
 payway:
@@ -156,6 +128,16 @@ payway:
   return-url: ${PAYWAY_RETURN_URL:}
 
 app:
+  # Tokens are issued and verified by this app (TokenService / JwtConfig).
+  auth:
+    # HMAC key for HS256, at least 32 bytes. The default is for local development only;
+    # production must set APP_JWT_SECRET (openssl rand -base64 48).
+    jwt-secret: ${APP_JWT_SECRET:dev-only-insecure-jwt-secret-change-me-0123456789}
+    issuer: ${APP_JWT_ISSUER:ticket-management-system}
+    access-token-ttl: ${APP_ACCESS_TOKEN_TTL:15m}
+    refresh-token-ttl: ${APP_REFRESH_TOKEN_TTL:7d}
+    # Lifetime of an emailed forgot-password code.
+    password-reset-ttl: ${APP_PASSWORD_RESET_TTL:15m}
   mail:
     queue:
       # true: booking mail goes through RabbitMQ (sent directly if the broker is down).
@@ -191,7 +173,7 @@ app:
       promoCodes: ${APP_SEED_COUNTS_PROMO_CODES:5}
       bookings: ${APP_SEED_COUNTS_BOOKINGS:20}
 
-# The admin account this app makes sure exists (in Keycloak and in the users table)
+# The admin account this app makes sure exists in the users table
 # is APP_ADMIN_NAME / APP_ADMIN_EMAIL / APP_ADMIN_PASSWORD, and it now lives only in
 # .env - repeating those keys here would be a circular placeholder reference, since
 # the key and the placeholder would have the same name. AdminSeeder carries the same

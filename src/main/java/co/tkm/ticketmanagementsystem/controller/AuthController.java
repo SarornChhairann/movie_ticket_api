@@ -4,7 +4,8 @@ import co.tkm.ticketmanagementsystem.dto.RegisterForm;
 import co.tkm.ticketmanagementsystem.enums.Role;
 import co.tkm.ticketmanagementsystem.model.User;
 import co.tkm.ticketmanagementsystem.service.AuthService;
-import co.tkm.ticketmanagementsystem.service.KeycloakAdminClient.TokenResponse;
+import co.tkm.ticketmanagementsystem.service.PasswordResetService;
+import co.tkm.ticketmanagementsystem.service.TokenService.TokenResponse;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,26 +20,26 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Registration and login for clients that only know about this app, not about
- * Keycloak: they post an email and password here and get back the same tokens
- * Keycloak would have issued them directly.
+ * Registration and login: a client posts an email and password here and gets back an
+ * OAuth2-style token pair ({@code access_token}, {@code refresh_token}) signed by this app.
  *
  * Every other endpoint in the app then expects {@code Authorization: Bearer
  * <access_token>}; nothing here establishes a session.
  *
  * Each route is exposed twice - at its original path and under {@code /api/auth/**},
- * the layout the rest of the Keycloak tooling (Postman collection, docs) uses.
+ * the layout the clients, Postman collection and docs use.
  */
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "Auth", description = "Registration and login, backed by Keycloak (bearer tokens)")
+@Tag(name = "Auth", description = "Registration and login (bearer tokens)")
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
     @PostMapping(value = {"/login", "/api/auth/login"},
             consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Exchange an email and password for a Keycloak access token")
+    @Operation(summary = "Exchange an email and password for an access token")
     public LoginResponse login(@Valid @RequestBody LoginRequest req) {
         AuthService.Session session = authService.login(req.email(), req.password());
         return LoginResponse.of(session);
@@ -46,7 +47,7 @@ public class AuthController {
 
     @PostMapping(value = {"/register", "/api/auth/register"},
             consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Register a new customer account in Keycloak")
+    @Operation(summary = "Register a new customer account")
     public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterForm registerForm) {
         User user = authService.register(registerForm.getName(), registerForm.getEmail(), registerForm.getPassword());
         return ResponseEntity.status(HttpStatus.CREATED).body(RegisterResponse.of(user));
@@ -60,10 +61,38 @@ public class AuthController {
     }
 
     @PostMapping(value = {"/logout", "/api/auth/logout"}, consumes = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "End the Keycloak session behind a refresh token")
+    @Operation(summary = "Revoke a refresh token")
     public ResponseEntity<Void> logout(@Valid @RequestBody RefreshRequest req) {
         authService.logout(req.refreshToken());
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(value = "/api/auth/forgot-password",
+            consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Email a 6-digit password reset code",
+            description = "Always 202, whether or not the email has an account, so it cannot be used to probe for accounts.")
+    public ResponseEntity<MessageResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
+        passwordResetService.requestReset(req.email());
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(new MessageResponse(
+                "If an account exists for that email, a reset code is on its way."));
+    }
+
+    @PostMapping(value = "/api/auth/reset-password", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Set a new password with the emailed code",
+            description = "400 with code RESET_CODE_INVALID when the code is wrong, expired, or locked out. "
+                    + "On success every session of the account is signed out.")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+        passwordResetService.resetPassword(req.email(), req.code(), req.newPassword());
+        return ResponseEntity.noContent().build();
+    }
+
+    public record ForgotPasswordRequest(@NotBlank String email) {
+    }
+
+    public record ResetPasswordRequest(@NotBlank String email, @NotBlank String code, @NotBlank String newPassword) {
+    }
+
+    public record MessageResponse(String message) {
     }
 
     public record LoginRequest(@NotBlank String email, @NotBlank String password) {
@@ -73,9 +102,9 @@ public class AuthController {
     }
 
     /**
-     * The Keycloak token fields stay at the top level under their OAuth2 names, so a
-     * client can read {@code access_token} the same way it would from Keycloak itself,
-     * alongside the bits of the local account the UI needs to route the user.
+     * The token fields sit at the top level under their OAuth2 names
+     * ({@code access_token}, ...), alongside the bits of the account the UI needs to
+     * route the user.
      */
     public record LoginResponse(
             String message,

@@ -1,8 +1,8 @@
 package co.tkm.ticketmanagementsystem.config;
 
-import co.tkm.ticketmanagementsystem.security.KeycloakClaims;
-import co.tkm.ticketmanagementsystem.security.KeycloakUserSyncFilter;
-import co.tkm.ticketmanagementsystem.service.UserService;
+import co.tkm.ticketmanagementsystem.repository.UserRepository;
+import co.tkm.ticketmanagementsystem.security.AccountStatusFilter;
+import co.tkm.ticketmanagementsystem.security.TokenClaims;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -37,13 +37,13 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * The app is an OAuth2 Resource Server: Keycloak owns login, credentials and roles,
- * and this app only ever inspects the signed JWT that Keycloak issued. There is no
- * session and no local password check - {@code AuthController} hands a client its
- * token, and every request after that carries {@code Authorization: Bearer <token>}.
+ * Stateless bearer-token security. {@code AuthController} checks an email/password
+ * and hands back a JWT signed by this app ({@code TokenService}); every request after
+ * that carries {@code Authorization: Bearer <token>}, which the OAuth2 resource-server
+ * support verifies against the same key ({@code JwtConfig}). There is no session.
  *
- * Keycloak's realm roles are mapped onto Spring Security authorities, so the existing
- * {@code hasRole("ADMIN")} rules and {@code ROLE_ADMIN} checks keep working unchanged.
+ * The token's {@code roles} claim becomes {@code ROLE_*} authorities, so the
+ * {@code hasRole("ADMIN")} rules and {@code ROLE_ADMIN} checks work unchanged.
  */
 @Configuration
 @EnableMethodSecurity // enables @PreAuthorize on controller/service methods
@@ -52,7 +52,7 @@ public class SecurityConfig {
     @Bean
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   UserService userService,
+                                                   UserRepository userRepository,
                                                    ObjectMapper objectMapper) throws Exception {
         http
                 .cors(Customizer.withDefaults())
@@ -61,7 +61,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // There is no session to invalidate, and POST /logout is a real endpoint
-                // here (it revokes the refresh token in Keycloak) - left enabled, the
+                // here (it revokes the refresh token) - left enabled, the
                 // default LogoutFilter would answer it with a redirect of its own and the
                 // controller would never run.
                 .logout(AbstractHttpConfigurer::disable)
@@ -88,30 +88,25 @@ public class SecurityConfig {
                         .authenticationEntryPoint(jsonAuthenticationEntryPoint(objectMapper))
                         .accessDeniedHandler(jsonAccessDeniedHandler(objectMapper))
                 )
-                // Runs once the token has been validated, so the local users row that
-                // bookings and tickets point at exists before any controller needs it.
-                .addFilterAfter(new KeycloakUserSyncFilter(userService, objectMapper),
+                // Runs once the token has been validated, so a deleted or suspended
+                // account is turned away even while its access token has not expired.
+                .addFilterAfter(new AccountStatusFilter(userRepository, objectMapper),
                         BearerTokenAuthenticationFilter.class);
 
         return http.build();
     }
 
     /**
-     * Keycloak puts realm roles under {@code realm_access.roles} in lower case
-     * ({@code "roles": ["customer", "admin"]}), while this app has always spelled its
-     * authorities {@code ROLE_ADMIN} / {@code ROLE_CUSTOMER}, so each role is upper-cased
-     * on the way in.
-     *
-     * The principal name is the user's email rather than Keycloak's {@code sub}, because
-     * every controller and service here resolves the current user with
+     * The principal name is the user's email (the token subject), because every
+     * controller and service resolves the current user with
      * {@code authentication.getName()} against the {@code users.email} column.
      */
     private Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter() {
-        return jwt -> new JwtAuthenticationToken(jwt, authorities(jwt), KeycloakClaims.email(jwt));
+        return jwt -> new JwtAuthenticationToken(jwt, authorities(jwt), TokenClaims.email(jwt));
     }
 
     private Collection<GrantedAuthority> authorities(Jwt jwt) {
-        return KeycloakClaims.realmRoles(jwt).stream()
+        return TokenClaims.roles(jwt).stream()
                 .map(role -> "ROLE_" + role.toUpperCase())
                 .map(role -> (GrantedAuthority) new SimpleGrantedAuthority(role))
                 .toList();
@@ -132,7 +127,7 @@ public class SecurityConfig {
 
             String message = request.getHeader(HttpHeaders.AUTHORIZATION) == null
                     ? "No bearer token was sent, and this endpoint requires authentication."
-                    : "The bearer token is missing, malformed, expired, or not signed by Keycloak.";
+                    : "The bearer token is missing, malformed, expired, or not signed by this server.";
 
             writeError(objectMapper, response, statusOf(response, HttpStatus.UNAUTHORIZED), message);
         };

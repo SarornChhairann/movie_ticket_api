@@ -36,15 +36,12 @@ public class UserController {
     public ResponseEntity<UserResponse> updateProfile(@RequestBody UpdateProfileRequest req,
                                                        Authentication authentication) {
         userService.updateProfile(authentication.getName(), req.name(), req.phone());
-        // Keep the Keycloak account's name in step, so a token minted later does not
-        // carry the old one back into the mirrored row.
-        authService.syncName(authentication.getName(), req.name());
         User user = userService.findByEmail(authentication.getName());
         return ResponseEntity.ok(UserResponse.from(user));
     }
 
     @PostMapping(value = "/change-password", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Change the current user's password in Keycloak")
+    @Operation(summary = "Change the current user's password")
     public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest req,
                                              Authentication authentication) {
         if (req.newPassword() == null || req.newPassword().length() < 6) {
@@ -53,8 +50,6 @@ public class UserController {
         if (!req.newPassword().equals(req.confirmPassword())) {
             throw new IllegalArgumentException("New passwords do not match.");
         }
-        // Credentials live in Keycloak, so the current password is verified by logging
-        // in with it and the new one is written through the Admin API.
         authService.changePassword(authentication.getName(), req.currentPassword(), req.newPassword());
         return ResponseEntity.ok().build();
     }

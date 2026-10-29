@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,6 +59,7 @@ public class DatabaseSeederService {
     private final PaymentRepository paymentRepository;
     private final TicketRepository ticketRepository;
     private final MovieReminderRepository movieReminderRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Value("${app.seed.counts.users:24}")
     private int userCount;
@@ -137,12 +139,20 @@ public class DatabaseSeederService {
             user.setName(person.name());
             user.setEmail(person.email());
             user.setPhone(person.phone());
-            user.setPassword(User.KEYCLOAK_MANAGED_PASSWORD);
+            user.setPassword(User.NO_PASSWORD);
             user.setRole(Role.CUSTOMER);
             user.setStatus(UserStatus.ACTIVE);
             user.setPoints(person.points());
             users.add(user);
         }
+        // The one demo customer that can actually log in.
+        User demo = new User();
+        demo.setName("Demo Customer");
+        demo.setEmail("customer@gmail.com");
+        demo.setPassword(passwordEncoder.encode("customer123"));
+        demo.setRole(Role.CUSTOMER);
+        demo.setStatus(UserStatus.ACTIVE);
+        users.add(demo);
         return userRepository.saveAll(users);
     }
 

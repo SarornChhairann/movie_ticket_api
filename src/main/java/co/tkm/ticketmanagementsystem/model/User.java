@@ -2,6 +2,7 @@ package co.tkm.ticketmanagementsystem.model;
 
 import co.tkm.ticketmanagementsystem.enums.Role;
 import co.tkm.ticketmanagementsystem.enums.UserStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -27,11 +28,10 @@ import lombok.Setter;
 public class User extends AuditableEntity {
 
     /**
-     * Placeholder stored in the (non-null) password column. Keycloak holds every real
-     * credential now, so nothing in this app ever reads or verifies this value - it
-     * only keeps the column honest for rows mirrored from the realm.
+     * Stored in the (non-null) password column of an account that has no password yet.
+     * It is not a BCrypt hash, so no login can ever match it.
      */
-    public static final String KEYCLOAK_MANAGED_PASSWORD = "managed-by-keycloak";
+    public static final String NO_PASSWORD = "!";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -49,7 +49,9 @@ public class User extends AuditableEntity {
     @Column(length = 30)
     private String phone;
 
+    /** BCrypt hash, or {@link #NO_PASSWORD}. Never serialized. */
     @NotBlank
+    @JsonIgnore
     @Column(nullable = false)
     private String password;
 

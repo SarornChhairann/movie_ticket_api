@@ -1,5 +1,5 @@
 # Public entry on the server IP. No DNS name and no TLS certificate.
-# Port 80 is the API. Port 8080 is Keycloak. auto_https is off so Caddy
+# Port 80 is the API. auto_https is off so Caddy
 # does not ask Let's Encrypt for a certificate.
 {
 	auto_https off
@@ -34,17 +34,3 @@
 	}
 }
 
-:8080 {
-	import common
-
-	@admin {
-		path /admin /admin/*
-		not remote_ip {$KEYCLOAK_ADMIN_ALLOW}
-	}
-	respond @admin 403
-
-	@internal path /metrics /metrics/* /health /health/*
-	respond @internal 404
-
-	reverse_proxy keycloak:8080
-}

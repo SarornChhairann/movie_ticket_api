@@ -54,9 +54,8 @@ public class AdminUserController {
     public ResponseEntity<UserSummary> setUserStatus(@PathVariable Long id, @RequestBody StatusRequest req) {
         userService.setStatus(id, req.status());
         User user = userService.findById(id);
-        // Disable the account in Keycloak too, so a suspended user stops being issued
-        // tokens rather than only being turned away at this app's door.
-        authService.syncStatus(user.getEmail(), req.status());
+        // A blocked account loses its refresh tokens, so it cannot mint new access tokens.
+        authService.onStatusChanged(user);
         return ResponseEntity.ok(toUserSummary(user));
     }
 
