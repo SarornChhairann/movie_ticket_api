@@ -130,6 +130,14 @@ services:
     networks:
       - edge
       - backend
+    # Caddy waits on service_healthy. Probe "/" because this image answers
+    # /actuator/health/readiness with 401; "/" is public and returns 200.
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8010 && printf \"GET / HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3 && grep -q \"HTTP/1.1 200\" <&3'"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 90s
     stop_grace_period: 30s      # > spring.lifecycle.timeout-per-shutdown-phase (20s)
     deploy:
       resources:

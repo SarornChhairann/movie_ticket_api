@@ -29,7 +29,9 @@
 		max_size 6MB
 	}
 	reverse_proxy app:8010 {
-		health_uri /actuator/health/readiness
+		# This image answers /actuator/health/readiness with 401, which Caddy
+		# treats as a dead upstream and then returns 503. "/" is public.
+		health_uri /
 		health_interval 15s
 	}
 }

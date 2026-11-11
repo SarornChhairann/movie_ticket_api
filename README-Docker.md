@@ -1,20 +1,25 @@
 # Docker
 
-Two Compose files, one image:
+One Compose file and one image:
 
 | File | For | Ports on the host |
 |---|---|---|
-| `docker-compose.yml` | local development (demo data, everything published) | 8010 app, 5433 Postgres, 5672/15672 RabbitMQ, 6379 Redis |
-| `docker-compose.prod.yml` | a production server | 80 and 8080 (Caddy, HTTP on `PUBLIC_IP`) |
+| `docker-compose.yml` | the production server (project name `ticket-prod`) | 80 only (Caddy, plain HTTP on `PUBLIC_IP`) |
+| `Dockerfile` | the app image | none |
 
-`Dockerfile` is shared: a multi-stage build (Maven cache, Spring Boot layers, non-root JRE runtime with a readiness `HEALTHCHECK` on `/actuator/health/readiness`).
+`Dockerfile` is a multi-stage build (Maven cache, Spring Boot layers, non-root JRE runtime with a readiness `HEALTHCHECK` on `/actuator/health/readiness`).
+
+Step-by-step server setup, including firewall and troubleshooting, is in [docs/ubuntu-deploy.md](docs/ubuntu-deploy.md).
 
 ## Development
 
+There is no development Compose file. `docker-compose.yml` is the production stack: it seeds no demo data and publishes no Postgres or Redis port, so do not use it for local work.
+
+Run the app on the host against your own Postgres (the default URL is `jdbc:postgresql://localhost:5433/spring_boot_ticket`) and, optionally, Redis:
+
 ```bash
 cp .env.example .env
-docker compose up -d db rabbitmq redis   # then ./mvnw spring-boot:run
-docker compose up -d --build                      # or the app in a container too
+./mvnw spring-boot:run
 ```
 
 `.env` has `APP_SEED_FORCE=true`: every app start wipes and reseeds the demo data.
@@ -36,7 +41,7 @@ internet ──80──▶ caddy ──(edge)──▶ app :8010 ──(backend,
   | `ticket-prod-postgres` | app data (users, bookings, refresh tokens) |
   | `ticket-prod-uploads` | posters, food images |
   | `ticket-prod-redis` | cache, lookup throttle |
-  | `ticket-prod-caddy-data` | TLS certificates |
+  | `ticket-prod-caddy-data`, `ticket-prod-caddy-config` | Caddy state (no certificates are issued) |
 
   Only `down -v` deletes them.
 - **Hardening.** Every service gets `no-new-privileges`, CPU/memory limits, rotated JSON logs (5 × 10 MB) and `restart: unless-stopped`. The app also runs `read_only` with all capabilities dropped, under tini (`init: true`), and shuts down gracefully (`server.shutdown=graceful`, 30 s grace).
@@ -45,7 +50,7 @@ internet ──80──▶ caddy ──(edge)──▶ app :8010 ──(backend,
 ### Server preparation
 
 1. Get a Linux host with Docker Engine 24+ and the Compose plugin. 2 vCPU / 4 GB RAM covers the limits set here.
-2. Set `PUBLIC_IP` in `.env.prod` to the server's public IPv4. Do not set a domain name.
+2. Set `PUBLIC_IP` in `.env.prod` to the server's public IPv4, and use it in `APP_CORS_ALLOWED_ORIGINS` and `PAYWAY_RETURN_URL`. Do not set a domain name.
 3. Open only 22 and 80 in the firewall, for example `ufw allow OpenSSH && ufw allow 80/tcp && ufw enable`.
 
 ### First deploy
@@ -58,13 +63,17 @@ openssl rand -base64 32 | tr -d '/+=' | cut -c1-32
 # APP_JWT_SECRET needs at least 32 bytes:
 openssl rand -base64 48
 
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
-docker compose -f docker-compose.prod.yml --env-file .env.prod ps     # all "healthy"
+docker compose --env-file .env.prod up -d --build
+docker compose --env-file .env.prod ps     # app, db, redis "healthy"; caddy "Up"
 ```
 
 On every start the app creates `APP_ADMIN_EMAIL` (or resets its password and admin role to the values in `.env.prod`). No demo data is seeded.
 
-Tip: `alias dcp='docker compose -f docker-compose.prod.yml --env-file .env.prod'`.
+Run every command from the project directory, and always pass `--env-file .env.prod`: without it Compose stops on the first missing required value.
+
+Tip: `alias dcp='docker compose --env-file .env.prod'`.
+
+Caddy must own port 80. If Nginx or another server is already listening there, Caddy cannot start and that server answers with `502`. Check with `sudo ss -ltnp | grep ':80 '` and stop it (`sudo systemctl disable --now nginx`) before the first deploy.
 
 ### Updates
 
@@ -103,5 +112,5 @@ The production stack runs no RabbitMQ (it is sized for a 1 GB server): `APP_MAIL
 ### Notes
 
 - `SPRING_JPA_HIBERNATE_DDL_AUTO=update` creates and extends tables on start, since this project has no migration tool yet. Take a backup before deploying a release that changes entities.
-- Swagger UI (`/swagger-ui.html`) is still public on the API domain. Block it in `deploy/caddy/Caddyfile` if the API should not be browsable.
+- Swagger UI (`/swagger-ui.html`) is still public on port 80. Block it in `deploy/caddy/Caddyfile` if the API should not be browsable.
 - Secrets live in `.env.prod` (mode 600, git-ignored, never in the image). For stricter setups, move them to Docker secrets or a vault.
